@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/backend/" />
+  <Folder Name="/backend/src/">
+    <Project Path="backend/src/Infera.Api/Infera.Api.csproj" />
+    <Project Path="backend/src/Infera.Application/Infera.Application.csproj" />
+    <Project Path="backend/src/Infera.Domain/Infera.Domain.csproj" />
+    <Project Path="backend/src/Infera.Infrastructure/Infera.Infrastructure.csproj" />
+  </Folder>
+</Solution>
