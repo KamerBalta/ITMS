@@ -16,6 +16,8 @@ public interface IAppDbContext
     DbSet<ProjectMember> ProjectMembers { get; }
     DbSet<Sprint> Sprints { get; }
     DbSet<Domain.Entities.Task> Tasks { get; }
+    DbSet<Comment> Comments { get; }
+    DbSet<Notification> Notifications { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

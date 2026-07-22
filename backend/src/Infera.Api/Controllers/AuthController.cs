@@ -64,4 +64,5 @@ public class AuthController : ControllerBase
             Roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value)
         });
     }
+    
 }
