@@ -13,7 +13,8 @@ public class CurrentUserService : ICurrentUserService
     {
         get
         {
-            var value = _accessor.HttpContext?.User?.FindFirstValue("sub");
+            var value = _accessor.HttpContext?.User?.FindFirstValue("sub")
+                        ?? _accessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
             return value is null ? Guid.Empty : Guid.Parse(value);
         }
     }
