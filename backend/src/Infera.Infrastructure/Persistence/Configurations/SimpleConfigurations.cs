@@ -30,7 +30,7 @@ public class LabelConfiguration : IEntityTypeConfiguration<Label>
     {
         b.ToTable("Labels");
         b.Property(x => x.Name).HasMaxLength(100).IsRequired();
-        b.HasIndex(x => x.Name).IsUnique();
+        b.HasIndex(x => x.Name).IsUnique().HasFilter("\"IsDeleted\" = false");
     }
 }
 

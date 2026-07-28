@@ -18,6 +18,15 @@ public interface IAppDbContext
     DbSet<Domain.Entities.Task> Tasks { get; }
     DbSet<Comment> Comments { get; }
     DbSet<Notification> Notifications { get; }
-
+    DbSet<Attachment> Attachments { get; }
+    DbSet<Label> Labels { get; }
+    DbSet<TaskLabel> TaskLabels { get; }
+    DbSet<Watcher> Watchers { get; }
+    DbSet<ChecklistItem> ChecklistItems { get; }
+    DbSet<Release> Releases { get; }
+    DbSet<AuditLog> AuditLogs { get; }
+    DbSet<ActivityLog> ActivityLogs { get; }
+    DbSet<SystemSetting> SystemSettings { get; }
+    DbSet<WorkLog> WorkLogs { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

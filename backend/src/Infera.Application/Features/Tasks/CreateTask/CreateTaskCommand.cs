@@ -6,6 +6,7 @@ namespace Infera.Application.Features.Tasks.CreateTask;
 public record CreateTaskCommand(
     Guid ProjectId,
     Guid? SprintId,
+    Guid? ParentTaskId,
     string Title,
     string? Description,
     IssueType IssueType,

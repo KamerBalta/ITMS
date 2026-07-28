@@ -39,6 +39,13 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
         });
         await _db.SaveChangesAsync(ct);
 
-        return new LoginResult(accessToken, refreshToken, user.Name, user.Email, roles);
+        return new LoginResult(
+     user.Id,
+     accessToken,
+     refreshToken,
+     user.Name,
+     user.Email,
+     roles
+ );
     }
 }

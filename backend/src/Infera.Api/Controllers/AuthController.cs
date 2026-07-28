@@ -1,9 +1,12 @@
 using Infera.Application.Features.Auth.Login;
 using Infera.Application.Features.Auth.Refresh;
 using Infera.Application.Features.Auth.Logout;
+using Infera.Application.Features.Auth.ForgotPassword;
+using Infera.Application.Features.Auth.ResetPassword;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace Infera.Api.Controllers;
@@ -17,6 +20,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting("LoginPolicy")]
     public async Task<IActionResult> Login(LoginCommand command)
     {
         try
@@ -53,6 +57,35 @@ public class AuthController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    [EnableRateLimiting("ForgotPasswordPolicy")]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordCommand command)
+    {
+        await _mediator.Send(command);
+
+        // Güvenlik: kullanıcı var mı yok mu fark etmeksizin aynı mesaj dönülür.
+        return Ok(new
+        {
+            message = "E-posta adresiniz sistemde kayıtlıysa, sıfırlama bağlantısı gönderildi."
+        });
+    }
+
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResetPassword(ResetPasswordCommand command)
+    {
+        try
+        {
+            await _mediator.Send(command);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpGet("me")]
     [Authorize]
     public IActionResult Me()
@@ -64,5 +97,4 @@ public class AuthController : ControllerBase
             Roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value)
         });
     }
-    
 }

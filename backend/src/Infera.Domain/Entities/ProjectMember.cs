@@ -3,7 +3,7 @@ using Infera.Domain.Enums;
 
 namespace Infera.Domain.Entities;
 
-public class ProjectMember : BaseEntity
+public class ProjectMember : BaseEntity,ISoftDelete
 {
     public Guid ProjectId { get; set; }
     public Project Project { get; set; } = default!;
@@ -16,4 +16,7 @@ public class ProjectMember : BaseEntity
 
     public ProjectRole ProjectRole { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public bool IsDeleted { get; set; } = false;
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
 }

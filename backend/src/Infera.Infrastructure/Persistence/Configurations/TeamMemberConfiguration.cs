@@ -11,6 +11,6 @@ public class TeamMemberConfiguration : IEntityTypeConfiguration<TeamMember>
         b.ToTable("TeamMembers");
         b.HasOne(x => x.Team).WithMany(x => x.Members).HasForeignKey(x => x.TeamId);
         b.HasOne(x => x.User).WithMany(x => x.TeamMemberships).HasForeignKey(x => x.UserId);
-        b.HasIndex(x => new { x.TeamId, x.UserId }).IsUnique();
+        b.HasIndex(x => new { x.TeamId, x.UserId }).IsUnique().HasFilter("\"IsDeleted\" = false");
     }
 }

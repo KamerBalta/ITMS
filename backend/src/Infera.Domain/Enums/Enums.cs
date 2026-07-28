@@ -8,7 +8,7 @@ public enum IssueType { Epic, Story, Task, Bug, SubTask }
 
 public enum Priority { Low, Medium, High, Critical }
 
-public enum ItemStatus { ToDo, InProgress, ReadyForReview, ReadyForQA, Done }
+public enum ItemStatus { ToDo, InProgress, ReadyForReview, ReadyForQA, Done, Closed }
 
 public enum ProjectRole { ProjectManager, Developer, QA, Tester }
 

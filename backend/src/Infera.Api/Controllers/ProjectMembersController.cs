@@ -19,8 +19,15 @@ public class ProjectMembersController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetMembers(Guid projectId)
     {
-        var result = await _mediator.Send(new GetProjectMembersQuery(projectId));
-        return Ok(result);
+        try
+        {
+            var result = await _mediator.Send(new GetProjectMembersQuery(projectId));
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
     }
 
     [HttpPost]

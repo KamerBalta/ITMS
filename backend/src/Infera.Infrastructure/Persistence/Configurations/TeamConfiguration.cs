@@ -10,7 +10,7 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
     {
         b.ToTable("Teams");
         b.Property(x => x.Name).HasMaxLength(100).IsRequired();
-        b.HasIndex(x => x.Name).IsUnique();
+        b.HasIndex(x => x.Name).IsUnique().HasFilter("\"IsDeleted\" = false");
         b.HasOne(x => x.Creator).WithMany().HasForeignKey(x => x.CreatedBy).OnDelete(DeleteBehavior.Restrict);
     }
 }
