@@ -60,7 +60,8 @@ public class AttachmentsController : ControllerBase
                     userId,
                     stream,
                     file.FileName,
-                    file.Length));
+                    file.Length,
+                    file.ContentType));
 
             return CreatedAtAction(
                 nameof(GetAll),
@@ -84,12 +85,23 @@ public class AttachmentsController : ControllerBase
     }
 
     [HttpGet("{attachmentId}/download")]
-    public async Task<IActionResult> Download(Guid taskId, Guid attachmentId)
+    public async Task<IActionResult> Download(
+        Guid taskId,
+        Guid attachmentId)
     {
         try
         {
-            var result = await _mediator.Send(new DownloadAttachmentQuery(attachmentId));
-            return File(result.FileStream, "application/octet-stream", result.FileName);
+            var result = await _mediator.Send(
+                new DownloadAttachmentQuery(attachmentId));
+
+
+            var contentType = GetContentType(result.FileName);
+
+
+            return File(
+                result.FileStream,
+                contentType,
+                result.FileName);
         }
         catch (KeyNotFoundException ex)
         {
@@ -98,9 +110,47 @@ public class AttachmentsController : ControllerBase
         catch (UnauthorizedAccessException ex)
         {
             return StatusCode(
-            StatusCodes.Status403Forbidden,
-            new { message = ex.Message });
+                StatusCodes.Status403Forbidden,
+                new { message = ex.Message });
         }
+    }
+
+
+    private static string GetContentType(string fileName)
+    {
+        var extension = Path.GetExtension(fileName)
+            .ToLowerInvariant();
+
+
+        return extension switch
+        {
+            ".xlsx" =>
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+
+            ".xls" =>
+                "application/vnd.ms-excel",
+
+            ".pdf" =>
+                "application/pdf",
+
+            ".docx" =>
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+
+            ".doc" =>
+                "application/msword",
+
+            ".png" =>
+                "image/png",
+
+            ".jpg" or ".jpeg" =>
+                "image/jpeg",
+
+            ".txt" =>
+                "text/plain",
+
+            _ =>
+                "application/octet-stream"
+        };
     }
 
     [HttpDelete("{attachmentId}")]

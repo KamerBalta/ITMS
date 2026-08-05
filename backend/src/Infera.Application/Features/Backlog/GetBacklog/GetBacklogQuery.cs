@@ -5,7 +5,7 @@ namespace Infera.Application.Features.Backlog.GetBacklog;
 
 public record GetBacklogQuery(
     Guid ProjectId,
-    IssueType? IssueType,
+    Guid? IssueTypeId,
     Priority? Priority,
     Guid? AssigneeId,
     string? Search,
@@ -21,5 +21,7 @@ public record BacklogTaskDto(
     int? StoryPoint,
     Guid? AssigneeId,
     string? AssigneeName,
-    long Rank
+    long Rank,
+    Guid? ParentTaskId,
+    string? ParentTaskTitle
 );

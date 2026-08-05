@@ -14,6 +14,9 @@ public class User : BaseEntity
     public string? PasswordResetTokenHash { get; set; }
     public DateTime? PasswordResetTokenExpiresAt { get; set; }
     public string? AvatarUrl { get; set; }
+    public bool MustChangePassword { get; set; } = false;
+    public string? ActivationTokenHash { get; set; }
+    public DateTime? ActivationTokenExpiresAt { get; set; }
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     public ICollection<TeamMember> TeamMemberships { get; set; } = new List<TeamMember>();
     public ICollection<ProjectMember> ProjectMemberships { get; set; } = new List<ProjectMember>();

@@ -1,9 +1,9 @@
 ﻿using Infera.Application.Common.Interfaces;
+using Infera.Application.Common.Services;
 using Infera.Domain.Entities;
 using Infera.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using System.Text.RegularExpressions;
 
 namespace Infera.Application.Features.Comments.AddComment;
 
@@ -12,9 +12,6 @@ public class AddCommentCommandHandler : IRequestHandler<AddCommentCommand, Guid>
     private readonly IAppDbContext _db;
     private readonly IProjectAccessService _access;
     private readonly INotificationService _notificationService;
-
-    // Mention formati: @[Gorunen Ad](userId) -- frontend'deki @mention secici bu formati uretmeli
-    private static readonly Regex MentionPattern = new(@"@\[[^\]]+\]\(([0-9a-fA-F\-]{36})\)", RegexOptions.Compiled);
 
     public AddCommentCommandHandler(IAppDbContext db, IProjectAccessService access, INotificationService notificationService)
     {
@@ -66,15 +63,13 @@ public class AddCommentCommandHandler : IRequestHandler<AddCommentCommand, Guid>
                 "Yeni yorum eklendi",
                 $"\"{task.Title}\" adlı göreve yeni bir yorum eklendi.",
                 NotificationType.Task,
+                $"/tasks/{task.Id}",
                 ct);
         }
 
         // BR-014: @Mention bildirimi -- yukaridaki genel bildirimden bagimsiz, ozel mesajla
-        var mentionedUserIds = MentionPattern.Matches(request.Content)
-            .Select(m => Guid.TryParse(m.Groups[1].Value, out var id) ? id : (Guid?)null)
-            .Where(id => id is not null && id != request.UserId)
-            .Select(id => id!.Value)
-            .Distinct();
+        var mentionedUserIds = MentionParser.ExtractMentionedUserIds(request.Content)
+            .Where(id => id != request.UserId);
 
         foreach (var userId in mentionedUserIds)
         {
@@ -83,6 +78,7 @@ public class AddCommentCommandHandler : IRequestHandler<AddCommentCommand, Guid>
                 "Bir yorumda bahsedildiniz",
                 $"\"{task.Title}\" görevindeki bir yorumda sizden bahsedildi.",
                 NotificationType.Mention,
+                $"/tasks/{task.Id}",
                 ct);
         }
 

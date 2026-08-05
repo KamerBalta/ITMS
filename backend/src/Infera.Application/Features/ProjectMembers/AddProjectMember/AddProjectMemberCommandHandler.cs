@@ -16,16 +16,16 @@ public class AddProjectMemberCommandHandler : IRequestHandler<AddProjectMemberCo
         _currentUser = currentUser;
     }
 
-    public async System.Threading.Tasks.Task<Guid> Handle(AddProjectMemberCommand request, CancellationToken ct)
+    public async Task<Guid> Handle(AddProjectMemberCommand request, CancellationToken ct)
     {
         var project = await _db.Projects.FirstOrDefaultAsync(p => p.Id == request.ProjectId, ct)
             ?? throw new KeyNotFoundException("Proje bulunamadı.");
 
-        // Yetki: Admin her projede islem yapabilir, PM sadece kendi projesinde (Owner)
+        // Yetki: Admin her projede işlem yapabilir, PM sadece kendi projesinde (Owner)
         if (!_currentUser.IsAdmin && project.OwnerId != _currentUser.UserId)
             throw new UnauthorizedAccessException("Bu projede üye ekleme yetkiniz yok.");
 
-        // DB-009: TeamId, ilgili ProjectId icin ProjectTeams'de tanimli olmali
+        // DB-009: TeamId, ilgili ProjectId için ProjectTeams'de tanımlı olmalı
         var teamAssigned = await _db.ProjectTeams
             .AnyAsync(pt => pt.ProjectId == request.ProjectId && pt.TeamId == request.TeamId, ct);
         if (!teamAssigned)
@@ -35,17 +35,48 @@ public class AddProjectMemberCommandHandler : IRequestHandler<AddProjectMemberCo
         if (!userExists)
             throw new KeyNotFoundException("Kullanıcı bulunamadı veya pasif.");
 
-        var member = new ProjectMember
-        {
-            ProjectId = request.ProjectId,
-            TeamId = request.TeamId,
-            UserId = request.UserId,
-            ProjectRole = request.ProjectRole
-        };
+        // Soft-delete uygulanmış üyeleri de kapsayacak şekilde kontrol et
+        var existingMember = await _db.ProjectMembers
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(
+                x => x.ProjectId == request.ProjectId &&
+                     x.UserId == request.UserId,
+                ct);
 
-        _db.ProjectMembers.Add(member);
+        Guid resultId;
+
+        if (existingMember != null)
+        {
+            // Zaten aktif bir üyeyse çift eklemeyi engelle (İsteğe bağlı ek kontrol)
+            if (!existingMember.IsDeleted)
+            {
+                throw new InvalidOperationException("Bu kullanıcı zaten bu projenin aktif bir üyesidir.");
+            }
+
+            // Soft-deleted üye varsa kaydı yeniden aktifleştir ve bilgilerini güncelle
+            existingMember.IsDeleted = false;
+            existingMember.TeamId = request.TeamId;
+            existingMember.ProjectRole = request.ProjectRole;
+
+            resultId = existingMember.Id;
+        }
+        else
+        {
+            // Hiç kaydı yoksa yeni üye oluştur
+            var member = new ProjectMember
+            {
+                ProjectId = request.ProjectId,
+                TeamId = request.TeamId,
+                UserId = request.UserId,
+                ProjectRole = request.ProjectRole
+            };
+
+            _db.ProjectMembers.Add(member);
+            resultId = member.Id;
+        }
+
         await _db.SaveChangesAsync(ct);
 
-        return member.Id;
+        return resultId;
     }
 }

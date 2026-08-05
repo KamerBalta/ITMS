@@ -9,11 +9,13 @@ public class GetDashboardQueryHandler : IRequestHandler<GetDashboardQuery, Dashb
 {
     private readonly IAppDbContext _db;
     private readonly IProjectAccessService _access;
+    private readonly ICurrentUserService _currentUser;
 
-    public GetDashboardQueryHandler(IAppDbContext db, IProjectAccessService access)
+    public GetDashboardQueryHandler(IAppDbContext db, IProjectAccessService access, ICurrentUserService currentUser)
     {
         _db = db;
         _access = access;
+        _currentUser = currentUser;
     }
 
     public async System.Threading.Tasks.Task<DashboardDto> Handle(GetDashboardQuery request, CancellationToken ct)
@@ -21,8 +23,10 @@ public class GetDashboardQueryHandler : IRequestHandler<GetDashboardQuery, Dashb
         if (!await _access.HasProjectAccessAsync(request.ProjectId, ct))
             throw new UnauthorizedAccessException("Bu projeye erişim yetkiniz yok.");
 
+        // #4: Durum kartlari artik proje genelini degil, yalnizca oturum acan kullaniciya
+        // atanmis gorevleri yansitiyor.
         var tasks = await _db.Tasks
-            .Where(t => t.ProjectId == request.ProjectId)
+            .Where(t => t.ProjectId == request.ProjectId && t.AssigneeId == _currentUser.UserId)
             .Select(t => new { t.Status, t.DueDate })
             .ToListAsync(ct);
 
@@ -41,6 +45,8 @@ public class GetDashboardQueryHandler : IRequestHandler<GetDashboardQuery, Dashb
             ReadyForQACount: tasks.Count(t => t.Status == ItemStatus.ReadyForQA),
             DoneCount: tasks.Count(t => t.Status == ItemStatus.Done),
             OverdueCount: tasks.Count(t => t.DueDate != null && t.DueDate < now && t.Status != ItemStatus.Done),
+            // Aktif Sprint bilgisi bilerek proje genelinde kaliyor -- "hangi sprint aktif" bilgisi
+            // kisisel degil, projenin durumu; sadece is yuku kartlari kisisellesti.
             ActiveSprintName: activeSprint?.Name,
             ActiveSprintEndDate: activeSprint?.EndDate,
             ActiveSprintTaskCount: activeSprint?.TaskCount ?? 0);

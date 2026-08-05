@@ -33,6 +33,11 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<ChecklistItem> ChecklistItems => Set<ChecklistItem>();
     public DbSet<WorkLog> WorkLogs => Set<WorkLog>();
+    public DbSet<RetrospectiveNote> RetrospectiveNotes => Set<RetrospectiveNote>();
+    public DbSet<IssueType> IssueTypes => Set<IssueType>();
+    public DbSet<ProjectIssueTypeAssignment> ProjectIssueTypeAssignments => Set<ProjectIssueTypeAssignment>();
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
+    public DbSet<SprintBurndownSnapshot> SprintBurndownSnapshots => Set<SprintBurndownSnapshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

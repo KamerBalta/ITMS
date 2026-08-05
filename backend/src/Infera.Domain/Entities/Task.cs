@@ -16,7 +16,8 @@ public class Task : BaseEntity,ISoftDelete
 
     public string Title { get; set; } = default!;
     public string? Description { get; set; }
-    public IssueType IssueType { get; set; }
+    public Guid? IssueTypeId { get; set; }
+    public IssueType? IssueType { get; set; }
     public Priority Priority { get; set; }
     public int? StoryPoint { get; set; }
     public ItemStatus Status { get; set; } = ItemStatus.ToDo;
@@ -29,13 +30,15 @@ public class Task : BaseEntity,ISoftDelete
 
     public DateTime? DueDate { get; set; }
     public long Rank { get; set; }
+    public int TaskNumber { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     public bool IsDeleted { get; set; } = false;
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }
     public DateTime? DueDateReminderSentAt { get; set; }
-
+    public Guid? ReleaseId { get; set; }
+    public Release? Release { get; set; }
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
     public ICollection<TaskLabel> TaskLabels { get; set; } = new List<TaskLabel>();

@@ -1,4 +1,5 @@
 ﻿using Infera.Application.Common.Interfaces;
+using Infera.Application.Features.ProjectIssueTypes;
 using Infera.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -61,6 +62,8 @@ public class CreateProjectCommandHandler : IRequestHandler<CreateProjectCommand,
         {
             _db.ProjectTeams.Add(new ProjectTeam { ProjectId = project.Id, TeamId = teamId });
         }
+
+        await DefaultProjectIssueTypeSeeder.AssignDefaultsAsync(_db, project.Id, ct);
 
         await _db.SaveChangesAsync(ct);
 

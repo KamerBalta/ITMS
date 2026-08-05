@@ -45,14 +45,12 @@ export function AttachmentsSection({ taskId }: { taskId: string }) {
                 <ul className="space-y-2">
                     {attachments.map((a) => (
                         <li key={a.id} className="flex items-center justify-between text-sm border rounded px-3 py-2">
-                            <a
-                                href={attachmentsApi.downloadUrl(taskId, a.id)}
-                                target="_blank"
-                                rel="noreferrer"
+                            <button
+                                onClick={() => attachmentsApi.download(taskId, a.id)}
                                 className="text-indigo-600 hover:underline"
                             >
                                 📎 {a.fileName}
-                            </a>
+                            </button>
                             <div className="flex items-center gap-3 text-xs text-gray-400">
                                 <span>{formatSize(a.fileSize)}</span>
                                 <span>{a.uploadedByName}</span>

@@ -26,5 +26,21 @@ export const resetPasswordSchema = z
         message: 'Parolalar eşleşmiyor',
         path: ['confirmPassword'],
     });
+export const activateAccountSchema = z
+    .object({
+        newPassword: z
+            .string()
+            .min(8, 'Parola en az 8 karakter olmalıdır')
+            .regex(/[A-Z]/, 'Parola en az bir büyük harf içermelidir')
+            .regex(/[0-9]/, 'Parola en az bir rakam içermelidir'),
+        confirmPassword: z.string(),
+    })
+    .refine((data) => data.newPassword === data.confirmPassword, {
+        message: 'Parolalar eşleşmiyor',
+        path: ['confirmPassword'],
+    });
+
+export type ActivateAccountFormValues = z.infer<typeof activateAccountSchema>;
+
 
 export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;

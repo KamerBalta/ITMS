@@ -1,9 +1,21 @@
 import { apiClient } from './client';
-import type { TaskListItem } from '../types/task';
+
+export interface BacklogTaskItem {
+    id: string;
+    title: string;
+    issueType: string;
+    priority: string;
+    storyPoint: number | null;
+    assigneeId: string | null;
+    assigneeName: string | null;
+    rank: number;
+    parentTaskId: string | null;
+    parentTaskTitle: string | null;
+}
 
 export const backlogApi = {
     get: (projectId: string) =>
-        apiClient.get<TaskListItem[]>('/backlog', { params: { projectId } }).then((res) => res.data),
+        apiClient.get<BacklogTaskItem[]>('/backlog', { params: { projectId } }).then((res) => res.data),
 
     moveToSprint: (taskId: string, sprintId: string) =>
         apiClient.put(`/backlog/${taskId}/move-to-sprint`, { sprintId }),

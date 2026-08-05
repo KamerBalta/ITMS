@@ -28,5 +28,10 @@ public interface IAppDbContext
     DbSet<ActivityLog> ActivityLogs { get; }
     DbSet<SystemSetting> SystemSettings { get; }
     DbSet<WorkLog> WorkLogs { get; }
+    DbSet<RetrospectiveNote> RetrospectiveNotes { get; }
+    DbSet<IssueType> IssueTypes { get; }
+    DbSet<ProjectIssueTypeAssignment> ProjectIssueTypeAssignments { get; }
+    DbSet<NotificationPreference> NotificationPreferences { get; }
+    DbSet<SprintBurndownSnapshot> SprintBurndownSnapshots { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

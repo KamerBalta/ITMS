@@ -23,8 +23,8 @@ public class GetProjectMembersQueryHandler : IRequestHandler<GetProjectMembersQu
         return await _db.ProjectMembers
             .Where(m => m.ProjectId == request.ProjectId)
             .Select(m => new ProjectMemberDto(
-                m.Id, m.UserId, m.User.Name, m.User.Title,
-                m.TeamId, m.Team.Name, m.ProjectRole.ToString()))
-            .ToListAsync(ct);
+    m.Id, m.UserId, m.User.Name, m.User.Title, m.User.AvatarUrl,
+    m.TeamId, m.Team.Name, m.ProjectRole.ToString()))
+.ToListAsync(ct);
     }
 }

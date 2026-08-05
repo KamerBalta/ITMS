@@ -2,6 +2,7 @@
 using Infera.Application.Features.ProjectMembers.GetProjectMembers;
 using Infera.Application.Features.ProjectMembers.RemoveProjectMember;
 using Infera.Domain.Enums;
+using Infera.Application.Features.ProjectMembers.UpdateProjectMember;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -54,6 +55,37 @@ public class ProjectMembersController : ControllerBase
         }
     }
 
+    [HttpPut("{memberId}")]
+    [Authorize(Policy = "RequireProjectManager")]
+    public async Task<IActionResult> UpdateMember(
+    Guid projectId,
+    Guid memberId,
+    UpdateProjectMemberRequest request)
+    {
+        try
+        {
+            await _mediator.Send(new UpdateProjectMemberCommand(
+                projectId,
+                memberId,
+                request.TeamId,
+                request.ProjectRole));
+
+            return NoContent();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpDelete("{memberId}")]
     [Authorize(Policy = "RequireProjectManager")]
     public async Task<IActionResult> RemoveMember(Guid projectId, Guid memberId)
@@ -75,3 +107,6 @@ public class ProjectMembersController : ControllerBase
 }
 
 public record AddProjectMemberRequest(Guid TeamId, Guid UserId, ProjectRole ProjectRole);
+public record UpdateProjectMemberRequest(
+    Guid TeamId,
+    ProjectRole ProjectRole);

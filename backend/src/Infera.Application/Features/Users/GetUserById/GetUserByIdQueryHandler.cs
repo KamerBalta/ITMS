@@ -11,13 +11,29 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDet
 
     public async System.Threading.Tasks.Task<UserDetailDto> Handle(GetUserByIdQuery request, CancellationToken ct)
     {
-        var user = await _db.Users
-            .Where(u => u.Id == request.UserId)
-            .Select(u => new UserDetailDto(
-                u.Id, u.Name, u.Email, u.Title, u.AvatarUrl, u.IsActive, u.CreatedAt,
-                u.UserRoles.Select(ur => ur.Role.Name).ToList()))
-            .FirstOrDefaultAsync(ct);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, ct)
+            ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
 
-        return user ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
+        var systemRoles = await _db.UserRoles
+            .Where(ur => ur.UserId == request.UserId)
+            .Select(ur => ur.Role.Name)
+            .ToListAsync(ct);
+
+        var projects = await _db.ProjectMembers
+            .Where(m => m.UserId == request.UserId)
+            .Select(m => new UserProjectDto(m.ProjectId, m.Project.Name, m.ProjectRole.ToString()))
+            .ToListAsync(ct);
+
+        var teams = await _db.TeamMembers
+            .Where(tm => tm.UserId == request.UserId)
+            .Select(tm => tm.Team.Name)
+            .ToListAsync(ct);
+
+        var createdTaskCount = await _db.Tasks.CountAsync(t => t.ReporterId == request.UserId, ct);
+        var assignedTaskCount = await _db.Tasks.CountAsync(t => t.AssigneeId == request.UserId, ct);
+
+        return new UserDetailDto(
+            user.Id, user.Name, user.Email, user.Title, user.AvatarUrl, user.IsActive, user.CreatedAt,
+            systemRoles, projects, teams, createdTaskCount, assignedTaskCount);
     }
 }

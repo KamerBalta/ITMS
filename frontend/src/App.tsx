@@ -1,12 +1,15 @@
 import { RouterProvider } from 'react-router-dom';
 import { router } from './routes';
 import { AuthInitializer } from './components/AuthInitializer';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 function App() {
     return (
-        <AuthInitializer>
-            <RouterProvider router={router} />
-        </AuthInitializer>
+        <ErrorBoundary>
+            <AuthInitializer>
+                <RouterProvider router={router} />
+            </AuthInitializer>
+        </ErrorBoundary>
     );
 }
 

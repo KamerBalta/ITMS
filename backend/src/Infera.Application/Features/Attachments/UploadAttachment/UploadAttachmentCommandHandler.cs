@@ -51,7 +51,8 @@ public class UploadAttachmentCommandHandler : IRequestHandler<UploadAttachmentCo
             UploadedBy = request.UploadedBy,
             FileName = request.FileName,
             FilePath = filePath,
-            FileSize = request.FileSize
+            FileSize = request.FileSize,
+            ContentType = request.ContentType
         };
 
         _db.Attachments.Add(attachment);

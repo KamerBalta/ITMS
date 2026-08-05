@@ -14,7 +14,14 @@ public class GetNotificationsQueryHandler : IRequestHandler<GetNotificationsQuer
         return await _db.Notifications
             .Where(n => n.UserId == request.UserId)
             .OrderByDescending(n => n.CreatedAt)
-            .Select(n => new NotificationDto(n.Id, n.Title, n.Message, n.Type.ToString(), n.IsRead, n.CreatedAt))
+            .Select(n => new NotificationDto(
+                n.Id,
+                n.Title,
+                n.Message,
+                n.Type.ToString(),
+                n.IsRead,
+                n.CreatedAt,
+                n.ActionUrl))
             .ToListAsync(ct);
     }
 }

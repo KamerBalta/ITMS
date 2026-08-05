@@ -27,6 +27,14 @@ public class DeleteTaskCommandHandler : IRequestHandler<DeleteTaskCommand>
         if (hasSubtasks)
             throw new InvalidOperationException("Alt görevleri olan bir görev silinemez, önce alt görevleri silin.");
 
+        // Task soft-delete oluyor ama Watcher/TaskLabel hard-delete kalan tablolar --
+        // bunlari da burada temizleyelim ki DB'de oksuz kayit birikmesin.
+        var watchers = await _db.Watchers.Where(w => w.TaskId == request.TaskId).ToListAsync(ct);
+        _db.Watchers.RemoveRange(watchers);
+
+        var taskLabels = await _db.TaskLabels.Where(tl => tl.TaskId == request.TaskId).ToListAsync(ct);
+        _db.TaskLabels.RemoveRange(taskLabels);
+
         _db.Tasks.Remove(task);
         await _db.SaveChangesAsync(ct);
     }

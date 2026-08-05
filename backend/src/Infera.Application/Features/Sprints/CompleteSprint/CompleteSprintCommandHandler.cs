@@ -29,10 +29,14 @@ public class CompleteSprintCommandHandler : IRequestHandler<CompleteSprintComman
         if (sprint.Status == SprintStatus.Completed)
             throw new InvalidOperationException("Sprint zaten tamamlanmış.");
 
-        var incompleteTasks = await _db.Tasks
-            .Where(t => t.SprintId == sprint.Id && t.Status != ItemStatus.Done)
-            .ToListAsync(ct);
+        var allTasks = await _db.Tasks.Where(t => t.SprintId == sprint.Id).ToListAsync(ct);
 
+        // #4 fix: "taahhut edilen" puan, gorevler backlog'a tasinmadan ONCE, sprint'teki TUM
+        // gorevlerin (Done olsun olmasin) toplami olarak donduruluyor -- Velocity grafiginin
+        // dogru calismasi icin bu ana veri.
+        sprint.CommittedStoryPoints = allTasks.Sum(t => t.StoryPoint ?? 0);
+
+        var incompleteTasks = allTasks.Where(t => t.Status != ItemStatus.Done).ToList();
         foreach (var task in incompleteTasks)
         {
             task.SprintId = null;
@@ -42,7 +46,6 @@ public class CompleteSprintCommandHandler : IRequestHandler<CompleteSprintComman
         sprint.Status = SprintStatus.Completed;
         await _db.SaveChangesAsync(ct);
 
-        // BR-014: Sprint bitis bildirimi -- projenin tum uyelerine
         var memberIds = await _db.ProjectMembers
             .Where(m => m.ProjectId == sprint.ProjectId)
             .Select(m => m.UserId)
@@ -52,13 +55,11 @@ public class CompleteSprintCommandHandler : IRequestHandler<CompleteSprintComman
         foreach (var userId in memberIds)
         {
             await _notificationService.NotifyAsync(
-                userId,
-                "Sprint tamamlandı",
+                userId, "Sprint tamamlandı",
                 $"\"{sprint.Name}\" sprinti tamamlandı." + (incompleteTasks.Count > 0
                     ? $" {incompleteTasks.Count} tamamlanmamış görev Backlog'a geri alındı."
                     : ""),
-                NotificationType.Sprint,
-                ct);
+                NotificationType.Sprint, $"/sprints/{sprint.Id}", ct);
         }
     }
 }

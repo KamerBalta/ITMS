@@ -8,5 +8,8 @@ export const sprintsApi = {
     create: (data: CreateSprintPayload) =>
         apiClient.post<{ id: string }>('/sprints', data).then((res) => res.data),
 
+    update: (sprintId: string, data: { name: string; goal?: string; startDate: string; endDate: string }) =>
+        apiClient.put(`/sprints/${sprintId}`, data),
+
     complete: (sprintId: string) => apiClient.put(`/sprints/${sprintId}/complete`),
 };

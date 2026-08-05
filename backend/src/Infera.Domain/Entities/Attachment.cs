@@ -9,7 +9,7 @@ public class Attachment : BaseEntity, ISoftDelete
 
     public Guid UploadedBy { get; set; }
     public User Uploader { get; set; } = default!;
-
+    public string ContentType { get; set; } = null!;
     public string FileName { get; set; } = default!;
     public string FilePath { get; set; } = default!;
     public long? FileSize { get; set; }

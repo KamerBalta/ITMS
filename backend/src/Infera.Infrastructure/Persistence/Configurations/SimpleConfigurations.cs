@@ -131,3 +131,54 @@ public class WorkLogConfiguration : IEntityTypeConfiguration<WorkLog>
         b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
     }
 }
+public class RetrospectiveNoteConfiguration : IEntityTypeConfiguration<RetrospectiveNote>
+{
+    public void Configure(EntityTypeBuilder<RetrospectiveNote> b)
+    {
+        b.ToTable("RetrospectiveNotes");
+        b.Property(x => x.Category).HasMaxLength(20).IsRequired();
+        b.HasOne(x => x.Sprint).WithMany().HasForeignKey(x => x.SprintId);
+        b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+public class NotificationPreferenceConfiguration : IEntityTypeConfiguration<NotificationPreference>
+{
+    public void Configure(EntityTypeBuilder<NotificationPreference> b)
+    {
+        b.ToTable("NotificationPreferences");
+        b.Property(x => x.NotificationType).HasMaxLength(20).IsRequired();
+        b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
+        b.HasIndex(x => new { x.UserId, x.NotificationType }).IsUnique();
+    }
+}
+public class IssueTypeConfiguration : IEntityTypeConfiguration<IssueType>
+{
+    public void Configure(EntityTypeBuilder<IssueType> b)
+    {
+        b.ToTable("IssueTypes");
+        b.Property(x => x.Name).HasMaxLength(50).IsRequired();
+        b.Property(x => x.Description).HasMaxLength(300);
+        b.Property(x => x.Icon).HasMaxLength(10);
+        b.HasIndex(x => x.Name).IsUnique();
+    }
+}
+
+public class ProjectIssueTypeAssignmentConfiguration : IEntityTypeConfiguration<ProjectIssueTypeAssignment>
+{
+    public void Configure(EntityTypeBuilder<ProjectIssueTypeAssignment> b)
+    {
+        b.ToTable("ProjectIssueTypeAssignments");
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasOne(x => x.IssueType).WithMany().HasForeignKey(x => x.IssueTypeId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(x => new { x.ProjectId, x.IssueTypeId }).IsUnique();
+    }
+}
+public class SprintBurndownSnapshotConfiguration : IEntityTypeConfiguration<SprintBurndownSnapshot>
+{
+    public void Configure(EntityTypeBuilder<SprintBurndownSnapshot> b)
+    {
+        b.ToTable("SprintBurndownSnapshots");
+        b.HasOne(x => x.Sprint).WithMany().HasForeignKey(x => x.SprintId);
+        b.HasIndex(x => new { x.SprintId, x.SnapshotDate }).IsUnique();
+    }
+}

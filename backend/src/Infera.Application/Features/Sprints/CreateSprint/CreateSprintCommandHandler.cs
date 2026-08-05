@@ -53,11 +53,12 @@ public class CreateSprintCommandHandler : IRequestHandler<CreateSprintCommand, G
         foreach (var userId in memberIds)
         {
             await _notificationService.NotifyAsync(
-                userId,
-                "Yeni Sprint başladı",
-                $"\"{sprint.Name}\" sprinti {project.Name} projesinde başladı.",
-                NotificationType.Sprint,
-                ct);
+    userId,
+    "Yeni Sprint başladı",
+    $"\"{sprint.Name}\" sprinti {project.Name} projesinde başladı.",
+    NotificationType.Sprint,
+    $"/sprints/{sprint.Id}",
+    ct);
         }
 
         return sprint.Id;

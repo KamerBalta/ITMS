@@ -1,7 +1,7 @@
 ﻿using Infera.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-
+using Infera.Domain.Enums;
 namespace Infera.Application.Features.Tasks.ReassignTask;
 
 public class ReassignTaskCommandHandler : IRequestHandler<ReassignTaskCommand>
@@ -35,11 +35,12 @@ public class ReassignTaskCommandHandler : IRequestHandler<ReassignTaskCommand>
         if (request.NewAssigneeId is not null)
         {
             await _notificationService.NotifyAsync(
-                request.NewAssigneeId.Value,
-                "Bir görev size atandı",
-                $"\"{task.Title}\" adlı görev size atandı.",
-                Infera.Domain.Enums.NotificationType.Task,
-                ct);
+    request.NewAssigneeId.Value,
+    "Bir görev size atandı",
+    $"\"{task.Title}\" adlı görev size atandı.",
+    NotificationType.Task,
+    $"/tasks/{task.Id}",
+    ct);
         }
     }
 }
