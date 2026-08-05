@@ -2,6 +2,7 @@
 using Infera.Application.Features.Releases.GetReleaseById;
 using Infera.Application.Features.Releases.GetReleases;
 using Infera.Application.Features.Releases.UpdateRelease;
+using Infera.Application.Features.Releases.GetReleaseTasks;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -94,12 +95,23 @@ public class ReleasesController : ControllerBase
         }
     }
 
+    [HttpGet("{releaseId}/tasks")]
+    public async Task<IActionResult> GetTasks(Guid releaseId)
+    {
+        try
+        {
+            var result = await _mediator.Send(new GetReleaseTasksQuery(releaseId));
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+    }
+
 
     [HttpPut("{releaseId}")]
-    [Authorize(Policy = "RequireProjectManager")]
     public async Task<IActionResult> Update(
-        Guid releaseId,
-        UpdateReleaseRequest request)
+      Guid releaseId,
+      UpdateReleaseInfoRequest request)
     {
         try
         {
@@ -132,6 +144,6 @@ public record CreateReleaseRequest(
     string? Description);
 
 
-public record UpdateReleaseRequest(
+public record UpdateReleaseInfoRequest(
     DateOnly? ReleaseDate,
     string? Description);

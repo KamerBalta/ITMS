@@ -29,7 +29,7 @@ public class ExportSprintReportQueryHandler : IRequestHandler<ExportSprintReport
             .Select(t => new
             {
                 t.Title,
-                IssueType = t.IssueType.ToString(),
+                IssueType = t.IssueType != null ? t.IssueType.Name : "-",
                 Status = t.Status.ToString(),
                 Priority = t.Priority.ToString(),
                 t.StoryPoint,

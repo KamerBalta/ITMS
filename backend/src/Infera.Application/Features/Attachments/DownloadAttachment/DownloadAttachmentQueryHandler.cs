@@ -26,6 +26,10 @@ public class DownloadAttachmentQueryHandler : IRequestHandler<DownloadAttachment
             throw new UnauthorizedAccessException("Bu dosyaya erişim yetkiniz yok.");
 
         var stream = _storage.GetFileStream(attachment.FilePath);
-        return new DownloadAttachmentResult(stream, attachment.FileName);
+
+        return new DownloadAttachmentResult(
+     stream,
+     attachment.FileName,
+     attachment.ContentType);
     }
 }

@@ -17,6 +17,101 @@ export function useTaskDetail(taskId: string | null) {
     });
 }
 
+export function useUpdateTaskTitle(taskId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (title: string) => tasksApi.updateTitle(taskId, title),
+        onSuccess: () => invalidateTask(qc, taskId),
+    });
+}
+
+export function useUpdateTaskDescription(taskId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (description: string) => tasksApi.updateDescription(taskId, description),
+        onSuccess: () => invalidateTask(qc, taskId),
+    });
+}
+
+export function useUpdateTaskPriority(taskId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (priority: number) => tasksApi.updatePriority(taskId, priority),
+        onSuccess: () => invalidateTask(qc, taskId),
+    });
+}
+
+export function useUpdateTaskStoryPoint(taskId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (storyPoint: number | null) => tasksApi.updateStoryPoint(taskId, storyPoint),
+        onSuccess: () => invalidateTask(qc, taskId),
+    });
+}
+
+export function useUpdateTaskDueDate(taskId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (dueDate: string | null) => tasksApi.updateDueDate(taskId, dueDate),
+        onSuccess: () => invalidateTask(qc, taskId),
+    });
+}
+export function useUpdateTaskRelease(taskId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (releaseId: string | null) => tasksApi.updateRelease(taskId, releaseId),
+        onSuccess: () => invalidateTask(qc, taskId),
+    });
+}
+
+export function useUpdateTaskStatus(projectId: string) {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            taskId,
+            status,
+        }: {
+            taskId: string;
+            status: number;
+        }) => tasksApi.updateStatus(taskId, status),
+
+        onSuccess: (_, variables) => {
+            invalidateTask(qc, variables.taskId);
+
+            qc.invalidateQueries({
+                queryKey: ['backlog', projectId],
+            });
+
+            qc.invalidateQueries({
+                queryKey: ['board', projectId],
+            });
+        },
+    });
+}
+
+export function useReassignTaskDetail(taskId: string, projectId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (assigneeId: string | null) => tasksApi.reassign(taskId, assigneeId),
+        onSuccess: () => {
+            invalidateTask(qc, taskId);
+            qc.invalidateQueries({ queryKey: ['dashboard', 'workload', projectId] });
+        },
+    });
+}
+
+export function useCloseEpic(taskId: string, projectId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: () => tasksApi.closeEpic(taskId),
+        onSuccess: () => {
+            invalidateTask(qc, taskId);
+            qc.invalidateQueries({ queryKey: ['tasks', projectId] });
+        },
+    });
+}
+
 function invalidateTask(queryClient: ReturnType<typeof useQueryClient>, taskId: string) {
     queryClient.invalidateQueries({ queryKey: ['task', taskId] });
 }
@@ -186,5 +281,15 @@ export function useRemoveLabelFromTask(taskId: string) {
     return useMutation({
         mutationFn: (labelId: string) => labelsApi.removeFromTask(taskId, labelId),
         onSuccess: () => invalidateTask(qc, taskId),
+    });
+}
+export function useCreateSubtask(parentTaskId: string, projectId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { title: string; assigneeId?: string | null }) => tasksApi.createSubtask(parentTaskId, data),
+        onSuccess: () => {
+            invalidateTask(qc, parentTaskId);
+            qc.invalidateQueries({ queryKey: ['tasks', projectId] });
+        },
     });
 }

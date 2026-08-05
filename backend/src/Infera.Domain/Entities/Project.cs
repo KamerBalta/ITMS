@@ -16,6 +16,7 @@ public class Project : BaseEntity
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public int NextTaskNumber { get; set; } = 1;
 
     public ICollection<ProjectTeam> ProjectTeams { get; set; } = new List<ProjectTeam>();
     public ICollection<ProjectMember> Members { get; set; } = new List<ProjectMember>();

@@ -18,28 +18,27 @@ public class CloseEpicCommandHandler : IRequestHandler<CloseEpicCommand>
 
     public async System.Threading.Tasks.Task Handle(CloseEpicCommand request, CancellationToken ct)
     {
-        var epic = await _db.Tasks.FirstOrDefaultAsync(t => t.Id == request.EpicId, ct)
-            ?? throw new KeyNotFoundException("Epic bulunamadı.");
+        var epic = await _db.Tasks.Include(t => t.IssueType).FirstOrDefaultAsync(t => t.Id == request.EpicId, ct)
+            ?? throw new KeyNotFoundException("Görev bulunamadı.");
 
-        if (epic.IssueType != IssueType.Epic)
-            throw new InvalidOperationException("Yalnızca Epic tipindeki görevler kapatılabilir.");
+        if (epic.IssueType is null || !epic.IssueType.AllowsChildren)
+            throw new InvalidOperationException("Yalnızca 'üst görev olabilir' (Epic benzeri) tipteki görevler kapatılabilir.");
 
         if (!await _access.HasProjectAccessAsync(epic.ProjectId, ct))
-            throw new UnauthorizedAccessException("Bu Epic'i kapatma yetkiniz yok.");
+            throw new UnauthorizedAccessException("Bu görevi kapatma yetkiniz yok.");
 
-        // BR-005: Epic'e bagli tum Story/Task/Bug/Sub-task Done olmadan Closed'a gecemez.
         var children = await _db.Tasks
             .Where(t => t.ParentTaskId == request.EpicId)
             .Select(t => t.Status)
             .ToListAsync(ct);
 
         if (children.Count == 0)
-            throw new InvalidOperationException("Bu Epic'e bağlı hiçbir görev yok, kapatılamaz.");
+            throw new InvalidOperationException("Bu göreve bağlı hiçbir alt görev yok, kapatılamaz.");
 
         var incompleteCount = children.Count(s => s != ItemStatus.Done);
         if (incompleteCount > 0)
             throw new InvalidOperationException(
-                $"Epic kapatılamaz: bağlı {children.Count} görevden {incompleteCount} tanesi henüz Done durumunda değil.");
+                $"Kapatılamaz: bağlı {children.Count} görevden {incompleteCount} tanesi henüz Done durumunda değil.");
 
         epic.Status = ItemStatus.Closed;
         epic.UpdatedAt = DateTime.UtcNow;

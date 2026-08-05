@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
+using Infera.Application.Features.Auth.ActivateAccount;
 
 namespace Infera.Api.Controllers;
 
@@ -46,6 +47,21 @@ public class AuthController : ControllerBase
         catch (UnauthorizedAccessException ex)
         {
             return Unauthorized(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("activate-account")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ActivateAccount(ActivateAccountCommand command)
+    {
+        try
+        {
+            await _mediator.Send(command);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 

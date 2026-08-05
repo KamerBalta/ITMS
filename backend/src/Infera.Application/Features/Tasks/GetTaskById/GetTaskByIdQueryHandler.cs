@@ -20,13 +20,22 @@ public class GetTaskByIdQueryHandler : IRequestHandler<GetTaskByIdQuery, TaskDet
         var task = await _db.Tasks
             .Where(t => t.Id == request.TaskId)
             .Select(t => new TaskDetailDto(
-                t.Id, t.Title, t.Description, t.IssueType.ToString(), t.Priority.ToString(),
-                t.Status.ToString(), t.StoryPoint, t.ProjectId, t.SprintId, t.ParentTaskId,
+                t.Id, t.Title, t.Description,
+                t.IssueType != null ? t.IssueType.Name : "-",
+                t.IssueType != null ? t.IssueType.Icon : null,
+                t.IssueTypeId,
+                t.IssueType != null && t.IssueType.AllowsChildren,
+                t.IssueType != null && t.IssueType.RequiresParent,
+                t.Priority.ToString(),
+                t.Status.ToString(), t.StoryPoint, t.ProjectId, t.Project.Name, t.Project.Key,
+                t.Project.Key + "-" + t.TaskNumber,
+                t.SprintId, t.ParentTaskId,
                 t.Assignee != null ? t.Assignee.Name : null, t.Reporter.Name, t.DueDate,
                 t.CreatedAt, t.UpdatedAt,
                 t.TaskLabels.Select(tl => tl.Label.Name).ToList(),
                 t.Comments.Count, t.Attachments.Count,
-                t.ChecklistItems.Count, t.ChecklistItems.Count(c => c.IsDone), t.Watchers.Count))
+                t.ChecklistItems.Count, t.ChecklistItems.Count(c => c.IsDone), t.Watchers.Count,
+                t.ReleaseId, t.Release != null ? t.Release.Version : null))
             .FirstOrDefaultAsync(ct);
 
         if (task is null)

@@ -33,8 +33,8 @@ public class GetTasksQueryHandler : IRequestHandler<GetTasksQuery, List<TaskDto>
         if (!string.IsNullOrWhiteSpace(request.Status))
             query = query.Where(t => t.Status.ToString() == request.Status);
 
-        if (request.IssueType is not null)
-            query = query.Where(t => t.IssueType == request.IssueType);
+        if (request.IssueTypeId is not null)
+            query = query.Where(t => t.IssueTypeId == request.IssueTypeId);
 
         if (request.Priority is not null)
             query = query.Where(t => t.Priority == request.Priority);
@@ -42,13 +42,23 @@ public class GetTasksQueryHandler : IRequestHandler<GetTasksQuery, List<TaskDto>
         if (!string.IsNullOrWhiteSpace(request.Search))
             query = query.Where(t => EF.Functions.ILike(t.Title, $"%{request.Search}%"));
 
+        if (request.ParentTaskId is not null)
+            query = query.Where(t => t.ParentTaskId == request.ParentTaskId);
+
         return await query
             .OrderBy(t => t.Rank)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Select(t => new TaskDto(
-                t.Id, t.Title, t.IssueType.ToString(), t.Priority.ToString(), t.Status.ToString(),
-                t.StoryPoint, t.Assignee != null ? t.Assignee.Name : null, t.SprintId, t.Rank))
-            .ToListAsync(ct);
+           .Select(t => new TaskDto(
+    t.Id, t.Title,
+    t.IssueType != null ? t.IssueType.Name : "-",
+    t.IssueType != null ? t.IssueType.Icon : null,
+    t.Project.Key + "-" + t.TaskNumber,
+    t.IssueTypeId,
+    t.IssueType != null && t.IssueType.AllowsChildren,
+    t.IssueType != null && t.IssueType.RequiresParent,
+    t.Priority.ToString(), t.Status.ToString(),
+    t.StoryPoint, t.Assignee != null ? t.Assignee.Name : null, t.SprintId, t.Rank, t.ParentTaskId))
+.ToListAsync(ct);
     }
 }

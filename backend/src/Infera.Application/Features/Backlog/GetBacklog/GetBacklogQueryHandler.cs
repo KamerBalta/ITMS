@@ -4,8 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infera.Application.Features.Backlog.GetBacklog;
 
-public class GetBacklogQueryHandler
-    : IRequestHandler<GetBacklogQuery, List<BacklogTaskDto>>
+public class GetBacklogQueryHandler : IRequestHandler<GetBacklogQuery, List<BacklogTaskDto>>
 {
     private readonly IAppDbContext _db;
     private readonly IProjectAccessService _access;
@@ -16,20 +15,15 @@ public class GetBacklogQueryHandler
         _access = access;
     }
 
-    public async System.Threading.Tasks.Task<List<BacklogTaskDto>> Handle(
-        GetBacklogQuery request,
-        CancellationToken ct)
+    public async System.Threading.Tasks.Task<List<BacklogTaskDto>> Handle(GetBacklogQuery request, CancellationToken ct)
     {
         if (!await _access.HasProjectAccessAsync(request.ProjectId, ct))
             throw new UnauthorizedAccessException("Bu projeye erişim yetkiniz yok.");
 
-        var query = _db.Tasks
-            .Where(t =>
-                t.ProjectId == request.ProjectId &&
-                t.SprintId == null);
+        var query = _db.Tasks.Where(t => t.ProjectId == request.ProjectId && t.SprintId == null);
 
-        if (request.IssueType.HasValue)
-            query = query.Where(t => t.IssueType == request.IssueType.Value);
+        if (request.IssueTypeId is not null)
+            query = query.Where(t => t.IssueTypeId == request.IssueTypeId);
 
         if (request.Priority.HasValue)
             query = query.Where(t => t.Priority == request.Priority.Value);
@@ -38,10 +32,7 @@ public class GetBacklogQueryHandler
             query = query.Where(t => t.AssigneeId == request.AssigneeId.Value);
 
         if (!string.IsNullOrWhiteSpace(request.Search))
-        {
-            query = query.Where(t =>
-                EF.Functions.ILike(t.Title, $"%{request.Search}%"));
-        }
+            query = query.Where(t => EF.Functions.ILike(t.Title, $"%{request.Search}%"));
 
         return await query
             .OrderBy(t => t.Rank)
@@ -50,12 +41,14 @@ public class GetBacklogQueryHandler
             .Select(t => new BacklogTaskDto(
                 t.Id,
                 t.Title,
-                t.IssueType.ToString(),
+                t.IssueType != null ? t.IssueType.Name : "-",
                 t.Priority.ToString(),
                 t.StoryPoint,
                 t.AssigneeId,
                 t.Assignee != null ? t.Assignee.Name : null,
-                t.Rank))
+                t.Rank,
+                t.ParentTaskId,
+                t.ParentTask != null ? t.ParentTask.Title : null))
             .ToListAsync(ct);
     }
 }

@@ -26,7 +26,8 @@ public class GetVelocityQueryHandler : IRequestHandler<GetVelocityQuery, List<Ve
             .OrderBy(s => s.StartDate)
             .Select(s => new VelocityDto(
                 s.Id, s.Name,
-                s.Tasks.Sum(t => t.StoryPoint ?? 0),
+                // #4 fix: donmus taahhut degeri kullaniliyor (eskiden hep Completed'e esitti)
+                s.CommittedStoryPoints ?? s.Tasks.Sum(t => t.StoryPoint ?? 0),
                 s.Tasks.Where(t => t.Status == ItemStatus.Done).Sum(t => t.StoryPoint ?? 0)))
             .ToListAsync(ct);
     }

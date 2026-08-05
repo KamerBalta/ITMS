@@ -12,5 +12,6 @@ public class Notification : BaseEntity
     public string Message { get; set; } = default!;
     public NotificationType Type { get; set; }
     public bool IsRead { get; set; } = false;
+    public string? ActionUrl { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

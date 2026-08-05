@@ -37,3 +37,11 @@ export function useCompleteSprint(projectId: string) {
         },
     });
 }
+export function useUpdateSprint(projectId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ sprintId, data }: { sprintId: string; data: { name: string; goal?: string; startDate: string; endDate: string } }) =>
+            sprintsApi.update(sprintId, data),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['sprints', projectId] }),
+    });
+}

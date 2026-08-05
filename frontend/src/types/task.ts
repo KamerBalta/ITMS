@@ -1,14 +1,5 @@
-export type IssueType = 0 | 1 | 2 | 3 | 4; // Epic, Story, Task, Bug, SubTask
-export type Priority = 0 | 1 | 2 | 3; // Low, Medium, High, Critical
+export type Priority = 0 | 1 | 2 | 3;
 export type ItemStatus = 'ToDo' | 'InProgress' | 'ReadyForReview' | 'ReadyForQA' | 'Done' | 'Closed';
-
-export const ISSUE_TYPE_LABELS: Record<IssueType, string> = {
-    0: 'Epic',
-    1: 'Story',
-    2: 'Task',
-    3: 'Bug',
-    4: 'Sub-task',
-};
 
 export const PRIORITY_LABELS: Record<Priority, string> = {
     0: 'Low',
@@ -28,35 +19,36 @@ export interface TaskListItem {
     id: string;
     title: string;
     issueType: string;
+    issueTypeIcon: string | null;
+    issueKey: string;
+    issueTypeId: string | null;
+    allowsChildren: boolean;
+    requiresParent: boolean;
     priority: string;
     status: ItemStatus;
     storyPoint: number | null;
     assigneeName: string | null;
     sprintId: string | null;
     rank: number;
+    parentTaskId: string | null;
 }
 
-export interface CreateTaskPayload {
-    projectId: string;
-    sprintId?: string | null;
-    parentTaskId?: string | null;
-    title: string;
-    description?: string;
-    issueType: IssueType;
-    priority: Priority;
-    storyPoint?: number | null;
-    assigneeId?: string | null;
-    dueDate?: string | null;
-}
 export interface TaskDetail {
     id: string;
     title: string;
     description: string | null;
     issueType: string;
+    issueTypeIcon: string | null;
+    issueTypeId: string | null;
+    allowsChildren: boolean;
+    requiresParent: boolean;
     priority: string;
     status: ItemStatus;
     storyPoint: number | null;
     projectId: string;
+    projectName: string;
+    projectKey: string;
+    issueKey: string;
     sprintId: string | null;
     parentTaskId: string | null;
     assigneeName: string | null;
@@ -70,4 +62,19 @@ export interface TaskDetail {
     checklistTotal: number;
     checklistDone: number;
     watcherCount: number;
+    releaseId: string | null;
+    releaseVersion: string | null;
+}
+
+export interface CreateTaskPayload {
+    projectId: string;
+    sprintId?: string | null;
+    parentTaskId?: string | null;
+    issueTypeId: string;
+    title: string;
+    description?: string;
+    priority: Priority;
+    storyPoint?: number | null;
+    assigneeId?: string | null;
+    dueDate?: string | null;
 }

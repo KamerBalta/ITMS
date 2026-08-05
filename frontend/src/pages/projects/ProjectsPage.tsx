@@ -8,8 +8,8 @@ import type { AxiosError } from 'axios';
 import type { ApiErrorResponse } from '../../types/api';
 
 const STATUS_STYLES: Record<string, string> = {
-    Active: 'bg-green-100 text-green-700',
-    Archived: 'bg-gray-100 text-gray-500',
+    Active: 'bg-green-100 text-green-700 border-green-200',
+    Archived: 'bg-gray-100 text-gray-500 border-gray-200',
 };
 
 export function ProjectsPage() {
@@ -19,13 +19,17 @@ export function ProjectsPage() {
     const [isCreateOpen, setCreateOpen] = useState(false);
 
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold">Projeler</h1>
+        <div className="space-y-6 px-2 sm:px-0">
+            {/* Header (Mobilde alt alta, masada yan yana) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Projeler</h1>
+                    <p className="text-sm text-gray-500 mt-1">Erişebildiğiniz projeleri görüntüleyin ve yönetin.</p>
+                </div>
                 {canCreate && (
                     <button
                         onClick={() => setCreateOpen(true)}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700"
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition w-full sm:w-auto shrink-0 shadow-sm"
                     >
                         + Yeni Proje
                     </button>
@@ -33,28 +37,31 @@ export function ProjectsPage() {
             </div>
 
             {isLoading ? (
-                <p className="text-gray-500">Yükleniyor...</p>
+                <p className="text-gray-500 text-sm">Yükleniyor...</p>
             ) : !projects || projects.length === 0 ? (
-                <p className="text-gray-500">Erişebildiğiniz bir proje bulunamadı.</p>
+                <div className="bg-white border rounded-xl p-8 text-center text-gray-400 text-sm">
+                    Erişebildiğiniz bir proje bulunamadı.
+                </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {projects.map((p) => (
                         <Link
                             key={p.id}
                             to={`/projects/${p.id}`}
-                            className="bg-white border rounded-lg p-4 hover:shadow block"
+                            className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md hover:border-indigo-200 transition-all duration-200 block group"
                         >
-                            <div className="flex items-center justify-between">
-                                <p className="font-semibold">{p.name}</p>
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLES[p.status] ?? 'bg-gray-100'}`}>
+                            <div className="flex items-center justify-between gap-2">
+                                <p className="font-semibold text-gray-900 group-hover:text-indigo-600 transition truncate">{p.name}</p>
+                                <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium border shrink-0 ${STATUS_STYLES[p.status] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                                     {p.status}
                                 </span>
                             </div>
-                            <p className="text-xs text-gray-400 mt-1">{p.key}</p>
-                            {p.description && <p className="text-sm text-gray-500 mt-2 line-clamp-2">{p.description}</p>}
-                            <p className="text-xs text-gray-400 mt-3">
-                                Sorumlu: {p.ownerName} · {p.teams.length} takım
-                            </p>
+                            <p className="text-xs font-mono text-gray-400 mt-1">{p.key}</p>
+                            {p.description && <p className="text-sm text-gray-600 mt-2 line-clamp-2">{p.description}</p>}
+                            <div className="text-xs text-gray-400 mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                                <span className="truncate">Sorumlu: <strong className="text-gray-600">{p.ownerName}</strong></span>
+                                <span className="shrink-0">{p.teams.length} takım</span>
+                            </div>
                         </Link>
                     ))}
                 </div>
@@ -113,50 +120,66 @@ function CreateProjectModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 
     return (
         <Modal title="Yeni Proje Oluştur" isOpen={isOpen} onClose={onClose}>
-            <form onSubmit={handleSubmit} className="space-y-3">
-                <input
-                    type="text"
-                    placeholder="Proje adı"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    className="w-full border rounded px-3 py-2 text-sm"
-                />
-                <input
-                    type="text"
-                    placeholder="Proje anahtarı (örn. ITMS)"
-                    value={key}
-                    onChange={(e) => setKey(e.target.value)}
-                    required
-                    maxLength={10}
-                    className="w-full border rounded px-3 py-2 text-sm uppercase"
-                />
-                <textarea
-                    placeholder="Açıklama (opsiyonel)"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={2}
-                    className="w-full border rounded px-3 py-2 text-sm"
-                />
-                <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full border rounded px-3 py-2 text-sm"
-                />
+            <form onSubmit={handleSubmit} className="space-y-4 max-w-md w-full">
+                <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Proje Adı</label>
+                    <input
+                        type="text"
+                        placeholder="Örn: Müşteri Portalı"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                        className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300"
+                    />
+                </div>
 
                 <div>
-                    <p className="text-sm font-medium mb-2">Takım(lar) — kendi üyesi olduğunuz takımlardan seçin</p>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Proje Anahtarı (Key)</label>
+                    <input
+                        type="text"
+                        placeholder="Örn: ITMS"
+                        value={key}
+                        onChange={(e) => setKey(e.target.value)}
+                        required
+                        maxLength={10}
+                        className="w-full border rounded-lg px-3 py-2 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Açıklama (Opsiyonel)</label>
+                    <textarea
+                        placeholder="Proje hedefleri hakkında kısa bilgi..."
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        rows={2}
+                        className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Başlangıç Tarihi</label>
+                    <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 bg-white"
+                    />
+                </div>
+
+                <div>
+                    <p className="text-xs font-semibold text-gray-600 mb-1">Takım(lar) Seçimi</p>
                     {!teams || teams.length === 0 ? (
-                        <p className="text-sm text-gray-400">Henüz takım yok, önce Takımlar sayfasından oluşturun.</p>
+                        <p className="text-xs text-gray-400">Henüz takım yok, önce Takımlar sayfasından oluşturun.</p>
                     ) : (
-                        <div className="space-y-1 max-h-32 overflow-auto border rounded p-2">
+                        <div className="space-y-1.5 max-h-36 overflow-y-auto border border-gray-300 rounded-lg p-2.5 bg-gray-50">
                             {teams.map((t) => (
-                                <label key={t.id} className="flex items-center gap-2 text-sm">
+                                <label key={t.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none hover:bg-white p-1 rounded transition">
                                     <input
                                         type="checkbox"
                                         checked={selectedTeamIds.includes(t.id)}
                                         onChange={() => toggleTeam(t.id)}
+                                        className="rounded text-indigo-600 focus:ring-indigo-500"
                                     />
                                     {t.name}
                                 </label>
@@ -165,15 +188,24 @@ function CreateProjectModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                     )}
                 </div>
 
-                {error && <p className="text-red-500 text-sm">{error}</p>}
+                {error && <p className="text-red-500 text-xs font-medium">{error}</p>}
 
-                <button
-                    type="submit"
-                    disabled={createProject.isPending}
-                    className="w-full bg-indigo-600 text-white py-2 rounded text-sm hover:bg-indigo-700 disabled:opacity-50"
-                >
-                    {createProject.isPending ? 'Oluşturuluyor...' : 'Oluştur'}
-                </button>
+                <div className="flex justify-end gap-2 pt-3 border-t">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50"
+                    >
+                        İptal
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={createProject.isPending}
+                        className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition"
+                    >
+                        {createProject.isPending ? 'Oluşturuluyor...' : 'Oluştur'}
+                    </button>
+                </div>
             </form>
         </Modal>
     );

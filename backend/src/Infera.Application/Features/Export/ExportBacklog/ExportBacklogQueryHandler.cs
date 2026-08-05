@@ -27,7 +27,7 @@ public class ExportBacklogQueryHandler : IRequestHandler<ExportBacklogQuery, byt
             .Select(t => new
             {
                 t.Title,
-                IssueType = t.IssueType.ToString(),
+                IssueType = t.IssueType != null ? t.IssueType.Name : "-",
                 Priority = t.Priority.ToString(),
                 t.StoryPoint,
                 AssigneeName = t.Assignee != null ? t.Assignee.Name : "-"

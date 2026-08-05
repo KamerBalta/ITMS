@@ -27,6 +27,9 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
         if (user is null || !user.IsActive || !_passwordHasher.Verify(request.Password, user.PasswordHash))
             throw new UnauthorizedAccessException("Geçersiz e-posta veya parola.");
 
+        if (user.MustChangePassword)
+            throw new UnauthorizedAccessException("Hesabınız henüz aktifleştirilmemiş. Lütfen e-postanıza gönderilen aktivasyon bağlantısını kullanın.");
+
         var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
         var accessToken = _jwtService.GenerateAccessToken(user.Id, user.Email, roles);
         var (refreshToken, refreshTokenHash) = _jwtService.GenerateRefreshToken();
@@ -40,12 +43,12 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
         await _db.SaveChangesAsync(ct);
 
         return new LoginResult(
-     user.Id,
-     accessToken,
-     refreshToken,
-     user.Name,
-     user.Email,
-     roles
- );
+    user.Id,
+    accessToken,
+    refreshToken,
+    user.Name,
+    user.Email,
+    roles
+);
     }
 }

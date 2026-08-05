@@ -1,3 +1,4 @@
+using FluentValidation;
 using Infera.Application.Common.Interfaces;
 using Infera.Application.Features.Auth.Login;
 using Infera.Domain.Entities;
@@ -9,11 +10,11 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using FluentValidation;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// CORS Policy Configuration
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
@@ -39,6 +40,7 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Rate Limiting Configuration
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -58,15 +60,50 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
+// JWT Claim tiplerinin varsayılan dönüştürülmesini engeller (role/sub claim'leri korur)
 Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 // DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Dependency Injection
+builder.Services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<INotificationService, Infera.Application.Common.Services.NotificationService>();
+builder.Services.AddScoped<IProjectAccessService, Infera.Application.Common.Services.ProjectAccessService>();
+builder.Services.AddScoped<ITaskStatusTransitionService, Infera.Application.Common.Services.TaskStatusTransitionService>();
+builder.Services.AddScoped<IFileStorageService, Infera.Infrastructure.Storage.LocalFileStorageService>();
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+
+// Dynamic Email Service Registration
+var smtpHost = builder.Configuration["Smtp:Host"];
+if (!string.IsNullOrWhiteSpace(smtpHost))
+{
+    builder.Services.AddScoped<IEmailService, Infera.Infrastructure.Email.SmtpEmailService>();
+}
+else
+{
+    builder.Services.AddScoped<IEmailService, Infera.Infrastructure.Email.ConsoleEmailService>();
+}
+
+// Background Jobs
+builder.Services.AddHostedService<Infera.Infrastructure.BackgroundJobs.DueDateReminderService>();
+builder.Services.AddHostedService<Infera.Infrastructure.BackgroundJobs.BurndownSnapshotService>();
+
+// FluentValidation & MediatR Configuration
+builder.Services.AddValidatorsFromAssembly(typeof(LoginCommand).Assembly);
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(LoginCommand).Assembly);
+    cfg.AddOpenBehavior(typeof(Infera.Application.Common.Behaviors.ActivityLoggingBehavior<,>));
+    cfg.AddOpenBehavior(typeof(Infera.Application.Common.Behaviors.ValidationBehavior<,>));
+});
+
 // JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"]!;
-
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -82,8 +119,7 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtKey))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
 });
 
@@ -103,42 +139,13 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole("QA/Tester", "Project Manager", "System Admin"));
 });
 
-// Dependency Injection
-builder.Services.AddScoped<IAppDbContext>(sp =>
-    sp.GetRequiredService<AppDbContext>());
-
-builder.Services.AddScoped<IJwtService, JwtService>();
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-builder.Services.AddScoped<INotificationService, Infera.Application.Common.Services.NotificationService>();
-builder.Services.AddScoped<IProjectAccessService, Infera.Application.Common.Services.ProjectAccessService>();
-builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
-
-builder.Services.AddValidatorsFromAssembly(typeof(LoginCommand).Assembly);
-
-builder.Services.AddMediatR(cfg =>
-{
-    cfg.RegisterServicesFromAssembly(typeof(LoginCommand).Assembly);
-    cfg.AddOpenBehavior(typeof(Infera.Application.Common.Behaviors.ActivityLoggingBehavior<,>));
-    cfg.AddOpenBehavior(typeof(Infera.Application.Common.Behaviors.ValidationBehavior<,>));
-});
-
-builder.Services.AddScoped<IFileStorageService, Infera.Infrastructure.Storage.LocalFileStorageService>();
-builder.Services.AddHostedService<Infera.Infrastructure.BackgroundJobs.DueDateReminderService>();
-builder.Services.AddScoped<IEmailService, Infera.Infrastructure.Email.ConsoleEmailService>();
-builder.Services.AddScoped<ITaskStatusTransitionService, Infera.Application.Common.Services.TaskStatusTransitionService>();
-
+// Controllers + Swagger + Health Checks
 builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
-
-// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
-
-app.UseCors("FrontendPolicy");
-app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
 {
@@ -147,18 +154,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<Infera.Api.Middleware.ExceptionHandlingMiddleware>();
-
+app.UseCors("FrontendPolicy");
+app.UseRateLimiter();
 app.UseHttpsRedirection();
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.UseMiddleware<Infera.Api.Middleware.AuditLogMiddleware>();
 
 app.MapControllers();
 app.MapHealthChecks("/health");
 
-// Seed Data
+// Database Seeding
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -171,14 +177,12 @@ using (var scope = app.Services.CreateScope())
             new Role { Name = "Project Manager" },
             new Role { Name = "Developer" },
             new Role { Name = "QA/Tester" });
-
         db.SaveChanges();
     }
 
     if (!db.Users.Any())
     {
         var adminRole = db.Roles.First(r => r.Name == "System Admin");
-
         var admin = new User
         {
             Name = "System Admin",
@@ -186,46 +190,30 @@ using (var scope = app.Services.CreateScope())
             PasswordHash = hasher.Hash("Admin123!"),
             IsActive = true
         };
-
         db.Users.Add(admin);
         db.SaveChanges();
 
-        db.UserRoles.Add(new UserRole
-        {
-            UserId = admin.Id,
-            RoleId = adminRole.Id
-        });
-
+        db.UserRoles.Add(new UserRole { UserId = admin.Id, RoleId = adminRole.Id });
         db.SaveChanges();
     }
 
     if (!db.SystemSettings.Any())
     {
         var admin = db.Users.First(u => u.Email == "admin@infera.local");
-
         db.SystemSettings.AddRange(
-            new SystemSetting
-            {
-                Key = "MAX_FILE_SIZE_MB",
-                Value = "25",
-                UpdatedBy = admin.Id,
-                UpdatedAt = DateTime.UtcNow
-            },
-            new SystemSetting
-            {
-                Key = "DEFAULT_SPRINT_DURATION_DAYS",
-                Value = "30",
-                UpdatedBy = admin.Id,
-                UpdatedAt = DateTime.UtcNow
-            },
-            new SystemSetting
-            {
-                Key = "SESSION_TIMEOUT_MINUTES",
-                Value = "15",
-                UpdatedBy = admin.Id,
-                UpdatedAt = DateTime.UtcNow
-            });
+            new SystemSetting { Key = "MAX_FILE_SIZE_MB", Value = "25", UpdatedBy = admin.Id, UpdatedAt = DateTime.UtcNow },
+            new SystemSetting { Key = "DEFAULT_SPRINT_DURATION_DAYS", Value = "30", UpdatedBy = admin.Id, UpdatedAt = DateTime.UtcNow },
+            new SystemSetting { Key = "SESSION_TIMEOUT_MINUTES", Value = "15", UpdatedBy = admin.Id, UpdatedAt = DateTime.UtcNow });
+        db.SaveChanges();
+    }
 
+    if (!db.IssueTypes.Any())
+    {
+        db.IssueTypes.AddRange(
+            new IssueType { Name = "Epic", Icon = "📦", CreatorTier = 2, AllowsChildren = true, RequiresParent = false, IsSystemDefault = true },
+            new IssueType { Name = "Story", Icon = "⭐", CreatorTier = 1, AllowsChildren = true, RequiresParent = false, IsSystemDefault = true },
+            new IssueType { Name = "Task", Icon = "✅", CreatorTier = 0, AllowsChildren = true, RequiresParent = false, IsSystemDefault = true },
+            new IssueType { Name = "Bug", Icon = "🐛", CreatorTier = 0, AllowsChildren = true, RequiresParent = false, IsSystemDefault = true });
         db.SaveChanges();
     }
 }

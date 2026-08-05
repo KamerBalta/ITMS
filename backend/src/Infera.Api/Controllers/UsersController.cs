@@ -1,6 +1,7 @@
 ﻿using Infera.Application.Features.ProjectMembers.GetUserProjects;
 using Infera.Application.Features.Users.CreateUser;
 using Infera.Application.Features.Users.DeactivateUser;
+using Infera.Application.Features.Users.ActivateUser;
 using Infera.Application.Features.Users.GetUserById;
 using Infera.Application.Features.Users.GetUsers;
 using Infera.Application.Features.Users.UpdateUser;
@@ -8,7 +9,9 @@ using Infera.Application.Features.Users.UpdateUserRole;
 using MediatR;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Infera.Application.Features.Users.DeleteMyAvatar;
 using Infera.Application.Features.Users.UpdateMyAvatar;
+using Infera.Application.Features.Users.DownloadAvatar;
 using Infera.Application.Features.Users.UpdateMyProfile;
 using Infera.Application.Features.Users.ChangePassword;
 using Microsoft.AspNetCore.Mvc;
@@ -64,6 +67,19 @@ public class UsersController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+    [HttpGet("{userId}/avatar")]
+    public async Task<IActionResult> GetAvatar(Guid userId)
+    {
+        try
+        {
+            var result = await _mediator.Send(new DownloadAvatarQuery(userId));
+            return File(result.FileStream, result.ContentType);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
 
     [HttpGet("{userId}/projects")]
     public async Task<IActionResult> GetUserProjects(Guid userId)
@@ -73,17 +89,32 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = "RequireAdmin")]
+    [Authorize(Policy = "RequireProjectManager")]
     public async Task<IActionResult> Create(CreateUserRequest request)
     {
         try
         {
-            var id = await _mediator.Send(new CreateUserCommand(request.Name, request.Email, request.Password, request.Title));
+            var id = await _mediator.Send(new CreateUserCommand(
+    request.Name,
+    request.Email,
+    request.Title,
+    request.ProjectId,
+    request.TeamId,
+    request.ProjectRole,
+    request.TeamRole));
             return CreatedAtAction(nameof(GetById), new { userId = id }, new { id });
         }
         catch (InvalidOperationException ex)
         {
             return Conflict(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
         }
     }
 
@@ -149,6 +180,21 @@ public class UsersController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+    [HttpDelete("me/avatar")]
+    public async Task<IActionResult> DeleteMyAvatar()
+    {
+        var userId = Guid.Parse(User.FindFirstValue("sub")!);
+
+        try
+        {
+            await _mediator.Send(new DeleteMyAvatarCommand(userId));
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
 
     [HttpPut("me/password")]
     public async Task<IActionResult> ChangeMyPassword(ChangePasswordRequest request)
@@ -173,6 +219,21 @@ public class UsersController : ControllerBase
         }
     }
 
+    [HttpPut("{userId}/activate")]
+    [Authorize(Policy = "RequireAdmin")]
+    public async Task<IActionResult> Activate(Guid userId)
+    {
+        try
+        {
+            await _mediator.Send(new ActivateUserCommand(userId));
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
     [HttpPut("{userId}/deactivate")]
     [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> Deactivate(Guid userId)
@@ -193,7 +254,7 @@ public class UsersController : ControllerBase
     }
 }
 
-public record CreateUserRequest(string Name, string Email, string Password, string? Title);
+public record CreateUserRequest(string Name, string Email, string? Title, Guid? ProjectId, Guid? TeamId, int? ProjectRole, string? TeamRole);
 public record UpdateUserRequest(string Name, string? Title);
 public record UpdateUserRoleRequest(string RoleName);
 public record UpdateMyProfileRequest(string Name, string? Title);

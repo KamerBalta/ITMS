@@ -2,12 +2,30 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tasksApi } from '../api/tasks';
 import type { CreateTaskPayload } from '../types/task';
 
-export function useTasks(projectId: string | null, sprintId?: string | null, backlogOnly?: boolean) {
+export function useTasks(
+    projectId: string | null,
+    extraParams?: {
+        sprintId?: string | null;
+        backlogOnly?: boolean;
+        assigneeId?: string;
+        status?: string;
+        issueTypeId?: string;
+        priority?: number;
+        search?: string;
+        parentTaskId?: string;
+    }
+) {
     return useQuery({
-        queryKey: ['tasks', projectId, sprintId, backlogOnly],
-        queryFn: () => tasksApi.getAll({ projectId: projectId!, sprintId, backlogOnly }),
+        queryKey: ['tasks', projectId, extraParams],
+        queryFn: () => tasksApi.getAll({ projectId: projectId!, ...extraParams }),
         enabled: !!projectId,
     });
+}
+
+// Ust gorev secici icin -- AllowsChildren=true olan gorevleri client-side filtreliyoruz
+export function useParentCandidates(projectId: string | null) {
+    const { data, ...rest } = useTasks(projectId);
+    return { data: data?.filter((t) => t.allowsChildren), ...rest };
 }
 
 export function useCreateTask(projectId: string) {
@@ -16,6 +34,7 @@ export function useCreateTask(projectId: string) {
         mutationFn: (data: CreateTaskPayload) => tasksApi.create(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
+            queryClient.invalidateQueries({ queryKey: ['backlog', projectId] });
             queryClient.invalidateQueries({ queryKey: ['dashboard', 'summary', projectId] });
         },
     });

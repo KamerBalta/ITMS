@@ -22,17 +22,12 @@ public class CreateSubtaskCommandHandler : IRequestHandler<CreateSubtaskCommand,
     {
         var parent = await _db.Tasks
             .Include(t => t.Sprint)
+            .Include(t => t.Project)
             .FirstOrDefaultAsync(t => t.Id == request.ParentTaskId, ct)
             ?? throw new KeyNotFoundException("Üst görev bulunamadı.");
 
         if (!await _access.HasProjectAccessAsync(parent.ProjectId, ct))
             throw new UnauthorizedAccessException("Bu projede alt görev oluşturma yetkiniz yok.");
-
-        var canCreate = _currentUser.IsAdmin
-            || _currentUser.Roles.Contains("Project Manager")
-            || _currentUser.Roles.Contains("Developer");
-        if (!canCreate)
-            throw new UnauthorizedAccessException("Alt görev oluşturma yetkiniz yok. Yalnızca Project Manager ve Developer alt görev oluşturabilir.");
 
         if (parent.Sprint is not null && parent.Sprint.Status == SprintStatus.Active)
         {
@@ -41,6 +36,13 @@ public class CreateSubtaskCommandHandler : IRequestHandler<CreateSubtaskCommand,
                 throw new UnauthorizedAccessException("Aktif sprintteki bir göreve yalnızca Project Manager alt görev ekleyebilir.");
         }
 
+        var subtaskAssignment = await _db.ProjectIssueTypeAssignments
+            .Include(a => a.IssueType)
+            .FirstOrDefaultAsync(a => a.ProjectId == parent.ProjectId && a.IssueType.RequiresParent && a.IssueType.IsActive, ct)
+            ?? throw new InvalidOperationException("Bu projeye 'üst göreve bağlı olmalı' (Sub-task benzeri) davranışa sahip bir issue type atanmamış.");
+
+        var subtaskType = subtaskAssignment.IssueType;
+
         if (request.AssigneeId is not null)
         {
             var assigneeIsMember = await _db.ProjectMembers
@@ -48,6 +50,9 @@ public class CreateSubtaskCommandHandler : IRequestHandler<CreateSubtaskCommand,
             if (!assigneeIsMember)
                 throw new InvalidOperationException("Atanan kullanıcı bu projenin üyesi değil.");
         }
+
+        var taskNumber = parent.Project.NextTaskNumber;
+        parent.Project.NextTaskNumber++;
 
         var maxRank = await _db.Tasks
             .Where(t => t.ProjectId == parent.ProjectId)
@@ -59,13 +64,14 @@ public class CreateSubtaskCommandHandler : IRequestHandler<CreateSubtaskCommand,
             ProjectId = parent.ProjectId,
             SprintId = parent.SprintId,
             ParentTaskId = parent.Id,
+            IssueTypeId = subtaskType.Id,
             Title = request.Title,
-            IssueType = IssueType.SubTask,
             Priority = parent.Priority,
             Status = ItemStatus.ToDo,
             AssigneeId = request.AssigneeId,
             ReporterId = request.ReporterId,
-            Rank = maxRank + 1000
+            Rank = maxRank + 1000,
+            TaskNumber = taskNumber,
         };
 
         _db.Tasks.Add(subtask);

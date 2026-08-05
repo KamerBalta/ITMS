@@ -12,9 +12,11 @@ interface AuthState {
     user: CurrentUser | null;
     isAuthenticated: boolean;
     isInitializing: boolean;
+    avatarRefreshKey: number;
 
     setTokens: (accessToken: string, refreshToken: string) => void;
     setUser: (user: CurrentUser) => void;
+    refreshAvatar: () => void;
     setInitializing: (value: boolean) => void;
     logout: () => void;
 }
@@ -25,6 +27,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     user: null,
     isAuthenticated: !!localStorage.getItem(ACCESS_TOKEN_KEY),
     isInitializing: !!localStorage.getItem(ACCESS_TOKEN_KEY),
+    avatarRefreshKey: 0,
 
     setTokens: (accessToken, refreshToken) => {
         localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
@@ -38,6 +41,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     },
 
     setUser: (user) => set({ user }),
+
+    refreshAvatar: () =>
+        set((state) => ({
+            avatarRefreshKey: state.avatarRefreshKey + 1,
+        })),
 
     setInitializing: (value) => set({ isInitializing: value }),
 
@@ -55,6 +63,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             user: null,
             isAuthenticated: false,
             isInitializing: false,
+            avatarRefreshKey: 0,
         });
     },
 }));

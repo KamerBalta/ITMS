@@ -24,8 +24,34 @@ export const attachmentsApi = {
         return apiClient.post(`/tasks/${taskId}/attachments`, formData);
     },
     delete: (taskId: string, attachmentId: string) => apiClient.delete(`/tasks/${taskId}/attachments/${attachmentId}`),
-    downloadUrl: (taskId: string, attachmentId: string) =>
-        `${apiClient.defaults.baseURL}/tasks/${taskId}/attachments/${attachmentId}/download`,
+    download: async (taskId: string, attachmentId: string) => {
+        const response = await apiClient.get(
+            `/tasks/${taskId}/attachments/${attachmentId}/download`,
+            {
+                responseType: 'blob',
+            }
+        );
+
+        const blob = response.data;
+        const disposition = response.headers['content-disposition'];
+        let fileName = 'download';
+
+        if (disposition) {
+            const match = disposition.match(/filename\*=UTF-8''([^;]+)|filename="?([^"]+)"?/);
+            if (match) {
+                fileName = decodeURIComponent(match[1] || match[2]);
+            }
+        }
+
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+    },
 };
 
 export const checklistApi = {

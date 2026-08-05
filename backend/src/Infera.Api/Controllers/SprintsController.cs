@@ -1,6 +1,7 @@
 ﻿using Infera.Application.Features.Sprints.CompleteSprint;
 using Infera.Application.Features.Sprints.CreateSprint;
 using Infera.Application.Features.Sprints.GetSprints;
+using Infera.Application.Features.Sprints.UpdateSprint;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -57,6 +58,20 @@ public class SprintsController : ControllerBase
         }
     }
 
+    [HttpPut("{sprintId}")]
+    [Authorize(Policy = "RequireProjectManager")]
+    public async Task<IActionResult> Update(Guid sprintId, UpdateSprintRequest request)
+    {
+        try
+        {
+            await _mediator.Send(new UpdateSprintCommand(sprintId, request.Name, request.Goal, request.StartDate, request.EndDate));
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+    }
+
     [HttpPut("{sprintId}/complete")]
     [Authorize(Policy = "RequireProjectManager")]
     public async Task<IActionResult> Complete(Guid sprintId)
@@ -84,3 +99,4 @@ public class SprintsController : ControllerBase
 }
 
 public record CreateSprintRequest(Guid ProjectId, string Name, string? Goal, DateTime StartDate, DateTime EndDate);
+public record UpdateSprintRequest(string Name, string? Goal, DateTime StartDate, DateTime EndDate);

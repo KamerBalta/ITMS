@@ -72,11 +72,12 @@ public class UpdateTaskStatusCommandHandler : IRequestHandler<UpdateTaskStatusCo
             task.AssigneeId != _currentUser.UserId)
         {
             await _notificationService.NotifyAsync(
-                task.AssigneeId.Value,
-                "Görev durumu değişti",
-                $"\"{task.Title}\" adlı görevin durumu {oldStatus} → {request.NewStatus} olarak güncellendi.",
-                NotificationType.Task,
-                ct);
+    task.AssigneeId.Value,
+    "Görev durumu değişti",
+    $"\"{task.Title}\" adlı görevin durumu {oldStatus} → {request.NewStatus} olarak güncellendi.",
+    NotificationType.Task,
+    $"/tasks/{task.Id}",
+    ct);
         }
     }
 }

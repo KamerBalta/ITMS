@@ -29,7 +29,9 @@ public class GetBurndownQueryHandler : IRequestHandler<GetBurndownQuery, Burndow
             .Select(t => new { t.StoryPoint, t.Status })
             .ToListAsync(ct);
 
-        var totalPoints = tasks.Sum(t => t.StoryPoint ?? 0);
+        // #4: "sprint basindaki toplam" -- sprint henuz tamamlanmadiysa mevcut atanmis
+        // gorevlerin toplami (dinamik); tamamlandiysa donmus CommittedStoryPoints kullanilir.
+        var totalPoints = sprint.CommittedStoryPoints ?? tasks.Sum(t => t.StoryPoint ?? 0);
         var remainingPoints = tasks.Where(t => t.Status != ItemStatus.Done).Sum(t => t.StoryPoint ?? 0);
 
         var totalDays = Math.Max(1, (sprint.EndDate.Date - sprint.StartDate.Date).Days);
@@ -40,6 +42,13 @@ public class GetBurndownQueryHandler : IRequestHandler<GetBurndownQuery, Burndow
             idealLine.Add(new BurndownPointDto(sprint.StartDate.Date.AddDays(day), remaining));
         }
 
-        return new BurndownDto(sprint.Name, sprint.StartDate, sprint.EndDate, totalPoints, remainingPoints, idealLine);
+        // #4: gercek (actual) cizgi -- gunluk snapshot tablosundan
+        var snapshots = await _db.SprintBurndownSnapshots
+            .Where(sn => sn.SprintId == request.SprintId)
+            .OrderBy(sn => sn.SnapshotDate)
+            .Select(sn => new BurndownPointDto(sn.SnapshotDate.ToDateTime(TimeOnly.MinValue), sn.RemainingStoryPoints))
+            .ToListAsync(ct);
+
+        return new BurndownDto(sprint.Name, sprint.StartDate, sprint.EndDate, totalPoints, remainingPoints, idealLine, snapshots);
     }
 }

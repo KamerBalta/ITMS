@@ -21,6 +21,39 @@ export function useAddProjectMember(projectId: string) {
     });
 }
 
+export function useUpdateProjectMember(projectId: string) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            memberId,
+            data,
+        }: {
+            memberId: string;
+            data: {
+                teamId: string;
+                projectRole: number;
+            };
+        }) =>
+            projectMembersApi.update(
+                projectId,
+                memberId,
+                data
+            ),
+
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ['projectMembers', projectId],
+            });
+
+            queryClient.invalidateQueries({
+                queryKey: ['projects', projectId],
+            });
+        },
+    });
+}
+
+
 export function useRemoveProjectMember(projectId: string) {
     const queryClient = useQueryClient();
     return useMutation({

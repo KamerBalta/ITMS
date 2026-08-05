@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { useComments, useAddComment, useUpdateComment, useDeleteComment } from '../../../hooks/useTaskDetail';
+import { useProjectMembers } from '../../../hooks/useProjectMembers';
+import { MentionTextarea } from '../../../components/MentionTextarea';
+import { renderMentions } from '../../../lib/renderMentions';
 
-export function CommentsSection({ taskId }: { taskId: string }) {
+export function CommentsSection({ taskId, projectId }: { taskId: string; projectId: string }) {
     const { data: comments } = useComments(taskId);
+    const { data: members } = useProjectMembers(projectId);
     const addComment = useAddComment(taskId);
     const updateComment = useUpdateComment(taskId);
     const deleteComment = useDeleteComment(taskId);
@@ -43,11 +47,11 @@ export function CommentsSection({ taskId }: { taskId: string }) {
 
                         {editingId === c.id ? (
                             <div className="mt-1 space-y-1">
-                                <textarea
+                                <MentionTextarea
                                     value={editingText}
-                                    onChange={(e) => setEditingText(e.target.value)}
+                                    onChange={setEditingText}
+                                    members={members ?? []}
                                     rows={2}
-                                    className="w-full border rounded px-2 py-1 text-sm"
                                 />
                                 <div className="flex gap-2">
                                     <button onClick={handleSaveEdit} className="text-xs text-indigo-600 hover:underline">
@@ -60,7 +64,7 @@ export function CommentsSection({ taskId }: { taskId: string }) {
                             </div>
                         ) : (
                             <>
-                                <p className="text-sm text-gray-700 mt-1">{c.content}</p>
+                                <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{renderMentions(c.content)}</p>
                                 {c.isOwner && (
                                     <div className="flex gap-2 mt-1">
                                         <button
@@ -84,17 +88,17 @@ export function CommentsSection({ taskId }: { taskId: string }) {
                 {(!comments || comments.length === 0) && <p className="text-sm text-gray-400">Henüz yorum yok.</p>}
             </div>
 
-            <form onSubmit={handleAdd} className="flex gap-2">
-                <textarea
-                    placeholder="Yorum yaz..."
+            <form onSubmit={handleAdd} className="space-y-2">
+                <MentionTextarea
                     value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
+                    onChange={setNewComment}
+                    members={members ?? []}
+                    placeholder="Yorum yaz... (@ ile birini etiketleyebilirsin)"
                     rows={2}
-                    className="flex-1 border rounded px-3 py-2 text-sm"
                 />
                 <button
                     type="submit"
-                    className="self-end bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700"
+                    className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 font-medium transition"
                 >
                     Gönder
                 </button>

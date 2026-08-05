@@ -61,12 +61,12 @@ public class DueDateReminderService : BackgroundService
         foreach (var task in dueSoonTasks)
         {
             await notificationService.NotifyAsync(
-                task.AssigneeId!.Value,
-                "Yaklaşan teslim tarihi",
-                $"\"{task.Title}\" adlı görevin teslim tarihi 24 saat içinde ({task.DueDate:dd.MM.yyyy HH:mm}).",
-                NotificationType.Task,
-                ct);
-
+    task.AssigneeId!.Value,
+    "Yaklaşan teslim tarihi",
+    $"\"{task.Title}\" adlı görevin teslim tarihi 24 saat içinde ({task.DueDate:dd.MM.yyyy HH:mm}).",
+    NotificationType.Task,
+    $"/tasks/{task.Id}",
+    ct);
             task.DueDateReminderSentAt = now;
         }
 
