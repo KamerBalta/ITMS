@@ -3,7 +3,7 @@ using Infera.Domain.Enums;
 
 namespace Infera.Domain.Entities;
 
-public class Task : BaseEntity
+public class Task : BaseEntity,ISoftDelete
 {
     public Guid ProjectId { get; set; }
     public Project Project { get; set; } = default!;
@@ -31,6 +31,10 @@ public class Task : BaseEntity
     public long Rank { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+    public bool IsDeleted { get; set; } = false;
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
+    public DateTime? DueDateReminderSentAt { get; set; }
 
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();

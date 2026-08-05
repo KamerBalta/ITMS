@@ -8,16 +8,21 @@ public class GetCommentsQueryHandler : IRequestHandler<GetCommentsQuery, List<Co
 {
     private readonly IAppDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly IProjectAccessService _access;
 
-    public GetCommentsQueryHandler(IAppDbContext db, ICurrentUserService currentUser)
+    public GetCommentsQueryHandler(IAppDbContext db, ICurrentUserService currentUser, IProjectAccessService access)
     {
         _db = db;
         _currentUser = currentUser;
+        _access = access;
     }
 
     public async System.Threading.Tasks.Task<List<CommentDto>> Handle(GetCommentsQuery request, CancellationToken ct)
     {
-        var currentUserId = _currentUser.UserId; // once yerel degiskene al -- EF Core'a guvenli parametre olarak gecsin
+        if (!await _access.HasTaskAccessAsync(request.TaskId, ct))
+            throw new UnauthorizedAccessException("Bu göreve erişim yetkiniz yok.");
+
+        var currentUserId = _currentUser.UserId;
 
         return await _db.Comments
             .Where(c => c.TaskId == request.TaskId)

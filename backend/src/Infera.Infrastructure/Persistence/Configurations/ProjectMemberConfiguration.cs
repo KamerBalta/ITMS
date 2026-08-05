@@ -13,6 +13,7 @@ public class ProjectMemberConfiguration : IEntityTypeConfiguration<ProjectMember
         b.HasOne(x => x.Team).WithMany().HasForeignKey(x => x.TeamId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.User).WithMany(x => x.ProjectMemberships).HasForeignKey(x => x.UserId);
 
-       
+        // DB-009/DB-010'a uygun sekilde -- unique kisiti bilerek kaldirmistik, bu haliyle kaliyor
+        // (aynı kullanıcı aynı projede birden fazla takım altında yer alabilir kararımız geçerli)
     }
 }

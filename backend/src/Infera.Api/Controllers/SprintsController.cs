@@ -18,8 +18,17 @@ public class SprintsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid projectId)
     {
-        var result = await _mediator.Send(new GetSprintsQuery(projectId));
-        return Ok(result);
+        try
+        {
+            var result = await _mediator.Send(new GetSprintsQuery(projectId));
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(
+       StatusCodes.Status403Forbidden,
+       new { message = ex.Message });
+        }
     }
 
     [HttpPost]
@@ -40,6 +49,12 @@ public class SprintsController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(
+       StatusCodes.Status403Forbidden,
+       new { message = ex.Message });
+        }
     }
 
     [HttpPut("{sprintId}/complete")]
@@ -58,6 +73,12 @@ public class SprintsController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(
+       StatusCodes.Status403Forbidden,
+       new { message = ex.Message });
         }
     }
 }

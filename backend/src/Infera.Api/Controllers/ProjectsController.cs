@@ -1,10 +1,15 @@
-﻿using Infera.Application.Features.Projects.CreateProject;
+﻿using Infera.Application.Features.Projects.ArchiveProject;
+using Infera.Application.Features.Projects.CreateProject;
+using Infera.Application.Features.Projects.GetProjectById;
 using Infera.Application.Features.Projects.GetProjects;
+using Infera.Application.Features.Projects.UpdateProject;
+using Infera.Application.Features.Projects.RemoveTeamFromProject;
+using Infera.Application.Features.Projects.AddTeamToProject;
+using Infera.Application.Features.Projects.UnarchiveProject;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-
 
 namespace Infera.Api.Controllers;
 
@@ -14,31 +19,95 @@ namespace Infera.Api.Controllers;
 public class ProjectsController : ControllerBase
 {
     private readonly IMediator _mediator;
-    public ProjectsController(IMediator mediator) => _mediator = mediator;
+
+    public ProjectsController(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var result = await _mediator.Send(new GetProjectsQuery());
-        return Ok(result);
+        try
+        {
+            var result = await _mediator.Send(new GetProjectsQuery());
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new { message = ex.Message });
+        }
+    }
+
+    [HttpPut("{projectId}/unarchive")]
+    [Authorize(Policy = "RequireProjectManager")]
+    public async Task<IActionResult> Unarchive(Guid projectId)
+    {
+        try
+        {
+            await _mediator.Send(new UnarchiveProjectCommand(projectId));
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+    }
+
+    [HttpGet("{projectId}")]
+    public async Task<IActionResult> GetById(Guid projectId)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new GetProjectByIdQuery(projectId));
+
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new { message = ex.Message });
+        }
     }
 
     [HttpPost]
     [Authorize(Policy = "RequireProjectManager")]
     public async Task<IActionResult> Create(CreateProjectRequest request)
     {
-        var currentUserId = Guid.Parse(
-     User.FindFirstValue(ClaimTypes.NameIdentifier)
-         ?? throw new UnauthorizedAccessException("UserId claim bulunamadı.")
- );
-        // OwnerId body'de gelmezse istegi atan kisi Owner olur (PM kendi projesini acar)
+        var currentUserId = Guid.Parse(User.FindFirstValue("sub")!);
         var ownerId = request.OwnerId ?? currentUserId;
 
         try
         {
-            var id = await _mediator.Send(new CreateProjectCommand(
-                request.Name, request.Key, request.Description, ownerId, request.TeamIds, request.StartDate));
-            return CreatedAtAction(nameof(GetAll), new { id }, new { id });
+            var id = await _mediator.Send(
+                new CreateProjectCommand(
+                    request.Name,
+                    request.Key,
+                    request.Description,
+                    ownerId,
+                    request.TeamIds,
+                    request.StartDate));
+
+            return CreatedAtAction(
+                nameof(GetById),
+                new { projectId = id },
+                new { id });
         }
         catch (InvalidOperationException ex)
         {
@@ -48,9 +117,134 @@ public class ProjectsController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new { message = ex.Message });
+        }
+    }
+
+    [HttpPut("{projectId}")]
+    [Authorize(Policy = "RequireProjectManager")]
+    public async Task<IActionResult> Update(
+        Guid projectId,
+        UpdateProjectRequest request)
+    {
+        try
+        {
+            await _mediator.Send(
+                new UpdateProjectCommand(
+                    projectId,
+                    request.Name,
+                    request.Description,
+                    request.StartDate,
+                    request.EndDate));
+
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("{projectId}")]
+    [Authorize(Policy = "RequireProjectManager")]
+    public async Task<IActionResult> Archive(Guid projectId)
+    {
+        try
+        {
+            await _mediator.Send(new ArchiveProjectCommand(projectId));
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{projectId}/teams/{teamId}")]
+    [Authorize(Policy = "RequireProjectManager")]
+    public async Task<IActionResult> AddTeam(Guid projectId, Guid teamId)
+    {
+        try
+        {
+            var id = await _mediator.Send(
+                new AddTeamToProjectCommand(projectId, teamId));
+
+            return Ok(new { id });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("{projectId}/teams/{teamId}")]
+    [Authorize(Policy = "RequireProjectManager")]
+    public async Task<IActionResult> RemoveTeam(Guid projectId, Guid teamId)
+    {
+        try
+        {
+            await _mediator.Send(
+                new RemoveTeamFromProjectCommand(projectId, teamId));
+
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new { message = ex.Message });
+        }
     }
 }
 
 public record CreateProjectRequest(
-    string Name, string Key, string? Description,
-    Guid? OwnerId, List<Guid> TeamIds, DateOnly? StartDate);
+    string Name,
+    string Key,
+    string? Description,
+    Guid? OwnerId,
+    List<Guid> TeamIds,
+    DateOnly? StartDate);
+
+public record UpdateProjectRequest(
+    string Name,
+    string? Description,
+    DateOnly? StartDate,
+    DateOnly? EndDate);

@@ -1,13 +1,19 @@
-﻿using MediatR;
+﻿using Infera.Domain.Enums;
+using MediatR;
 
 namespace Infera.Application.Features.Tasks.GetTasks;
 
 public record GetTasksQuery(
     Guid ProjectId,
     Guid? SprintId,
-    bool? BacklogOnly,     // true -> SprintId == null (Bolum 9 Backlog)
+    bool? BacklogOnly,
     Guid? AssigneeId,
-    string? Status) : IRequest<List<TaskDto>>;
+    string? Status,
+    IssueType? IssueType,
+    Priority? Priority,
+    string? Search,
+    int Page = 1,
+    int PageSize = 50) : IRequest<List<TaskDto>>;
 
 public record TaskDto(
     Guid Id, string Title, string IssueType, string Priority, string Status,

@@ -5,11 +5,59 @@ using Infera.Infrastructure.Identity;
 using Infera.Infrastructure.Persistence;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using FluentValidation;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendPolicy", policy =>
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.SetIsOriginAllowed(_ => true)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+        else
+        {
+            var allowedOrigins = builder.Configuration
+                .GetSection("Cors:AllowedOrigins")
+                .Get<string[]>() ?? Array.Empty<string>();
+
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+    });
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddFixedWindowLimiter("LoginPolicy", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 0;
+    });
+
+    options.AddFixedWindowLimiter("ForgotPasswordPolicy", opt =>
+    {
+        opt.PermitLimit = 3;
+        opt.Window = TimeSpan.FromHours(1);
+        opt.QueueLimit = 0;
+    });
+});
+
 Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 // DbContext
@@ -63,12 +111,25 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<INotificationService, Infera.Application.Common.Services.NotificationService>();
+builder.Services.AddScoped<IProjectAccessService, Infera.Application.Common.Services.ProjectAccessService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 
+builder.Services.AddValidatorsFromAssembly(typeof(LoginCommand).Assembly);
+
 builder.Services.AddMediatR(cfg =>
-    cfg.RegisterServicesFromAssembly(typeof(LoginCommand).Assembly));
+{
+    cfg.RegisterServicesFromAssembly(typeof(LoginCommand).Assembly);
+    cfg.AddOpenBehavior(typeof(Infera.Application.Common.Behaviors.ActivityLoggingBehavior<,>));
+    cfg.AddOpenBehavior(typeof(Infera.Application.Common.Behaviors.ValidationBehavior<,>));
+});
+
+builder.Services.AddScoped<IFileStorageService, Infera.Infrastructure.Storage.LocalFileStorageService>();
+builder.Services.AddHostedService<Infera.Infrastructure.BackgroundJobs.DueDateReminderService>();
+builder.Services.AddScoped<IEmailService, Infera.Infrastructure.Email.ConsoleEmailService>();
+builder.Services.AddScoped<ITaskStatusTransitionService, Infera.Application.Common.Services.TaskStatusTransitionService>();
 
 builder.Services.AddControllers();
+builder.Services.AddHealthChecks();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -76,19 +137,26 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Middleware
+app.UseCors("FrontendPolicy");
+app.UseRateLimiter();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+app.UseMiddleware<Infera.Api.Middleware.ExceptionHandlingMiddleware>();
+
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseMiddleware<Infera.Api.Middleware.AuditLogMiddleware>();
+
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 // Seed Data
 using (var scope = app.Services.CreateScope())
@@ -127,6 +195,36 @@ using (var scope = app.Services.CreateScope())
             UserId = admin.Id,
             RoleId = adminRole.Id
         });
+
+        db.SaveChanges();
+    }
+
+    if (!db.SystemSettings.Any())
+    {
+        var admin = db.Users.First(u => u.Email == "admin@infera.local");
+
+        db.SystemSettings.AddRange(
+            new SystemSetting
+            {
+                Key = "MAX_FILE_SIZE_MB",
+                Value = "25",
+                UpdatedBy = admin.Id,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new SystemSetting
+            {
+                Key = "DEFAULT_SPRINT_DURATION_DAYS",
+                Value = "30",
+                UpdatedBy = admin.Id,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new SystemSetting
+            {
+                Key = "SESSION_TIMEOUT_MINUTES",
+                Value = "15",
+                UpdatedBy = admin.Id,
+                UpdatedAt = DateTime.UtcNow
+            });
 
         db.SaveChanges();
     }
