@@ -60,7 +60,9 @@ public class ProjectsController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Forbid(ex.Message);
+            return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message });
         }
     }
 

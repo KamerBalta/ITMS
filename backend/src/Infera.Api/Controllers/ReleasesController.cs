@@ -100,11 +100,21 @@ public class ReleasesController : ControllerBase
     {
         try
         {
-            var result = await _mediator.Send(new GetReleaseTasksQuery(releaseId));
+            var result = await _mediator.Send(
+                new GetReleaseTasksQuery(releaseId));
+
             return Ok(result);
         }
-        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new { message = ex.Message });
+        }
     }
 
 

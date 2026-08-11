@@ -150,8 +150,12 @@ public class UpdateTaskDueDateCommandHandler : IRequestHandler<UpdateTaskDueDate
         if (!TaskFieldAuthorization.IsPMOrAdmin(_currentUser))
             throw new UnauthorizedAccessException("Teslim tarihi değiştirme yetkiniz yok.");
 
-        if (request.DueDate is not null && request.DueDate.Value.Date < DateTime.UtcNow.Date)
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        if (request.DueDate is not null && request.DueDate.Value < today)
+        {
             throw new InvalidOperationException("Teslim tarihi geçmiş bir tarih olamaz.");
+        }
 
         task.DueDate = request.DueDate;
         task.UpdatedAt = DateTime.UtcNow;

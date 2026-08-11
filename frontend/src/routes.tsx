@@ -10,6 +10,7 @@ import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { ProjectsPage } from './pages/projects/ProjectsPage';
 import { ProjectDetailPage } from './pages/projects/ProjectDetailPage';
 import { IssueTypesManagementPage } from './pages/projects/IssueTypesManagementPage';
+import { WorkflowEditorPage } from './pages/projects/WorkflowEditorPage';
 import { TeamsPage } from './pages/teams/TeamsPage';
 import { KanbanBoardPage } from './pages/tasks/KanbanBoardPage';
 import { BacklogPage } from './pages/backlog/BacklogPage';
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
                     { path: '/projects', element: <ProjectsPage /> },
                     { path: '/projects/:projectId', element: <ProjectDetailPage /> },
                     { path: '/projects/:projectId/issue-types', element: <IssueTypesManagementPage /> },
+                    { path: '/projects/:projectId/workflow', element: <WorkflowEditorPage /> },
                     { path: '/teams', element: <TeamsPage /> },
                     { path: '/board', element: <KanbanBoardPage /> },
                     { path: '/backlog', element: <BacklogPage /> },

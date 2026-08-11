@@ -54,12 +54,9 @@ public class UpdateCommentCommandHandler : IRequestHandler<UpdateCommentCommand>
         foreach (var userId in newMentions)
         {
             await _notificationService.NotifyAsync(
-                userId,
-                "Bir yorumda bahsedildiniz",
+                userId, "Bir yorumda bahsedildiniz",
                 $"\"{task?.Title}\" görevindeki bir yorumda sizden bahsedildi.",
-                NotificationType.Mention,
-                $"/tasks/{comment.TaskId}",
-                ct);
+                NotificationType.Mention, $"/tasks/{comment.TaskId}?commentId={comment.Id}#comments", ct);
         }
     }
 }

@@ -1,5 +1,5 @@
 import { NavLink, Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Search, Menu, X, Plus, LogOut } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
@@ -10,7 +10,10 @@ import { useNotifications } from '../hooks/useNotifications';
 import { ProjectSelector } from './ProjectSelector';
 import { CreateTaskModal } from './CreateTaskModal';
 import { NotificationDropdown } from './NotificationDropdown';
+import { RealtimeIndicator } from './RealtimeIndicator';
 import { GlobalSearchPopover } from './GlobalSearchPopover';
+import { useGlobalSearchShortcut } from '../hooks/useGlobalSearchShortcut';
+import { useRealtimeSync } from '../hooks/useRealtimeSync';
 import logoImg from '../assets/logo.png';
 
 const SECTION_LABELS: Record<string, string> = {
@@ -36,8 +39,16 @@ export function AppLayout() {
     const unreadCount = notifications?.filter((n) => !n.isRead).length ?? 0;
     const [isCreateOpen, setCreateOpen] = useState(false);
 
-    // Canlı Arama Popover State'i
+    // Canlı Arama Popover State ve Ref
     const [isSearchOpen, setSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
+    // Global Kısayol (Ctrl+K)
+    useGlobalSearchShortcut();
+
+    // Realtime Sync Hook'u
+    useRealtimeSync();
 
     useEffect(() => {
         closeMobileSidebar();
@@ -57,7 +68,9 @@ export function AppLayout() {
         navigate('/login');
     };
 
-    const visibleNavItems = navItems.filter((item) => !item.adminOnly || isAdmin);
+    const visibleNavItems = navItems.filter(
+        (item) => (!item.adminOnly || isAdmin) && item.path !== '/search'
+    );
 
     const getUserInitials = () => {
         if (user?.name) {
@@ -81,12 +94,12 @@ export function AppLayout() {
                 />
             )}
 
-            {/* Sidebar - Genişlik 240px (w-60) */}
+            {/* Sidebar */}
             <aside
                 className={`w-60 bg-white border-r border-slate-200 flex flex-col fixed md:static inset-y-0 left-0 z-40 transition-transform duration-200 select-none ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
                     }`}
             >
-                {/* Logo & Başlık Alanı (Dashboard'a Yönlendirmeli) */}
+                {/* Logo & Başlık Alanı */}
                 <div className="px-4 py-3.5 border-b border-slate-100 flex items-center justify-between shrink-0">
                     <Link
                         to="/dashboard"
@@ -191,15 +204,35 @@ export function AppLayout() {
                             <ProjectSelector />
                         </div>
 
-                        {/* Responsive Arama Alanı */}
+                        {/* Responsive Arama Alanı (Doğrudan Aktif Input) */}
                         <div className="relative min-w-0">
-                            {/* Masaüstü Arama Çubuğu */}
-                            <div
-                                onClick={() => setSearchOpen(true)}
-                                className="hidden lg:flex items-center gap-2 bg-slate-100 hover:bg-slate-200/70 border border-slate-200 rounded-md px-3 py-1.5 w-64 text-slate-400 cursor-text transition"
-                            >
-                                <Search className="w-4 h-4 shrink-0" />
-                                <span className="text-xs text-slate-400 truncate">ITMS'de ara...</span>
+                            {/* Masaüstü Arama Input'u */}
+                            <div className="hidden lg:flex items-center gap-2 bg-slate-100 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/20 border border-slate-200 rounded-md px-3 py-1.5 w-64 transition">
+                                <Search className="w-4 h-4 shrink-0 text-slate-400" />
+                                <input
+                                    ref={searchInputRef}
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => {
+                                        setSearchQuery(e.target.value);
+                                        if (!isSearchOpen) setSearchOpen(true);
+                                    }}
+                                    onFocus={() => setSearchOpen(true)}
+                                    placeholder="ITMS'de ara..."
+                                    className="text-xs text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full"
+                                />
+                                {searchQuery ? (
+                                    <button
+                                        onClick={() => setSearchQuery('')}
+                                        className="text-slate-400 hover:text-slate-600 text-xs shrink-0"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                ) : (
+                                    <kbd className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded shrink-0">
+                                        Ctrl K
+                                    </kbd>
+                                )}
                             </div>
 
                             {/* Mobil / Tablet Arama Butonu */}
@@ -211,9 +244,10 @@ export function AppLayout() {
                                 <Search className="w-5 h-5" />
                             </button>
 
-                            {/* Canlı Arama Popover */}
+                            {/* Sonuç Liste Popover'ı (İçinde Arama Kutusu Barındırmayan Temiz Sonuç Paneli) */}
                             <GlobalSearchPopover
                                 isOpen={isSearchOpen}
+                                searchQuery={searchQuery}
                                 onClose={() => setSearchOpen(false)}
                             />
                         </div>
@@ -221,6 +255,7 @@ export function AppLayout() {
 
                     {/* Sağ Taraf Aksiyonları */}
                     <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+                        <RealtimeIndicator />
                         <NotificationDropdown />
 
                         <NavLink

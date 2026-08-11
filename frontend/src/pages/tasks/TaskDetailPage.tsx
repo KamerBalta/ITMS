@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import type { AxiosError } from 'axios';
+import type { ApiErrorResponse } from '../../types/api';
 import { useAuthStore } from '../../store/authStore';
 import {
     useTaskDetail,
@@ -24,8 +26,9 @@ import { WatchersSection } from './sections/WatchersSection';
 import { WorkLogsSection } from './sections/WorkLogsSection';
 import { LabelsSection } from './sections/LabelsSection';
 import { SubtasksSection } from './sections/SubtasksSection';
-import { MentionTextarea } from '../../components/MentionTextarea';
 import { TaskBreadcrumb } from '../../components/TaskBreadcrumb';
+import { RichTextEditor } from '../../components/RichTextEditor';
+import { MarkdownContent } from '../../components/MarkdownContent';
 import {
     CheckCircle2,
     Paperclip,
@@ -38,11 +41,6 @@ import {
     Link2,
     Share2,
     MoreHorizontal,
-    Bold,
-    Italic,
-    Code,
-    List,
-    AtSign,
     AlertCircle
 } from 'lucide-react';
 
@@ -78,7 +76,7 @@ interface Draft {
 export function TaskDetailPage() {
     const { taskId } = useParams<{ taskId: string }>();
     const currentUser = useAuthStore((state) => state.user);
-    const { data: task, isLoading } = useTaskDetail(taskId ?? null);
+    const { data: task, isLoading, isError } = useTaskDetail(taskId ?? null);
 
     const updateStatus = useUpdateTaskStatus(task?.projectId ?? '');
     const updateTitle = useUpdateTaskTitle(taskId ?? '');
@@ -93,9 +91,8 @@ export function TaskDetailPage() {
     const { data: members } = useProjectMembers(task?.projectId ?? null);
     const { data: releases } = useReleases(task?.projectId ?? null);
 
-    // Referanslar (File Input & Textarea)
+    // Referanslar (File Input)
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const [draft, setDraft] = useState<Draft | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -117,6 +114,17 @@ export function TaskDetailPage() {
             });
         }
     }, [task?.id, task?.updatedAt, members]);
+
+    if (isError) {
+        return (
+            <div className="text-center py-16">
+                <p className="text-gray-500">Bu görev bulunamadı veya erişim yetkiniz yok.</p>
+                <Link to="/dashboard" className="text-sm text-indigo-600 hover:underline mt-2 inline-block">
+                    ← Dashboard'a dön
+                </Link>
+            </div>
+        );
+    }
 
     if (isLoading || !task || !draft) {
         return <TaskDetailSkeleton />;
@@ -162,30 +170,6 @@ export function TaskDetailPage() {
         }
     };
 
-    // Açıklama Markdown Araç Çubuğu İşlevi
-    const insertFormat = (prefix: string, suffix: string = prefix) => {
-        const textarea = textareaRef.current;
-        if (!textarea || !draft) return;
-
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const selectedText = draft.description.substring(start, end);
-
-        const newText =
-            draft.description.substring(0, start) +
-            prefix +
-            selectedText +
-            suffix +
-            draft.description.substring(end);
-
-        setDraft({ ...draft, description: newText });
-
-        setTimeout(() => {
-            textarea.focus();
-            textarea.setSelectionRange(start + prefix.length, end + prefix.length);
-        }, 0);
-    };
-
     const handleCancel = () => {
         setDraft({
             title: task.title,
@@ -204,33 +188,42 @@ export function TaskDetailPage() {
         setIsSaving(true);
         setSaveError(null);
 
-        const jobs: Promise<unknown>[] = [];
+        const jobs: { label: string; promise: Promise<unknown> }[] = [];
 
-        if (canEditTitle && draft.title !== task.title) jobs.push(updateTitle.mutateAsync(draft.title));
+        if (canEditTitle && draft.title !== task.title)
+            jobs.push({ label: 'Başlık', promise: updateTitle.mutateAsync(draft.title) });
         if (canEditDescription && draft.description !== (task.description ?? ''))
-            jobs.push(updateDescription.mutateAsync(draft.description));
+            jobs.push({ label: 'Açıklama', promise: updateDescription.mutateAsync(draft.description) });
         if (canEditPriority && draft.priority !== PRIORITY_NAME_TO_NUM(task.priority))
-            jobs.push(updatePriority.mutateAsync(draft.priority));
+            jobs.push({ label: 'Öncelik', promise: updatePriority.mutateAsync(draft.priority) });
         if (canEditStoryPoint && draft.storyPoint !== (task.storyPoint?.toString() ?? ''))
-            jobs.push(updateStoryPoint.mutateAsync(draft.storyPoint ? Number(draft.storyPoint) : null));
+            jobs.push({ label: 'Story Point', promise: updateStoryPoint.mutateAsync(draft.storyPoint ? Number(draft.storyPoint) : null) });
         if (canEditDueDate && draft.dueDate !== (task.dueDate ? task.dueDate.slice(0, 10) : ''))
-            jobs.push(updateDueDate.mutateAsync(draft.dueDate || null));
+            jobs.push({ label: 'Teslim Tarihi', promise: updateDueDate.mutateAsync(draft.dueDate || null) });
         if (draft.status !== task.status)
-            jobs.push(updateStatus.mutateAsync({ taskId: task.id, status: STATUS_TO_INT[draft.status] }));
+            jobs.push({ label: 'Durum', promise: updateStatus.mutateAsync({ taskId: task.id, status: STATUS_TO_INT[draft.status] }) });
         if (canReassign && draft.assigneeId !== (members?.find((m) => m.userName === task.assigneeName)?.userId ?? ''))
-            jobs.push(reassign.mutateAsync(draft.assigneeId || null));
+            jobs.push({ label: 'Atanan Kişi', promise: reassign.mutateAsync(draft.assigneeId || null) });
         if (canEditRelease && draft.releaseId !== (task.releaseId ?? ''))
-            jobs.push(updateRelease.mutateAsync(draft.releaseId || null));
+            jobs.push({ label: 'Release', promise: updateRelease.mutateAsync(draft.releaseId || null) });
 
-        const results = await Promise.allSettled(jobs);
-        const failed = results.filter((r) => r.status === 'rejected');
-
+        const results = await Promise.allSettled(jobs.map((j) => j.promise));
         setIsSaving(false);
 
-        if (failed.length > 0) {
-            setSaveError(
-                `${failed.length} değişiklik kaydedilemedi (yetki veya iş kuralı ihlali olabilir). Diğer değişiklikler kaydedildi.`
-            );
+        const failures = results
+            .map((r, i) => ({ result: r, label: jobs[i].label }))
+            .filter((x) => x.result.status === 'rejected');
+
+        if (failures.length > 0) {
+            const details = failures
+                .map((f) => {
+                    const rejected = f.result as PromiseRejectedResult;
+                    const axiosError = rejected.reason as AxiosError<ApiErrorResponse>;
+                    const msg = axiosError.response?.data?.message ?? 'bilinmeyen hata';
+                    return `${f.label}: ${msg}`;
+                })
+                .join(' · ');
+            setSaveError(details);
         }
     };
 
@@ -335,67 +328,21 @@ export function TaskDetailPage() {
                     </div>
                     {closeEpicError && <p className="text-red-500 text-xs font-medium">{closeEpicError}</p>}
 
-                    {/* Açıklama Alanı (Rich Toolbar ile) */}
+                    {/* Açıklama Alanı */}
                     <div className="space-y-2">
                         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Açıklama</h3>
                         {canEditDescription ? (
-                            <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-2xs">
-                                <div className="flex items-center gap-1 px-3 py-1.5 border-b border-slate-100 bg-slate-50/50 text-slate-500">
-                                    <button
-                                        type="button"
-                                        onClick={() => insertFormat('**')}
-                                        title="Kalın"
-                                        className="p-1 hover:bg-slate-200 rounded cursor-pointer"
-                                    >
-                                        <Bold size={14} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => insertFormat('*')}
-                                        title="İtalik"
-                                        className="p-1 hover:bg-slate-200 rounded cursor-pointer"
-                                    >
-                                        <Italic size={14} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => insertFormat('`')}
-                                        title="Kod"
-                                        className="p-1 hover:bg-slate-200 rounded cursor-pointer"
-                                    >
-                                        <Code size={14} />
-                                    </button>
-                                    <span className="w-px h-4 bg-slate-200 mx-1" />
-                                    <button
-                                        type="button"
-                                        onClick={() => insertFormat('\n- ')}
-                                        title="Liste"
-                                        className="p-1 hover:bg-slate-200 rounded cursor-pointer"
-                                    >
-                                        <List size={14} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => insertFormat('@')}
-                                        title="Etiketle"
-                                        className="p-1 hover:bg-slate-200 rounded cursor-pointer"
-                                    >
-                                        <AtSign size={14} />
-                                    </button>
-                                </div>
-                                <MentionTextarea
-                                    value={draft.description}
-                                    onChange={(v) => setDraft({ ...draft, description: v })}
-                                    members={members}
-                                    placeholder="Açıklama ekleyin... (@ ile ekip arkadaşınızı etiketleyebilirsiniz)"
-                                    rows={5}
-                                    className="w-full p-3 text-sm focus:outline-none bg-transparent"
-                                />
-                            </div>
+                            <RichTextEditor
+                                value={draft.description}
+                                onChange={(v) => setDraft({ ...draft, description: v })}
+                                members={members}
+                                placeholder="Açıklama ekleyin... (@ ile etiketleme, Markdown biçimlendirme desteklenir)"
+                                rows={5}
+                            />
+                        ) : task.description ? (
+                            <MarkdownContent content={task.description} />
                         ) : (
-                            <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                                {task.description || <span className="text-slate-400 italic">Açıklama eklenmemiş.</span>}
-                            </div>
+                            <p className="text-gray-400">Açıklama yok.</p>
                         )}
                     </div>
 

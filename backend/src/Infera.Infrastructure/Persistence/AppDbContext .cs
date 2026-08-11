@@ -38,6 +38,9 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<ProjectIssueTypeAssignment> ProjectIssueTypeAssignments => Set<ProjectIssueTypeAssignment>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
     public DbSet<SprintBurndownSnapshot> SprintBurndownSnapshots => Set<SprintBurndownSnapshot>();
+    public DbSet<BoardColumnSetting> BoardColumnSettings => Set<BoardColumnSetting>();
+    public DbSet<SavedFilter> SavedFilters => Set<SavedFilter>();
+    public DbSet<WorkflowTransition> WorkflowTransitions => Set<WorkflowTransition>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -11,4 +11,5 @@ export interface TeamDetail {
     description: string | null;
     createdByName: string;
     members: { userId: string; userName: string; teamRole: string }[];
+    activeProjects: string[];
 }

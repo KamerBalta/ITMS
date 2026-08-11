@@ -141,6 +141,8 @@ builder.Services.AddAuthorization(options =>
 
 // Controllers + Swagger + Health Checks
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
+builder.Services.AddScoped<Infera.Application.Common.Interfaces.IRealtimeNotifier, Infera.Api.Realtime.SignalRRealtimeNotifier>();
 builder.Services.AddHealthChecks();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -162,6 +164,7 @@ app.UseAuthorization();
 app.UseMiddleware<Infera.Api.Middleware.AuditLogMiddleware>();
 
 app.MapControllers();
+app.MapHub<Infera.Api.Hubs.ProjectHub>("/hubs/project");
 app.MapHealthChecks("/health");
 
 // Database Seeding
@@ -214,6 +217,12 @@ using (var scope = app.Services.CreateScope())
             new IssueType { Name = "Story", Icon = "⭐", CreatorTier = 1, AllowsChildren = true, RequiresParent = false, IsSystemDefault = true },
             new IssueType { Name = "Task", Icon = "✅", CreatorTier = 0, AllowsChildren = true, RequiresParent = false, IsSystemDefault = true },
             new IssueType { Name = "Bug", Icon = "🐛", CreatorTier = 0, AllowsChildren = true, RequiresParent = false, IsSystemDefault = true });
+        db.SaveChanges();
+    }
+    if (!db.Labels.Any())
+    {
+        var defaultLabels = new[] { "Urgent", "Frontend", "Backend", "API", "UI", "UX", "Bugfix", "Performance", "Security", "Documentation", "Enhancement" };
+        db.Labels.AddRange(defaultLabels.Select(name => new Label { Name = name }));
         db.SaveChanges();
     }
 }

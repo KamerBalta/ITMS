@@ -28,7 +28,7 @@ public class Task : BaseEntity,ISoftDelete
     public Guid ReporterId { get; set; }
     public User Reporter { get; set; } = default!;
 
-    public DateTime? DueDate { get; set; }
+    public DateOnly? DueDate { get; set; }
     public long Rank { get; set; }
     public int TaskNumber { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

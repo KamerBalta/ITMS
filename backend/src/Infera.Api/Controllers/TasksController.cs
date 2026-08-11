@@ -24,27 +24,30 @@ public class TasksController : ControllerBase
 
     [HttpGet]
     public async Task<IActionResult> GetTasks(
-        [FromQuery] Guid projectId,
-        [FromQuery] Guid? sprintId,
-        [FromQuery] bool? backlogOnly,
-        [FromQuery] Guid? assigneeId,
-        [FromQuery] string? status,
-        [FromQuery] Guid? issueTypeId,
-        [FromQuery] Priority? priority,
-        [FromQuery] string? search,
-        [FromQuery] Guid? parentTaskId,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 50)
+    [FromQuery] Guid projectId,
+    [FromQuery] Guid? sprintId,
+    [FromQuery] bool? backlogOnly,
+    [FromQuery] Guid? assigneeId,
+    [FromQuery] string? status,
+    [FromQuery] Guid? issueTypeId,
+    [FromQuery] Priority? priority,
+    [FromQuery] string? search,
+    [FromQuery] Guid? parentTaskId,
+    [FromQuery] Guid? labelId,
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 50)
     {
         try
         {
             var result = await _mediator.Send(new GetTasksQuery(
-                projectId, sprintId, backlogOnly, assigneeId, status, issueTypeId, priority, search, parentTaskId, page, pageSize));
+                projectId, sprintId, backlogOnly, assigneeId, status, issueTypeId, priority, search, parentTaskId, labelId, page, pageSize));
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Forbid(ex.Message);
+            return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message });
         }
     }
 
@@ -57,7 +60,9 @@ public class TasksController : ControllerBase
             return Ok(result);
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
     }
 
     [HttpPost]
@@ -74,7 +79,9 @@ public class TasksController : ControllerBase
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
     }
 
     [HttpPost("{taskId}/subtasks")]
@@ -88,7 +95,9 @@ public class TasksController : ControllerBase
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
     }
 
     [HttpPut("{taskId}/title")]
@@ -96,7 +105,9 @@ public class TasksController : ControllerBase
     {
         try { await _mediator.Send(new UpdateTaskTitleCommand(taskId, request.Title)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
     }
 
     [HttpPut("{taskId}/description")]
@@ -104,7 +115,9 @@ public class TasksController : ControllerBase
     {
         try { await _mediator.Send(new UpdateTaskDescriptionCommand(taskId, request.Description)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
     }
 
     [HttpPut("{taskId}/priority")]
@@ -112,7 +125,9 @@ public class TasksController : ControllerBase
     {
         try { await _mediator.Send(new UpdateTaskPriorityCommand(taskId, request.Priority)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
     }
 
     [HttpPut("{taskId}/story-point")]
@@ -120,7 +135,9 @@ public class TasksController : ControllerBase
     {
         try { await _mediator.Send(new UpdateTaskStoryPointCommand(taskId, request.StoryPoint)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
@@ -129,7 +146,9 @@ public class TasksController : ControllerBase
     {
         try { await _mediator.Send(new UpdateTaskDueDateCommand(taskId, request.DueDate)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
@@ -138,7 +157,9 @@ public class TasksController : ControllerBase
     {
         try { await _mediator.Send(new UpdateTaskReleaseCommand(taskId, request.ReleaseId)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
@@ -148,7 +169,9 @@ public class TasksController : ControllerBase
         try { await _mediator.Send(new DeleteTaskCommand(taskId)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
     }
 
     [HttpPut("{taskId}/status")]
@@ -160,7 +183,9 @@ public class TasksController : ControllerBase
             return NoContent();
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
     }
 
     [HttpPut("{taskId}/sprint")]
@@ -169,7 +194,9 @@ public class TasksController : ControllerBase
         try { await _mediator.Send(new MoveToSprintCommand(taskId, request.SprintId)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
     }
 
     [HttpPut("{taskId}/assignee")]
@@ -192,20 +219,22 @@ public class TasksController : ControllerBase
         try { await _mediator.Send(new CloseEpicCommand(taskId)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
     }
 }
 
 public record CreateTaskRequest(
     Guid ProjectId, Guid? SprintId, Guid? ParentTaskId, Guid IssueTypeId, string Title, string? Description,
-    Priority Priority, int? StoryPoint, Guid? AssigneeId, DateTime? DueDate);
+    Priority Priority, int? StoryPoint, Guid? AssigneeId, DateOnly? DueDate);
 
 public record CreateSubtaskRequest(string Title, Guid? AssigneeId);
 public record UpdateTitleRequest(string Title);
 public record UpdateDescriptionRequest(string? Description);
 public record UpdatePriorityRequest(Priority Priority);
 public record UpdateStoryPointRequest(int? StoryPoint);
-public record UpdateDueDateRequest(DateTime? DueDate);
+public record UpdateDueDateRequest(DateOnly? DueDate);
 public record UpdateReleaseRequest(Guid? ReleaseId);
 public record UpdateStatusRequest(ItemStatus Status);
 public record MoveToSprintRequest(Guid? SprintId);

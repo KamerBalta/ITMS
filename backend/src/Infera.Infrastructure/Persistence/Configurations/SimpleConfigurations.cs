@@ -182,3 +182,36 @@ public class SprintBurndownSnapshotConfiguration : IEntityTypeConfiguration<Spri
         b.HasIndex(x => new { x.SprintId, x.SnapshotDate }).IsUnique();
     }
 }
+public class BoardColumnSettingConfiguration : IEntityTypeConfiguration<BoardColumnSetting>
+{
+    public void Configure(EntityTypeBuilder<BoardColumnSetting> b)
+    {
+        b.ToTable("BoardColumnSettings");
+        b.Property(x => x.Status).HasMaxLength(30).IsRequired();
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasIndex(x => new { x.ProjectId, x.Status }).IsUnique();
+    }
+}
+public class SavedFilterConfiguration : IEntityTypeConfiguration<SavedFilter>
+{
+    public void Configure(EntityTypeBuilder<SavedFilter> b)
+    {
+        b.ToTable("SavedFilters");
+        b.Property(x => x.Name).HasMaxLength(100).IsRequired();
+        b.Property(x => x.FiltersJson).HasColumnType("jsonb");
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+public class WorkflowTransitionConfiguration : IEntityTypeConfiguration<WorkflowTransition>
+{
+    public void Configure(EntityTypeBuilder<WorkflowTransition> b)
+    {
+        b.ToTable("WorkflowTransitions");
+        b.Property(x => x.FromStatus).HasMaxLength(30).IsRequired();
+        b.Property(x => x.ToStatus).HasMaxLength(30).IsRequired();
+        b.Property(x => x.AllowedRoles).HasMaxLength(300).IsRequired();
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasIndex(x => new { x.ProjectId, x.FromStatus, x.ToStatus }).IsUnique();
+    }
+}

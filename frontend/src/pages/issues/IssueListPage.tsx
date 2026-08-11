@@ -7,6 +7,7 @@ import { useProjectMembers } from '../../hooks/useProjectMembers';
 import { useProjectIssueTypes } from '../../hooks/useProjectIssueTypes';
 import { useBulkUpdateStatus, useBulkReassign } from '../../hooks/useBulkTaskActions';
 import { PRIORITY_LABELS } from '../../types/task';
+import { SavedFiltersBar } from '../../components/SavedFiltersBar';
 import { STATUS_TO_INT } from '../../lib/taskStatus';
 import type { ItemStatus } from '../../types/task';
 

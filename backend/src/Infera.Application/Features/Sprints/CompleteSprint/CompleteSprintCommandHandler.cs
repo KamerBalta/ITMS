@@ -10,12 +10,18 @@ public class CompleteSprintCommandHandler : IRequestHandler<CompleteSprintComman
     private readonly IAppDbContext _db;
     private readonly IProjectAccessService _access;
     private readonly INotificationService _notificationService;
+    private readonly IRealtimeNotifier _realtime;
 
-    public CompleteSprintCommandHandler(IAppDbContext db, IProjectAccessService access, INotificationService notificationService)
+    public CompleteSprintCommandHandler(
+        IAppDbContext db,
+        IProjectAccessService access,
+        INotificationService notificationService,
+        IRealtimeNotifier realtime)
     {
         _db = db;
         _access = access;
         _notificationService = notificationService;
+        _realtime = realtime;
     }
 
     public async System.Threading.Tasks.Task Handle(CompleteSprintCommand request, CancellationToken ct)
@@ -61,5 +67,7 @@ public class CompleteSprintCommandHandler : IRequestHandler<CompleteSprintComman
                     : ""),
                 NotificationType.Sprint, $"/sprints/{sprint.Id}", ct);
         }
+
+        await _realtime.NotifyProjectAsync(sprint.ProjectId, "sprint", "completed", ct);
     }
 }

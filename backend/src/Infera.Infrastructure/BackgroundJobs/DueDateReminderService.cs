@@ -45,15 +45,19 @@ public class DueDateReminderService : BackgroundService
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var notificationService = scope.ServiceProvider.GetRequiredService<Application.Common.Interfaces.INotificationService>();
+        var notificationService =
+            scope.ServiceProvider.GetRequiredService<Application.Common.Interfaces.INotificationService>();
 
-        var now = DateTime.UtcNow;
-        var next24h = now.AddHours(24);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var tomorrow = today.AddDays(1);
 
         var dueSoonTasks = await db.Tasks
             .Where(t =>
-                t.DueDate != null && t.DueDate >= now && t.DueDate <= next24h &&
-                t.Status != ItemStatus.Done && t.Status != ItemStatus.Closed &&
+                t.DueDate != null &&
+                t.DueDate >= today &&
+                t.DueDate <= tomorrow &&
+                t.Status != ItemStatus.Done &&
+                t.Status != ItemStatus.Closed &&
                 t.DueDateReminderSentAt == null &&
                 t.AssigneeId != null)
             .ToListAsync(ct);
@@ -61,13 +65,14 @@ public class DueDateReminderService : BackgroundService
         foreach (var task in dueSoonTasks)
         {
             await notificationService.NotifyAsync(
-    task.AssigneeId!.Value,
-    "Yaklaşan teslim tarihi",
-    $"\"{task.Title}\" adlı görevin teslim tarihi 24 saat içinde ({task.DueDate:dd.MM.yyyy HH:mm}).",
-    NotificationType.Task,
-    $"/tasks/{task.Id}",
-    ct);
-            task.DueDateReminderSentAt = now;
+                task.AssigneeId!.Value,
+                "Yaklaşan teslim tarihi",
+                $"\"{task.Title}\" adlı görevin teslim tarihi 24 saat içinde ({task.DueDate:dd.MM.yyyy}).",
+                NotificationType.Task,
+                $"/tasks/{task.Id}",
+                ct);
+
+            task.DueDateReminderSentAt = DateTime.UtcNow;
         }
 
         if (dueSoonTasks.Count > 0)

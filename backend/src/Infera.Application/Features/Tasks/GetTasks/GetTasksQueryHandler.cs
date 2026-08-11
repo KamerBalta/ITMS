@@ -45,20 +45,26 @@ public class GetTasksQueryHandler : IRequestHandler<GetTasksQuery, List<TaskDto>
         if (request.ParentTaskId is not null)
             query = query.Where(t => t.ParentTaskId == request.ParentTaskId);
 
+        // #4: etikete gore filtreleme
+        if (request.LabelId is not null)
+            query = query.Where(t => t.TaskLabels.Any(tl => tl.LabelId == request.LabelId));
+
         return await query
             .OrderBy(t => t.Rank)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-           .Select(t => new TaskDto(
-    t.Id, t.Title,
-    t.IssueType != null ? t.IssueType.Name : "-",
-    t.IssueType != null ? t.IssueType.Icon : null,
-    t.Project.Key + "-" + t.TaskNumber,
-    t.IssueTypeId,
-    t.IssueType != null && t.IssueType.AllowsChildren,
-    t.IssueType != null && t.IssueType.RequiresParent,
-    t.Priority.ToString(), t.Status.ToString(),
-    t.StoryPoint, t.Assignee != null ? t.Assignee.Name : null, t.SprintId, t.Rank, t.ParentTaskId))
-.ToListAsync(ct);
+            .Select(t => new TaskDto(
+                t.Id, t.Title,
+                t.IssueType != null ? t.IssueType.Name : "-",
+                t.IssueType != null ? t.IssueType.Icon : null,
+                t.Project.Key + "-" + t.TaskNumber,
+                t.IssueTypeId,
+                t.IssueType != null && t.IssueType.AllowsChildren,
+                t.IssueType != null && t.IssueType.RequiresParent,
+                t.Priority.ToString(), t.Status.ToString(), t.StoryPoint,
+                t.AssigneeId, t.Assignee != null ? t.Assignee.Name : null,
+                t.SprintId, t.Rank, t.ParentTaskId,
+                t.TaskLabels.Select(tl => tl.Label.Name).ToList()))
+            .ToListAsync(ct);
     }
 }

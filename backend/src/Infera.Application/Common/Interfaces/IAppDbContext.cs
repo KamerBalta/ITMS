@@ -33,5 +33,9 @@ public interface IAppDbContext
     DbSet<ProjectIssueTypeAssignment> ProjectIssueTypeAssignments { get; }
     DbSet<NotificationPreference> NotificationPreferences { get; }
     DbSet<SprintBurndownSnapshot> SprintBurndownSnapshots { get; }
+    DbSet<BoardColumnSetting> BoardColumnSettings { get; }
+    DbSet<SavedFilter> SavedFilters { get; }
+    DbSet<WorkflowTransition> WorkflowTransitions { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -16,6 +16,7 @@ import {
     useRemoveProjectMember,
     useUpdateProjectMember,
 } from '../../hooks/useProjectMembers';
+import { Avatar } from '../../components/Avatar';
 import type { AxiosError } from 'axios';
 import type { ApiErrorResponse } from '../../types/api';
 
@@ -288,12 +289,18 @@ export function ProjectDetailPage() {
                 </div>
 
                 {canManage && (
-                    <div className="mt-6 pt-4 border-t">
+                    <div className="mt-6 pt-4 border-t flex items-center gap-4">
                         <Link
                             to={`/projects/${projectId}/issue-types`}
                             className="inline-block text-sm text-indigo-600 hover:underline font-medium"
                         >
                             Issue Types Yönetimi →
+                        </Link>
+                        <Link
+                            to={`/projects/${projectId}/workflow`}
+                            className="inline-block text-sm text-indigo-600 hover:underline font-medium"
+                        >
+                            Workflow Editörü →
                         </Link>
                     </div>
                 )}
@@ -317,8 +324,8 @@ export function ProjectDetailPage() {
                     <p className="text-xs font-medium text-gray-400 uppercase">Durum</p>
                     <span
                         className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${project.status === 'Archived'
-                            ? 'bg-red-100 text-red-800 border-red-200'
-                            : 'bg-green-100 text-green-800 border-green-200'
+                                ? 'bg-red-100 text-red-800 border-red-200'
+                                : 'bg-green-100 text-green-800 border-green-200'
                             }`}
                     >
                         {project.status === 'Archived' ? 'Archived' : 'Active'}
@@ -388,64 +395,22 @@ export function ProjectDetailPage() {
                     {!projectMembers || projectMembers.length === 0 ? (
                         <p className="text-sm text-gray-400">Bu projede henüz üye yok.</p>
                     ) : (
-                        <div className="space-y-2">
+                        <ul className="space-y-2">
                             {projectMembers.map((m) => (
-                                <div
-                                    key={m.memberId}
-                                    className="flex items-center justify-between p-3 border rounded-lg bg-white hover:bg-gray-50 transition"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center border border-slate-300">
-                                            👤
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-medium text-gray-900 text-sm">{m.userName}</span>
-                                                <span
-                                                    className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${ROLE_BADGE_COLORS[m.projectRole] ?? 'bg-gray-100 text-gray-700 border-gray-200'
-                                                        }`}
-                                                >
-                                                    {m.projectRole}
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-gray-400 mt-0.5">
-                                                {m.teamName} {m.title && `· ${m.title}`}
-                                            </p>
-                                        </div>
-                                    </div>
+                                <li key={m.memberId} className="flex items-center gap-2 text-sm bg-white border rounded px-3 py-2">
+                                    <Avatar userId={m.userId} name={m.userName} size="sm" />
+                                    <span className="flex-1">
+                                        {m.userName} {m.title && <span className="text-gray-400">· {m.title}</span>}
+                                        <span className="text-gray-400"> — {m.teamName} — {m.projectRole}</span>
+                                    </span>
                                     {canManage && (
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => {
-                                                    setEditingMemberId(m.memberId);
-                                                    const team = allTeams?.find((t) => t.name === m.teamName);
-                                                    setEditingMemberTeamId(team?.id ?? '');
-
-                                                    const roleMap: Record<string, string> = {
-                                                        'Project Manager': '0',
-                                                        'Developer': '1',
-                                                        'QA': '2',
-                                                        'Tester': '3',
-                                                    };
-
-                                                    setEditingMemberRole(roleMap[m.projectRole] ?? '1');
-                                                    setIsEditMemberModalOpen(true);
-                                                }}
-                                                className="text-indigo-600 text-xs font-medium hover:underline"
-                                            >
-                                                Düzenle
-                                            </button>
-                                            <button
-                                                onClick={() => removeProjectMember.mutate(m.memberId)}
-                                                className="text-red-500 text-xs font-medium hover:underline"
-                                            >
-                                                Çıkar
-                                            </button>
-                                        </div>
+                                        <button onClick={() => removeProjectMember.mutate(m.memberId)} className="text-red-500 text-xs hover:underline">
+                                            Çıkar
+                                        </button>
                                     )}
-                                </div>
+                                </li>
                             ))}
-                        </div>
+                        </ul>
                     )}
                 </div>
             </div>

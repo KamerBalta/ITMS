@@ -4,6 +4,8 @@ namespace Infera.Application.Common.Interfaces;
 
 public interface ITaskStatusTransitionService
 {
-    // Gecis izinli mi -- degilse mesajla birlikte false doner
-    (bool Allowed, string? ErrorMessage) CanTransition(ItemStatus from, ItemStatus to, IReadOnlyList<string> roles, bool isAdmin);
+    // async oldu -- artik DB'den okuyor. isAssignee: bu gorevin atandigi kisi mi cagiran.
+    System.Threading.Tasks.Task<(bool Allowed, string? ErrorMessage)> CanTransitionAsync(
+        Guid projectId, ItemStatus from, ItemStatus to, IReadOnlyList<string> roles, bool isAdmin, bool isAssignee,
+        CancellationToken ct = default);
 }

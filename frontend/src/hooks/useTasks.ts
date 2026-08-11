@@ -11,6 +11,7 @@ export function useTasks(
         status?: string;
         issueTypeId?: string;
         priority?: number;
+        labelId?: string;
         search?: string;
         parentTaskId?: string;
     }

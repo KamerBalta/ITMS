@@ -12,6 +12,7 @@ export const tasksApi = {
         priority?: number;
         search?: string;
         parentTaskId?: string;
+        labelId?: string;
         page?: number;
         pageSize?: number;
     }) => apiClient.get<TaskListItem[]>('/tasks', { params }).then((res) => res.data),

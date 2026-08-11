@@ -14,6 +14,7 @@ export function useTaskDetail(taskId: string | null) {
         queryKey: ['task', taskId],
         queryFn: () => tasksApi.getById(taskId!),
         enabled: !!taskId,
+        retry: false, // 403/404'te tekrar denemesin -- hemen hata durumuna geçsin
     });
 }
 

@@ -27,10 +27,12 @@ export interface TaskListItem {
     priority: string;
     status: ItemStatus;
     storyPoint: number | null;
+    assigneeId: string | null;
     assigneeName: string | null;
     sprintId: string | null;
     rank: number;
     parentTaskId: string | null;
+    labels: string[];
 }
 
 export interface TaskDetail {

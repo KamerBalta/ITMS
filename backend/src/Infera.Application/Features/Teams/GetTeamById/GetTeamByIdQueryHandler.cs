@@ -1,4 +1,5 @@
 ﻿using Infera.Application.Common.Interfaces;
+using Infera.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,11 +14,25 @@ public class GetTeamByIdQueryHandler : IRequestHandler<GetTeamByIdQuery, TeamDet
     {
         var team = await _db.Teams
             .Where(t => t.Id == request.TeamId)
-            .Select(t => new TeamDetailDto(
-                t.Id, t.Name, t.Description, t.Creator.Name,
-                t.Members.Select(m => new TeamMemberDetailDto(m.UserId, m.User.Name, m.TeamRole)).ToList()))
+            .Select(t => new
+            {
+                t.Id,
+                t.Name,
+                t.Description,
+                CreatedByName = t.Creator.Name,
+                Members = t.Members.Select(m => new TeamMemberDetailDto(m.UserId, m.User.Name, m.TeamRole)).ToList()
+            })
             .FirstOrDefaultAsync(ct);
 
-        return team ?? throw new KeyNotFoundException("Takım bulunamadı.");
+        if (team is null)
+            throw new KeyNotFoundException("Takım bulunamadı.");
+
+        // #9: bu takimin atanmis oldugu, arsivlenmemis (aktif) projeler
+        var activeProjects = await _db.ProjectTeams
+            .Where(pt => pt.TeamId == request.TeamId && pt.Project.Status == ProjectStatus.Active)
+            .Select(pt => pt.Project.Name)
+            .ToListAsync(ct);
+
+        return new TeamDetailDto(team.Id, team.Name, team.Description, team.CreatedByName, team.Members, activeProjects);
     }
 }

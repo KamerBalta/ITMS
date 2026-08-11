@@ -24,8 +24,7 @@ import {
     Pencil,
     Trash2,
     X,
-    FolderKanban,
-    Calendar
+    FolderKanban
 } from 'lucide-react';
 
 const ROLE_BADGE_COLORS: Record<string, string> = {
@@ -205,7 +204,6 @@ export function TeamsPage() {
             {/* Yeni Takım Oluşturma Modalı */}
             <CreateTeamModal isOpen={isCreateOpen} onClose={() => setCreateOpen(false)} />
 
-            
             {selectedTeamId && (
                 <TeamDetailDrawer
                     teamId={selectedTeamId}
@@ -358,7 +356,6 @@ function TeamDetailDrawer({ teamId, isAdmin, avatarRefreshKey, onClose }: { team
             {/* Arka Plan Karartması */}
             <div onClick={onClose} className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs" />
 
-            
             <div className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col justify-between z-10 border-l border-slate-200">
                 {/* Drawer Header */}
                 <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
@@ -455,19 +452,28 @@ function TeamDetailDrawer({ teamId, isAdmin, avatarRefreshKey, onClose }: { team
                                 </p>
                             </div>
 
-                            {/* Projeler (Projects Section) */}
+                            {/* Projeler (Projects Section) - Dinamik Listeleme */}
                             <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                                        Projeler (Projects)
+                                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                                    Projeler (Projects)
+                                </p>
+                                {!team.activeProjects || team.activeProjects.length === 0 ? (
+                                    <p className="text-xs text-slate-400 bg-slate-50 p-3 rounded-lg border border-slate-200/60">
+                                        Aktif olarak atandığı bir proje bulunmuyor.
                                     </p>
-                                </div>
-                                <div className="bg-slate-50 rounded-lg border border-slate-200/60 p-3 text-xs text-slate-500 space-y-2">
-                                    <div className="flex items-center gap-2 text-slate-700 font-medium">
-                                        <FolderKanban size={16} className="text-blue-600 shrink-0" />
-                                        <span>Aktif olarak atandığı bir proje bulunuyor.</span>
+                                ) : (
+                                    <div className="flex flex-wrap gap-2">
+                                        {team.activeProjects.map((p) => (
+                                            <span
+                                                key={p}
+                                                className="inline-flex items-center gap-1.5 text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-md"
+                                            >
+                                                <FolderKanban size={14} className="text-indigo-600" />
+                                                {p}
+                                            </span>
+                                        ))}
                                     </div>
-                                </div>
+                                )}
                             </div>
 
                             {/* Üyeler Listesi */}
@@ -485,7 +491,7 @@ function TeamDetailDrawer({ teamId, isAdmin, avatarRefreshKey, onClose }: { team
                                     )}
                                 </div>
 
-                                {/* Üye Ekleme Formu (User & Role Yan Yana) */}
+                                {/* Üye Ekleme Formu */}
                                 {isAddFormOpen && (
                                     <form onSubmit={handleAddMember} className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 space-y-3">
                                         <div className="flex items-center justify-between">
@@ -548,7 +554,7 @@ function TeamDetailDrawer({ teamId, isAdmin, avatarRefreshKey, onClose }: { team
                                     </form>
                                 )}
 
-                                {/* Üye Kartları (Avatar, İsim, Email, Rol & Üç Nokta Menüsü) */}
+                                {/* Üye Kartları */}
                                 {team.members.length === 0 ? (
                                     <p className="text-xs text-slate-400">Bu takımda henüz üye yok.</p>
                                 ) : (

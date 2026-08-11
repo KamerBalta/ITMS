@@ -9,7 +9,7 @@ public record TaskDetailDto(
     Guid? IssueTypeId, bool AllowsChildren, bool RequiresParent, string Priority,
     string Status, int? StoryPoint, Guid ProjectId, string ProjectName, string ProjectKey,
     string IssueKey, Guid? SprintId, Guid? ParentTaskId,
-    string? AssigneeName, string ReporterName, DateTime? DueDate,
+    string? AssigneeName, string ReporterName, DateOnly? DueDate,
     DateTime CreatedAt, DateTime? UpdatedAt,
     List<string> Labels, int CommentCount, int AttachmentCount,
     int ChecklistTotal, int ChecklistDone, int WatcherCount,

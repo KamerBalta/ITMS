@@ -35,7 +35,7 @@ public class GetDashboardQueryHandler : IRequestHandler<GetDashboardQuery, Dashb
             .Select(s => new { s.Name, s.EndDate, TaskCount = s.Tasks.Count })
             .FirstOrDefaultAsync(ct);
 
-        var now = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
         return new DashboardDto(
             TotalTasks: tasks.Count,
@@ -44,9 +44,10 @@ public class GetDashboardQueryHandler : IRequestHandler<GetDashboardQuery, Dashb
             ReadyForReviewCount: tasks.Count(t => t.Status == ItemStatus.ReadyForReview),
             ReadyForQACount: tasks.Count(t => t.Status == ItemStatus.ReadyForQA),
             DoneCount: tasks.Count(t => t.Status == ItemStatus.Done),
-            OverdueCount: tasks.Count(t => t.DueDate != null && t.DueDate < now && t.Status != ItemStatus.Done),
-            // Aktif Sprint bilgisi bilerek proje genelinde kaliyor -- "hangi sprint aktif" bilgisi
-            // kisisel degil, projenin durumu; sadece is yuku kartlari kisisellesti.
+            OverdueCount: tasks.Count(t =>
+                t.DueDate != null &&
+                t.DueDate < today &&
+                t.Status != ItemStatus.Done),
             ActiveSprintName: activeSprint?.Name,
             ActiveSprintEndDate: activeSprint?.EndDate,
             ActiveSprintTaskCount: activeSprint?.TaskCount ?? 0);

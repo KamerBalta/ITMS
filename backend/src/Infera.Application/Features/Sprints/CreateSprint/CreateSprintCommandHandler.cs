@@ -11,12 +11,18 @@ public class CreateSprintCommandHandler : IRequestHandler<CreateSprintCommand, G
     private readonly IAppDbContext _db;
     private readonly IProjectAccessService _access;
     private readonly INotificationService _notificationService;
+    private readonly IRealtimeNotifier _realtime;
 
-    public CreateSprintCommandHandler(IAppDbContext db, IProjectAccessService access, INotificationService notificationService)
+    public CreateSprintCommandHandler(
+        IAppDbContext db,
+        IProjectAccessService access,
+        INotificationService notificationService,
+        IRealtimeNotifier realtime)
     {
         _db = db;
         _access = access;
         _notificationService = notificationService;
+        _realtime = realtime;
     }
 
     public async System.Threading.Tasks.Task<Guid> Handle(CreateSprintCommand request, CancellationToken ct)
@@ -53,13 +59,15 @@ public class CreateSprintCommandHandler : IRequestHandler<CreateSprintCommand, G
         foreach (var userId in memberIds)
         {
             await _notificationService.NotifyAsync(
-    userId,
-    "Yeni Sprint başladı",
-    $"\"{sprint.Name}\" sprinti {project.Name} projesinde başladı.",
-    NotificationType.Sprint,
-    $"/sprints/{sprint.Id}",
-    ct);
+                userId,
+                "Yeni Sprint başladı",
+                $"\"{sprint.Name}\" sprinti {project.Name} projesinde başladı.",
+                NotificationType.Sprint,
+                $"/sprints/{sprint.Id}",
+                ct);
         }
+
+        await _realtime.NotifyProjectAsync(request.ProjectId, "sprint", "created", ct);
 
         return sprint.Id;
     }

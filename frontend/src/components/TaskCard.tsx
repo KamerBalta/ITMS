@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Avatar } from './Avatar';
 import type { TaskListItem, Priority } from '../types/task';
 import { PRIORITY_COLORS, PRIORITY_LABELS } from '../types/task';
 import { useProjectMembers } from '../hooks/useProjectMembers';
@@ -42,15 +43,14 @@ const STATUS_DOT: Record<string, string> = {
     Closed: 'bg-slate-400',
 };
 
-// Öncelik İkonları (ArrowUp / Minus / ArrowDown)
 function PriorityIcon({ priorityNum }: { priorityNum: Priority }) {
     switch (priorityNum) {
-        case 3: // Critical / Highest
-        case 2: // High
+        case 3:
+        case 2:
             return <ArrowUp size={12} className="stroke-[3]" />;
-        case 1: // Medium
+        case 1:
             return <Minus size={12} className="stroke-[3]" />;
-        case 0: // Low
+        case 0:
         default:
             return <ArrowDown size={12} className="stroke-[3]" />;
     }
@@ -59,7 +59,7 @@ function PriorityIcon({ priorityNum }: { priorityNum: Priority }) {
 interface TaskCardProps {
     task: TaskListItem;
     projectId: string;
-    subtasks?: TaskListItem[]; // Alt görevler
+    subtasks?: TaskListItem[];
     draggable?: boolean;
     onDragStart?: (e: React.DragEvent, taskId: string) => void;
 }
@@ -80,16 +80,6 @@ export function TaskCard({ task, projectId, subtasks, draggable, onDragStart }: 
         setIsReassigning(false);
     };
 
-    // İsimden baş harfleri türetme (örn: Ayşe Demir -> AD)
-    const initials = task.assigneeName
-        ? task.assigneeName
-            .split(' ')
-            .map((n) => n[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2)
-        : '?';
-
     const IssueIcon = ISSUE_ICON[task.issueType as keyof typeof ISSUE_ICON] ?? CheckSquare;
     const iconColor = ISSUE_COLOR[task.issueType] ?? 'text-slate-500';
     const hasSubtasks = subtasks && subtasks.length > 0;
@@ -102,19 +92,15 @@ export function TaskCard({ task, projectId, subtasks, draggable, onDragStart }: 
                 onDragStart={(e) => onDragStart?.(e, task.id)}
                 className="block p-3 space-y-2 cursor-pointer"
             >
-                {/* Üst Satır: Jira İkonu + Başlık */}
+                {/* Üst Satır: İkon + Key + Başlık */}
                 <div className="flex items-center gap-2">
-                    <IssueIcon
-                        size={16}
-                        className={`${iconColor} shrink-0`}
-                    />
+                    <IssueIcon size={16} className={`${iconColor} shrink-0`} />
                     <p className="text-xs text-gray-400 font-mono">{task.issueKey}</p>
                     <p className="text-xs font-semibold text-slate-800 truncate flex-1 leading-snug">{task.title}</p>
                 </div>
 
-                {/* Alt Satır: Öncelik (İkonlu) & Atanan (Sol) - Story Point (Sağ) */}
+                {/* Alt Satır: Öncelik + Atanan Avatar + SP */}
                 <div className="flex items-center justify-between gap-2 text-xs pt-0.5">
-                    {/* Sol Taraf */}
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                         {/* Öncelik Rozeti */}
                         <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${PRIORITY_COLORS[priorityNum]}`}>
@@ -122,7 +108,7 @@ export function TaskCard({ task, projectId, subtasks, draggable, onDragStart }: 
                             <span>{PRIORITY_LABELS[priorityNum]}</span>
                         </span>
 
-                        {/* Atanan Kullanıcı */}
+                        {/* Atanan Kullanıcı (Tekil Avatar) */}
                         <div onClick={(e) => e.stopPropagation()} className="flex items-center min-w-0">
                             {isReassigning ? (
                                 <select
@@ -140,27 +126,23 @@ export function TaskCard({ task, projectId, subtasks, draggable, onDragStart }: 
                                     ))}
                                 </select>
                             ) : (
-                                <button
-                                    type="button"
-                                    title={task.assigneeName ?? 'Atanmamış'}
+                                <div
+                                    className={`flex items-center gap-1.5 min-w-0 ${isPM ? 'hover:opacity-80 cursor-pointer' : 'cursor-default'}`}
                                     onClick={(e) => {
                                         e.preventDefault();
                                         if (isPM) setIsReassigning(true);
                                     }}
-                                    className={`flex items-center gap-1.5 min-w-0 ${isPM ? 'hover:opacity-80 cursor-pointer' : 'cursor-default'}`}
                                 >
-                                    <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 text-[9px] font-bold flex items-center justify-center border border-slate-200 shrink-0">
-                                        {initials}
-                                    </div>
-                                    <span className="text-[11px] text-slate-500 hidden sm:inline truncate max-w-[80px]">
+                                    <Avatar userId={task.assigneeId ?? ''} name={task.assigneeName ?? '?'} size="xs" />
+                                    <span className={`text-xs text-gray-600 truncate ${isPM ? 'hover:text-indigo-600 hover:underline' : ''}`}>
                                         {task.assigneeName ?? 'Atanmamış'}
                                     </span>
-                                </button>
+                                </div>
                             )}
                         </div>
                     </div>
 
-                    {/* Sağ Taraf: Story Point */}
+                    {/* Story Point */}
                     {task.storyPoint !== null && task.storyPoint !== undefined && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200 shrink-0 whitespace-nowrap leading-none">
                             {task.storyPoint} SP
@@ -169,7 +151,7 @@ export function TaskCard({ task, projectId, subtasks, draggable, onDragStart }: 
                 </div>
             </Link>
 
-            {/* Alt Görevler (Subtasks) Bölümü */}
+            {/* Alt Görevler */}
             {hasSubtasks && (
                 <div className="border-t border-slate-100 bg-slate-50/50">
                     <button

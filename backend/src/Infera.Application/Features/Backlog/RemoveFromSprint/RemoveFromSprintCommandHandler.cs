@@ -11,15 +11,18 @@ public class RemoveFromSprintCommandHandler
     private readonly IAppDbContext _db;
     private readonly ICurrentUserService _currentUser;
     private readonly IProjectAccessService _access;
+    private readonly IRealtimeNotifier _realtime;
 
     public RemoveFromSprintCommandHandler(
         IAppDbContext db,
         ICurrentUserService currentUser,
-        IProjectAccessService access)
+        IProjectAccessService access,
+        IRealtimeNotifier realtime)
     {
         _db = db;
         _currentUser = currentUser;
         _access = access;
+        _realtime = realtime;
     }
 
     public async System.Threading.Tasks.Task Handle(
@@ -46,5 +49,7 @@ public class RemoveFromSprintCommandHandler
         task.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
+
+        await _realtime.NotifyProjectAsync(task.ProjectId, "task", "sprint-removed", ct);
     }
 }

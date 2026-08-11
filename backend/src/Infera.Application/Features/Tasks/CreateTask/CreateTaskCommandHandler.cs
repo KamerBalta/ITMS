@@ -12,17 +12,20 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, Guid>
     private readonly INotificationService _notificationService;
     private readonly IProjectAccessService _access;
     private readonly ICurrentUserService _currentUser;
+    private readonly IRealtimeNotifier _realtime;
 
     public CreateTaskCommandHandler(
         IAppDbContext db,
         INotificationService notificationService,
         IProjectAccessService access,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IRealtimeNotifier realtime)
     {
         _db = db;
         _notificationService = notificationService;
         _access = access;
         _currentUser = currentUser;
+        _realtime = realtime;
     }
 
     public async System.Threading.Tasks.Task<Guid> Handle(CreateTaskCommand request, CancellationToken ct)
@@ -135,6 +138,8 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, Guid>
                 $"\"{task.Title}\" görevinin açıklamasında sizden bahsedildi.",
                 NotificationType.Mention, $"/tasks/{task.Id}", ct);
         }
+
+        await _realtime.NotifyProjectAsync(task.ProjectId, "task", "created", ct);
 
         return task.Id;
     }

@@ -21,8 +21,10 @@ public class CreateTaskCommandValidator : AbstractValidator<CreateTaskCommand>
             .WithMessage("Story Point yalnızca 1, 2, 3, 5, 8, 13 veya 21 değerlerinden biri olabilir.");
 
         // BR-008: Due Date, gorev olusturma tarihinden once olamaz
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
         RuleFor(x => x.DueDate)
-            .Must(due => due is null || due.Value.Date >= DateTime.UtcNow.Date)
+            .Must(due => due is null || due.Value >= today)
             .WithMessage("Teslim tarihi (Due Date) geçmiş bir tarih olamaz.");
     }
 }

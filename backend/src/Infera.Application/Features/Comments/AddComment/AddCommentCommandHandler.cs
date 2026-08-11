@@ -12,12 +12,18 @@ public class AddCommentCommandHandler : IRequestHandler<AddCommentCommand, Guid>
     private readonly IAppDbContext _db;
     private readonly IProjectAccessService _access;
     private readonly INotificationService _notificationService;
+    private readonly IRealtimeNotifier _realtime;
 
-    public AddCommentCommandHandler(IAppDbContext db, IProjectAccessService access, INotificationService notificationService)
+    public AddCommentCommandHandler(
+        IAppDbContext db,
+        IProjectAccessService access,
+        INotificationService notificationService,
+        IRealtimeNotifier realtime)
     {
         _db = db;
         _access = access;
         _notificationService = notificationService;
+        _realtime = realtime;
     }
 
     public async System.Threading.Tasks.Task<Guid> Handle(AddCommentCommand request, CancellationToken ct)
@@ -74,13 +80,12 @@ public class AddCommentCommandHandler : IRequestHandler<AddCommentCommand, Guid>
         foreach (var userId in mentionedUserIds)
         {
             await _notificationService.NotifyAsync(
-                userId,
-                "Bir yorumda bahsedildiniz",
+                userId, "Bir yorumda bahsedildiniz",
                 $"\"{task.Title}\" görevindeki bir yorumda sizden bahsedildi.",
-                NotificationType.Mention,
-                $"/tasks/{task.Id}",
-                ct);
+                NotificationType.Mention, $"/tasks/{task.Id}?commentId={comment.Id}#comments", ct);
         }
+
+        await _realtime.NotifyProjectAsync(task.ProjectId, "comment", "created", ct);
 
         return comment.Id;
     }

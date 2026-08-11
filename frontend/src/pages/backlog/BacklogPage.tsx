@@ -60,6 +60,7 @@ export function BacklogPage() {
     const [isCreateSprintOpen, setCreateSprintOpen] = useState(false);
     const [isArchiveOpen, setIsArchiveOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isDragOverSprint, setDragOverSprint] = useState(false);
 
     if (!selectedProjectId) {
         return <p className="text-slate-500 text-xs p-5">Devam etmek için üstten bir proje seçin.</p>;
@@ -71,8 +72,26 @@ export function BacklogPage() {
         try {
             await moveToSprint.mutateAsync({ taskId, sprintId: activeSprint.id });
         } catch {
-            setError('Bu görevi sprint\'e taşıma yetkiniz yok.');
+            setError("Bu görevi sprint'e taşıma yetkiniz yok.");
         }
+    };
+
+    // Sürükle - Bırak İşleyicileri
+    const handleDragStart = (e: React.DragEvent, taskId: string) => {
+        e.dataTransfer.setData('taskId', taskId);
+    };
+
+    const handleDropOnSprint = async (e: React.DragEvent) => {
+        e.preventDefault();
+        setDragOverSprint(false);
+        const taskId = e.dataTransfer.getData('taskId');
+        if (!taskId) return;
+
+        if (!activeSprint) {
+            setError('Görevi taşıyabileceğin aktif bir sprint yok.');
+            return;
+        }
+        await handleMoveToSprint(taskId);
     };
 
     const handleCompleteSprint = async () => {
@@ -120,9 +139,18 @@ export function BacklogPage() {
 
             {error && <p className="text-xs font-semibold text-rose-600">{error}</p>}
 
-            {/* Aktif Sprint Kartı */}
+            {/* Aktif Sprint Kartı (Sürükleme Hedefi) */}
             {activeSprint && (
-                <div className="bg-white border border-slate-300 rounded-md p-3 shadow-2xs space-y-2">
+                <div
+                    onDragOver={(e) => {
+                        e.preventDefault();
+                        setDragOverSprint(true);
+                    }}
+                    onDragLeave={() => setDragOverSprint(false)}
+                    onDrop={handleDropOnSprint}
+                    className={`bg-white border rounded-md p-3 shadow-2xs space-y-2 transition-colors ${isDragOverSprint ? 'ring-2 ring-indigo-400 bg-indigo-50/60 border-indigo-300' : 'border-slate-300'
+                        }`}
+                >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="space-y-1">
                             <div className="flex items-center gap-2">
@@ -165,6 +193,9 @@ export function BacklogPage() {
                             </button>
                         )}
                     </div>
+                    {isDragOverSprint && (
+                        <p className="text-xs font-semibold text-indigo-600 pt-1">Bırakınca sprint'e taşınacak...</p>
+                    )}
                 </div>
             )}
 
@@ -191,6 +222,7 @@ export function BacklogPage() {
                         isPM={isPM}
                         hasActiveSprint={!!activeSprint}
                         onMoveToSprint={handleMoveToSprint}
+                        onDragStart={handleDragStart}
                         avatarRefreshKey={avatarRefreshKey}
                     />
                 )}
@@ -254,6 +286,7 @@ function BacklogGroupedList({
     isPM,
     hasActiveSprint,
     onMoveToSprint,
+    onDragStart,
     avatarRefreshKey,
 }: {
     tasks: BacklogTaskItem[];
@@ -261,6 +294,7 @@ function BacklogGroupedList({
     isPM: boolean;
     hasActiveSprint: boolean;
     onMoveToSprint: (taskId: string) => void;
+    onDragStart: (e: React.DragEvent, taskId: string) => void;
     avatarRefreshKey: number;
 }) {
     const grouped = tasks.reduce<Record<string, BacklogTaskItem[]>>((acc, t) => {
@@ -285,7 +319,9 @@ function BacklogGroupedList({
         return (
             <div
                 key={task.id}
-                className="flex items-center justify-between px-3 h-11 border border-slate-200/80 rounded-md bg-white hover:bg-blue-50/50 hover:border-slate-300 transition group text-xs text-slate-800 space-x-3"
+                draggable
+                onDragStart={(e) => onDragStart(e, task.id)}
+                className="flex items-center justify-between px-3 h-11 border border-slate-200/80 rounded-md bg-white hover:bg-blue-50/50 hover:border-slate-300 transition group text-xs text-slate-800 space-x-3 cursor-move"
             >
                 {/* Sol Taraf: İkon + Key + Title */}
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -297,7 +333,7 @@ function BacklogGroupedList({
 
                     <Link
                         to={`/tasks/${task.id}`}
-                        className="font-medium text-slate-800 hover:text-blue-600 truncate flex-1 leading-tight"
+                        className="font-medium text-slate-800 hover:text-blue-600 truncate flex-1 leading-tight cursor-pointer"
                     >
                         {task.title}
                     </Link>

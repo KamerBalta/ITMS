@@ -5,24 +5,40 @@ import { useTasks, useUpdateTaskStatus } from '../../hooks/useTasks';
 import { useActiveSprint } from '../../hooks/useSprints';
 import { useProjectMembers } from '../../hooks/useProjectMembers';
 import { useTaskFilters } from '../../hooks/useTaskFilters';
+import { useAllLabels } from '../../hooks/useTaskDetail';
+import { useBoardColumnSettings, useUpdateWipLimit } from '../../hooks/useBoardSettings';
 import { TaskCard } from '../../components/TaskCard';
 import { TaskFilterBar } from '../../components/TaskFilterBar';
 import { AssigneeAvatarFilter } from '../../components/AssigneeAvatarFilter';
+import { SavedFiltersBar } from '../../components/SavedFiltersBar';
 import { CreateTaskModal } from '../../components/CreateTaskModal';
 import { BOARD_COLUMNS, STATUS_TO_INT } from '../../lib/taskStatus';
-import type { ItemStatus } from '../../types/task';
-import { Plus, Kanban, AlertCircle, Star, MoreHorizontal, Check } from 'lucide-react';
+import { colorForEpic } from '../../lib/groupByEpic';
+import type { ItemStatus, TaskListItem } from '../../types/task';
+
+const EPIC_GROUP_KEY = '__no_epic__';
 
 export function KanbanBoardPage() {
     const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
     const currentUser = useAuthStore((state) => state.user);
+    const isPM = currentUser?.roles.some((r) => r === 'System Admin' || r === 'Project Manager') ?? false;
+
     const { activeSprint } = useActiveSprint(selectedProjectId);
     const { data: tasks, isLoading } = useTasks(selectedProjectId, { sprintId: activeSprint?.id, backlogOnly: false });
     const { data: members } = useProjectMembers(selectedProjectId);
+    const { data: labels } = useAllLabels();
+    const { data: columnSettings } = useBoardColumnSettings(selectedProjectId);
+    const updateWipLimit = useUpdateWipLimit(selectedProjectId ?? '');
     const updateStatus = useUpdateTaskStatus(selectedProjectId ?? '');
     const filters = useTaskFilters();
 
+    const [isCreateOpen, setCreateOpen] = useState(false);
     const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<Set<string>>(new Set());
+    const [dragOverColumn, setDragOverColumn] = useState<ItemStatus | null>(null);
+    const [statusError, setStatusError] = useState<string | null>(null);
+    const [swimlaneMode, setSwimlaneMode] = useState(false);
+    const [editingWipFor, setEditingWipFor] = useState<ItemStatus | null>(null);
+    const [wipDraft, setWipDraft] = useState('');
 
     const toggleAssignee = (userId: string) => {
         setSelectedAssigneeIds((prev) => {
@@ -33,23 +49,16 @@ export function KanbanBoardPage() {
         });
     };
 
-    const [isCreateOpen, setCreateOpen] = useState(false);
-    const [dragOverColumn, setDragOverColumn] = useState<ItemStatus | null>(null);
-    const [statusError, setStatusError] = useState<string | null>(null);
-
     if (!selectedProjectId) {
-        return <p className="text-slate-500 text-xs p-4">Devam etmek için üstten bir proje seçin.</p>;
+        return <p className="text-gray-500">Devam etmek için üstten bir proje seçin.</p>;
     }
 
     if (!activeSprint) {
         return (
-            <div className="bg-white border border-slate-200 rounded-xl p-12 text-center max-w-lg mx-auto my-8 shadow-xs space-y-3">
-                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto">
-                    <Kanban className="w-6 h-6" />
-                </div>
-                <h2 className="text-base font-bold text-slate-800">Aktif Sprint Bulunamadı</h2>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                    Kanban panosunu kullanabilmek için önce Backlog sayfasından bir sprint başlatmanız gerekmektedir.
+            <div className="text-center py-16">
+                <p className="text-gray-500">Bu projede aktif bir sprint yok.</p>
+                <p className="text-sm text-gray-400 mt-1">
+                    Board'u kullanabilmek için önce Backlog sayfasından bir sprint başlatın.
                 </p>
             </div>
         );
@@ -69,146 +78,230 @@ export function KanbanBoardPage() {
         try {
             await updateStatus.mutateAsync({ taskId, status: STATUS_TO_INT[targetStatus] });
         } catch {
-            setStatusError('Bu durum geçişine yetkiniz yok veya durum kuralına aykırı.');
+            setStatusError('Bu durum geçişine yetkiniz yok veya geçiş kuralına aykırı.');
             setTimeout(() => setStatusError(null), 4000);
         }
     };
 
-    // Client-side filtreleme mantığı
-    const teamByUserName = new Map((members ?? []).map((m) => [m.userName, m.teamId]));
-
     const filteredTasks = (tasks ?? []).filter((t) => {
         if (filters.search && !t.title.toLowerCase().includes(filters.search.toLowerCase())) return false;
         if (filters.priority && t.priority !== filters.priority) return false;
-        if (filters.onlyMine) {
-            const assigneeMember = members?.find((m) => m.userName === t.assigneeName);
-            if (assigneeMember?.userId !== currentUser?.userId) return false;
-        }
+        if (filters.onlyMine && t.assigneeId !== currentUser?.userId) return false;
         if (filters.teamId) {
-            const taskTeamId = t.assigneeName ? teamByUserName.get(t.assigneeName) : undefined;
-            if (taskTeamId !== filters.teamId) return false;
+            const member = members?.find((m) => m.userId === t.assigneeId);
+            if (member?.teamId !== filters.teamId) return false;
         }
-        // #Yeni: avatar bazli coklu assignee filtresi -- assigneeName uzerinden userId'ye esleniyor
+        if (filters.labelId) {
+            const labelName = labels?.find((l) => l.id === filters.labelId)?.name;
+            if (!labelName || !t.labels.includes(labelName)) return false;
+        }
         if (selectedAssigneeIds.size > 0) {
-            const assigneeMember = members?.find((m) => m.userName === t.assigneeName);
-            if (!assigneeMember || !selectedAssigneeIds.has(assigneeMember.userId)) return false;
+            if (!t.assigneeId || !selectedAssigneeIds.has(t.assigneeId)) return false;
         }
         return true;
     });
 
-    // Sub-task'ları ana görev altında gruplama ve panoda tekil kart olarak çizilmelerini engelleme (requiresParent kontrolü ile)
+    // Normal board görünümünde ana görevleri göster.
+    // Subtask'lar TaskCard içinde gösterilecek.
     const topLevelTasks = filteredTasks.filter((t) => !t.requiresParent);
+
+    // Subtask'ları parent task altında tut.
     const subtasksByParent = filteredTasks
         .filter((t) => t.requiresParent && t.parentTaskId)
-        .reduce<Record<string, typeof filteredTasks>>((acc, t) => {
+        .reduce<Record<string, TaskListItem[]>>((acc, t) => {
             (acc[t.parentTaskId!] ??= []).push(t);
             return acc;
         }, {});
 
-    return (
-        <div className="space-y-4 select-none max-w-[1600px] mx-auto px-2 sm:px-4 py-2">
-            {/* 1. JIRA BREADCRUMB & BAŞLIK BAR */}
-            <div className="flex items-center justify-between gap-4">
-                <div>
-                    <div className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
-                        <span>Projects</span>
-                        <span>/</span>
-                        <span className="text-slate-600 font-semibold">{activeSprint.name}</span>
-                    </div>
-                    <div className="flex items-center gap-3 mt-0.5">
-                        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Board</h1>
-                    </div>
-                </div>
+    const wipLimitByStatus = new Map(
+        (columnSettings ?? []).map((s) => [s.status, s.wipLimit])
+    );
 
-                {/* Sağ Taraf: Aksiyon Butonları */}
+    // Issue type üzerinden Epic'i belirle.
+    const isEpic = (task: TaskListItem) =>
+        task.issueType.toLowerCase() === 'epic';
+
+    const startEditingWip = (status: ItemStatus, current: number | null | undefined) => {
+        setEditingWipFor(status);
+        setWipDraft(current?.toString() ?? '');
+    };
+
+    const saveWipLimit = async (status: ItemStatus) => {
+        const value = wipDraft.trim() ? Number(wipDraft) : null;
+        await updateWipLimit.mutateAsync({ status, wipLimit: value });
+        setEditingWipFor(null);
+    };
+
+    // Swimlane: Epic'e göre grupla
+    const swimlaneGroups = swimlaneMode
+        ? filteredTasks
+            .filter((task) => {
+                // Epic'in kendisi
+                if (isEpic(task)) return true;
+
+                // Parent'ı olan görevler
+                if (task.parentTaskId) {
+                    // Subtask'ları swimlane'e ayrıca koyma.
+                    // Bunlar TaskCard içinde gösterilecek.
+                    if (task.requiresParent) return false;
+
+                    // Epic'e bağlı Story / Task
+                    return true;
+                }
+
+                // Epic'e bağlı olmayan normal görev
+                return !task.requiresParent;
+            })
+            .reduce<Record<string, TaskListItem[]>>((acc, task) => {
+                // Epic kendisi kendi grubunun anahtarıdır.
+                const key = isEpic(task)
+                    ? task.id
+                    : task.parentTaskId ?? EPIC_GROUP_KEY;
+
+                (acc[key] ??= []).push(task);
+
+                return acc;
+            }, {})
+        : { [EPIC_GROUP_KEY]: topLevelTasks };
+
+    const renderColumnCards = (colTasks: TaskListItem[]) => (
+        <div className="space-y-2">
+            {colTasks.map((task) => (
+                <TaskCard
+                    key={task.id}
+                    task={task}
+                    projectId={selectedProjectId}
+                    subtasks={subtasksByParent[task.id]}
+                    draggable
+                    onDragStart={handleDragStart}
+                />
+            ))}
+            {colTasks.length === 0 && <p className="text-xs text-gray-300 text-center py-4">Görev yok</p>}
+        </div>
+    );
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold">Kanban Board</h1>
+                    <p className="text-sm text-gray-400">{activeSprint.name}</p>
+                </div>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => setCreateOpen(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        onClick={() => setSwimlaneMode((v) => !v)}
+                        className={`text-sm px-3 py-2 rounded border ${swimlaneMode ? 'bg-indigo-50 border-indigo-300 text-indigo-600' : 'border-gray-200 text-gray-600'
+                            }`}
                     >
-                        <Plus className="w-4 h-4 stroke-[2.5]" />
-                        <span>Görev Oluştur</span>
+                        {swimlaneMode ? '☰ Epic Görünümü Açık' : "☰ Epic'e Göre Grupla"}
                     </button>
-                    <button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition cursor-pointer">
-                        <Star className="w-4 h-4" />
-                    </button>
-                    <button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition cursor-pointer">
-                        <MoreHorizontal className="w-4 h-4" />
+                    <button
+                        onClick={() => setCreateOpen(true)}
+                        className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700"
+                    >
+                        + Görev Oluştur
                     </button>
                 </div>
             </div>
 
-            {/* 2. JIRA FİLTRELEME BAR-I */}
-            <div className="bg-white rounded-lg space-y-2">
-                <TaskFilterBar filters={filters} members={members} />
-                <AssigneeAvatarFilter
-                    members={members ?? []}
-                    selectedUserIds={selectedAssigneeIds}
-                    onToggleUser={toggleAssignee}
-                />
-            </div>
+            <TaskFilterBar filters={filters} members={members} />
+            <AssigneeAvatarFilter members={members ?? []} selectedUserIds={selectedAssigneeIds} onToggle={toggleAssignee} />
+            <SavedFiltersBar
+                projectId={selectedProjectId}
+                currentFilters={{
+                    search: filters.search,
+                    onlyMine: filters.onlyMine,
+                    teamId: filters.teamId,
+                    priority: filters.priority,
+                    labelId: filters.labelId,
+                }}
+                onApply={(f) => {
+                    filters.setSearch(f.search);
+                    filters.setOnlyMine(f.onlyMine);
+                    filters.setTeamId(f.teamId);
+                    filters.setPriority(f.priority);
+                    filters.setLabelId(f.labelId);
+                }}
+            />
 
-            {/* Hata Mesajı */}
-            {statusError && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 animate-in fade-in duration-150">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                    <span>{statusError}</span>
-                </div>
-            )}
+            {statusError && <p className="text-red-500 text-sm">{statusError}</p>}
 
-            {/* 3. JIRA SÜTUNLARI VE BOARD GRID'I */}
             {isLoading ? (
-                <div className="p-12 text-center text-slate-400 text-xs font-medium">Pano yükleniyor...</div>
+                <p className="text-gray-500">Yükleniyor...</p>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 overflow-x-auto items-start min-h-[600px] pt-1">
-                    {BOARD_COLUMNS.map((col) => {
-                        const columnTasks = topLevelTasks.filter((t) => t.status === col.status);
-                        const isDoneColumn = col.status === 'Done' || col.status === 'Closed';
+                <div className="space-y-6">
+                    {Object.entries(swimlaneGroups).map(([groupKey, groupTasks]) => {
+                        const epicTask = groupKey !== EPIC_GROUP_KEY
+                            ? filteredTasks.find((t) => t.id === groupKey)
+                            : null;
 
                         return (
-                            <div
-                                key={col.status}
-                                onDragOver={(e) => {
-                                    e.preventDefault();
-                                    setDragOverColumn(col.status);
-                                }}
-                                onDragLeave={() => setDragOverColumn(null)}
-                                onDrop={(e) => handleDrop(e, col.status)}
-                                className={`bg-slate-100/70 border border-slate-200/60 rounded-lg p-2 min-h-[550px] flex flex-col transition-all duration-150 ${dragOverColumn === col.status
-                                        ? 'bg-blue-50/80 border-blue-300 ring-2 ring-blue-400/20'
-                                        : ''
-                                    }`}
-                            >
-                                {/* Sütun Başlığı ve Görev Sayısı (Jira Stili) */}
-                                <div className="flex items-center justify-between px-2 py-1.5 mb-1">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                                            {col.label}
-                                        </span>
-                                        {isDoneColumn && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />}
-                                    </div>
-                                    <span className="text-[11px] font-extrabold text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-full">
-                                        {columnTasks.length}
-                                    </span>
-                                </div>
+                            <div key={groupKey} className={swimlaneMode && groupKey !== EPIC_GROUP_KEY ? `border-l-4 ${colorForEpic(groupKey)} pl-3` : ''}>
+                                {swimlaneMode && groupKey !== EPIC_GROUP_KEY && (
+                                    <p className="text-xs font-semibold text-gray-500 mb-2">
+                                        📦 {epicTask?.title ?? 'Epic'}
+                                    </p>
+                                )}
+                                {swimlaneMode && groupKey === EPIC_GROUP_KEY && groupTasks.length > 0 && (
+                                    <p className="text-xs font-semibold text-gray-400 mb-2">Epic'siz Görevler</p>
+                                )}
 
-                                {/* Görev Kartları Listesi */}
-                                <div className="space-y-2 flex-1 pt-1">
-                                    {columnTasks.map((task) => (
-                                        <TaskCard
-                                            key={task.id}
-                                            task={task}
-                                            projectId={selectedProjectId}
-                                            subtasks={subtasksByParent[task.id]}
-                                            draggable
-                                            onDragStart={handleDragStart}
-                                        />
-                                    ))}
-                                    {columnTasks.length === 0 && (
-                                        <div className="h-24 border-2 border-dashed border-slate-200/80 rounded-lg flex items-center justify-center text-[11px] text-slate-400 font-medium">
-                                            Görev yok
-                                        </div>
-                                    )}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 overflow-x-auto">
+                                    {BOARD_COLUMNS.map((col) => {
+                                        const colTasks = groupTasks.filter((t) => t.status === col.status);
+                                        const wipLimit = wipLimitByStatus.get(col.status);
+                                        const isOverLimit = wipLimit != null && colTasks.length > wipLimit;
+
+                                        return (
+                                            <div
+                                                key={col.status}
+                                                onDragOver={(e) => {
+                                                    e.preventDefault();
+                                                    setDragOverColumn(col.status);
+                                                }}
+                                                onDragLeave={() => setDragOverColumn(null)}
+                                                onDrop={(e) => handleDrop(e, col.status)}
+                                                className={`bg-gray-100 rounded-lg p-2 min-h-[200px] transition-colors ${dragOverColumn === col.status ? 'bg-indigo-50 ring-2 ring-indigo-300' : ''
+                                                    } ${isOverLimit ? 'ring-2 ring-red-300 bg-red-50' : ''}`}
+                                            >
+                                                <div className="flex items-center justify-between px-1 mb-2">
+                                                    <span className="text-xs font-semibold text-gray-500">{col.label}</span>
+
+                                                    {editingWipFor === col.status ? (
+                                                        <div className="flex items-center gap-1">
+                                                            <input
+                                                                type="number"
+                                                                min={0}
+                                                                value={wipDraft}
+                                                                onChange={(e) => setWipDraft(e.target.value)}
+                                                                placeholder="∞"
+                                                                autoFocus
+                                                                onBlur={() => saveWipLimit(col.status)}
+                                                                onKeyDown={(e) => e.key === 'Enter' && saveWipLimit(col.status)}
+                                                                className="w-12 text-xs border rounded px-1 py-0.5"
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => isPM && startEditingWip(col.status, wipLimit)}
+                                                            className={`text-xs ${isOverLimit ? 'text-red-600 font-bold' : 'text-gray-400'} ${isPM ? 'hover:underline cursor-pointer' : ''
+                                                                }`}
+                                                            title={isPM ? 'WIP limitini düzenle' : undefined}
+                                                        >
+                                                            {colTasks.length}
+                                                            {wipLimit != null ? `/${wipLimit}` : ''}
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                {isOverLimit && (
+                                                    <p className="text-[10px] text-red-500 px-1 mb-1">⚠ WIP limiti aşıldı</p>
+                                                )}
+
+                                                {renderColumnCards(colTasks)}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         );

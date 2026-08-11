@@ -24,7 +24,8 @@ public class GlobalSearchQueryHandler : IRequestHandler<GlobalSearchQuery, Searc
         var accessibleProjectIds = await _access.GetAccessibleProjectIdsAsync(ct);
 
         var tasks = await _db.Tasks
-            .Where(t => accessibleProjectIds.Contains(t.ProjectId) && EF.Functions.ILike(t.Title, pattern))
+            .Where(t => accessibleProjectIds.Contains(t.ProjectId) &&
+                (EF.Functions.ILike(t.Title, pattern) || t.TaskLabels.Any(tl => EF.Functions.ILike(tl.Label.Name, pattern))))
             .OrderByDescending(t => t.CreatedAt)
             .Take(10)
             .Select(t => new TaskResultDto(t.Id, t.Title, t.Project.Name, t.Status.ToString()))
@@ -36,8 +37,8 @@ public class GlobalSearchQueryHandler : IRequestHandler<GlobalSearchQuery, Searc
             .Select(p => new ProjectResultDto(p.Id, p.Name, p.Key))
             .ToListAsync(ct);
 
-        // Kullanicilar icin "erisim" kavrami farkli: sadece kendi erisebildigin projelerin
-        // uyeleri arasinda arama yapiyoruz -- sistemdeki tum kullanicilari degil.
+        // Kullanıcılar için "erişim" kavramı farklı: sadece kendi erişebildiğin projelerin
+        // üyeleri arasında arama yapıyoruz -- sistemdeki tüm kullanıcıları değil.
         var accessibleUserIds = await _db.ProjectMembers
             .Where(m => accessibleProjectIds.Contains(m.ProjectId))
             .Select(m => m.UserId)
