@@ -62,9 +62,9 @@ export function LabelsSection({ taskId, currentLabels }: { taskId: string; curre
     return (
         <div className="flex items-center gap-2 flex-wrap relative">
             {currentLabels.map((labelName) => (
-                <span key={labelName} className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700 flex items-center gap-1">
+                <span key={labelName} className="text-xs px-2 py-1 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center gap-1 border border-purple-200 dark:border-purple-800">
                     {labelName}
-                    <button onClick={() => handleRemove(labelName)} className="hover:text-purple-900">
+                    <button onClick={() => handleRemove(labelName)} className="hover:text-purple-900 dark:hover:text-purple-100 cursor-pointer">
                         ✕
                     </button>
                 </span>
@@ -79,22 +79,22 @@ export function LabelsSection({ taskId, currentLabels }: { taskId: string; curre
                     onFocus={() => setShowSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                     onKeyDown={handleKeyDown}
-                    className="text-xs border rounded-full px-2 py-1 w-32"
+                    className="text-xs input-base border rounded-full px-2 py-1 w-32"
                 />
 
                 {showSuggestions && query && (
-                    <div className="absolute z-10 top-full mt-1 left-0 bg-white border rounded-lg shadow-lg w-48 max-h-40 overflow-y-auto">
+                    <div className="absolute z-10 top-full mt-1 left-0 surface border rounded-lg shadow-lg w-48 max-h-40 overflow-y-auto">
                         {availableLabels.map((l) => (
                             <button
                                 key={l.id}
                                 onClick={() => handleAddExisting(l.id)}
-                                className="w-full text-left px-3 py-1.5 text-xs hover:bg-purple-50"
+                                className="w-full text-left px-3 py-1.5 text-xs text-primary hover:bg-purple-50 dark:hover:bg-purple-950 cursor-pointer"
                             >
                                 {l.name}
                             </button>
                         ))}
                         {!exactMatchExists && query.trim() && (
-                            <button onClick={handleCreateAndAdd} className="w-full text-left px-3 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50 border-t">
+                            <button onClick={handleCreateAndAdd} className="w-full text-left px-3 py-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 border-t border-gray-100 dark:border-gray-800 cursor-pointer">
                                 + "{query.trim()}" oluştur ve ekle
                             </button>
                         )}
@@ -102,7 +102,7 @@ export function LabelsSection({ taskId, currentLabels }: { taskId: string; curre
                 )}
             </div>
 
-            {error && <p className="text-red-500 text-xs">{error}</p>}
+            {error && <p className="text-red-500 dark:text-red-400 text-xs">{error}</p>}
         </div>
     );
 }

@@ -1,8 +1,8 @@
 ﻿using Infera.Application.Common.Interfaces;
+using Infera.Application.Common.Services;
 using Infera.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Infera.Application.Common.Services;
 
 namespace Infera.Application.Features.Tasks.CreateTask;
 
@@ -13,19 +13,22 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, Guid>
     private readonly IProjectAccessService _access;
     private readonly ICurrentUserService _currentUser;
     private readonly IRealtimeNotifier _realtime;
+    private readonly IAutomationEngine _automationEngine;
 
     public CreateTaskCommandHandler(
         IAppDbContext db,
         INotificationService notificationService,
         IProjectAccessService access,
         ICurrentUserService currentUser,
-        IRealtimeNotifier realtime)
+        IRealtimeNotifier realtime,
+        IAutomationEngine automationEngine)
     {
         _db = db;
         _notificationService = notificationService;
         _access = access;
         _currentUser = currentUser;
         _realtime = realtime;
+        _automationEngine = automationEngine;
     }
 
     public async System.Threading.Tasks.Task<Guid> Handle(CreateTaskCommand request, CancellationToken ct)
@@ -140,6 +143,7 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, Guid>
         }
 
         await _realtime.NotifyProjectAsync(task.ProjectId, "task", "created", ct);
+        await _automationEngine.ProcessTaskCreatedAsync(task.Id, ct);
 
         return task.Id;
     }

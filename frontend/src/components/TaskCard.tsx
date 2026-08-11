@@ -1,60 +1,15 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Avatar } from './Avatar';
 import type { TaskListItem, Priority } from '../types/task';
 import { PRIORITY_COLORS, PRIORITY_LABELS } from '../types/task';
 import { useProjectMembers } from '../hooks/useProjectMembers';
 import { useReassignTask } from '../hooks/useTasks';
+import { useUpdateTaskStoryPoint } from '../hooks/useTaskDetail';
 import { useAuthStore } from '../store/authStore';
-import {
-    Bug,
-    Bookmark,
-    CheckSquare,
-    Layers,
-    ArrowUp,
-    ArrowDown,
-    Minus,
-    ChevronDown,
-    ChevronRight,
-} from 'lucide-react';
+import { Avatar } from './Avatar';
 
 const PRIORITY_NAME_TO_NUM: Record<string, Priority> = { Low: 0, Medium: 1, High: 2, Critical: 3 };
-
-const ISSUE_ICON = {
-    Bug,
-    Story: Bookmark,
-    Task: CheckSquare,
-    Epic: Layers,
-};
-
-const ISSUE_COLOR: Record<string, string> = {
-    Bug: 'text-red-500 fill-red-500/10',
-    Story: 'text-emerald-500 fill-emerald-500',
-    Task: 'text-blue-500 fill-blue-500/10',
-    Epic: 'text-purple-500 fill-purple-500/10',
-};
-
-const STATUS_DOT: Record<string, string> = {
-    ToDo: 'bg-slate-300',
-    InProgress: 'bg-blue-500',
-    ReadyForReview: 'bg-amber-400',
-    ReadyForQA: 'bg-purple-500',
-    Done: 'bg-emerald-500',
-    Closed: 'bg-slate-400',
-};
-
-function PriorityIcon({ priorityNum }: { priorityNum: Priority }) {
-    switch (priorityNum) {
-        case 3:
-        case 2:
-            return <ArrowUp size={12} className="stroke-[3]" />;
-        case 1:
-            return <Minus size={12} className="stroke-[3]" />;
-        case 0:
-        default:
-            return <ArrowDown size={12} className="stroke-[3]" />;
-    }
-}
+const FIBONACCI = [1, 2, 3, 5, 8, 13, 21];
 
 interface TaskCardProps {
     task: TaskListItem;
@@ -68,120 +23,122 @@ export function TaskCard({ task, projectId, subtasks, draggable, onDragStart }: 
     const priorityNum = PRIORITY_NAME_TO_NUM[task.priority] ?? 1;
     const currentUser = useAuthStore((state) => state.user);
     const isPM = currentUser?.roles.some((r) => r === 'System Admin' || r === 'Project Manager') ?? false;
+    const isDeveloper = currentUser?.roles.includes('Developer') ?? false;
+    const canEditStoryPoint = isPM || (isDeveloper && task.assigneeId === currentUser?.userId);
 
     const [isReassigning, setIsReassigning] = useState(false);
+    const [isEditingSP, setIsEditingSP] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
-
     const { data: members } = useProjectMembers(isReassigning ? projectId : null);
     const reassign = useReassignTask(projectId);
+    const updateStoryPoint = useUpdateTaskStoryPoint(task.id);
 
     const handleReassign = async (userId: string) => {
         await reassign.mutateAsync({ taskId: task.id, assigneeId: userId || null });
         setIsReassigning(false);
     };
 
-    const IssueIcon = ISSUE_ICON[task.issueType as keyof typeof ISSUE_ICON] ?? CheckSquare;
-    const iconColor = ISSUE_COLOR[task.issueType] ?? 'text-slate-500';
+    const handleStoryPointChange = async (value: string) => {
+        await updateStoryPoint.mutateAsync(value ? Number(value) : null);
+        setIsEditingSP(false);
+    };
+
     const hasSubtasks = subtasks && subtasks.length > 0;
 
     return (
-        <div className="bg-white border border-slate-200 rounded-lg hover:border-slate-300 hover:shadow-2xs transition text-slate-800 mb-2 overflow-hidden select-none">
+        <div className="surface border rounded-md shadow-sm hover:shadow dark:hover:shadow-black/30">
             <Link
                 to={`/tasks/${task.id}`}
                 draggable={draggable}
                 onDragStart={(e) => onDragStart?.(e, task.id)}
-                className="block p-3 space-y-2 cursor-pointer"
+                className="block p-3 space-y-2"
             >
-                {/* Üst Satır: İkon + Key + Başlık */}
-                <div className="flex items-center gap-2">
-                    <IssueIcon size={16} className={`${iconColor} shrink-0`} />
-                    <p className="text-xs text-gray-400 font-mono">{task.issueKey}</p>
-                    <p className="text-xs font-semibold text-slate-800 truncate flex-1 leading-snug">{task.title}</p>
+                <p className="text-xs text-muted font-mono">{task.issueKey}</p>
+                <p className="text-sm font-medium line-clamp-2 text-primary">{task.title}</p>
+
+                <div className="flex items-center gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-secondary">{task.issueType}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${PRIORITY_COLORS[priorityNum]}`}>{PRIORITY_LABELS[priorityNum]}</span>
+
+                    {isEditingSP ? (
+                        <select
+                            autoFocus
+                            defaultValue={task.storyPoint ?? ''}
+                            onChange={(e) => handleStoryPointChange(e.target.value)}
+                            onBlur={() => setIsEditingSP(false)}
+                            className="text-xs input-base border rounded px-1 py-0.5"
+                            onClick={(e) => e.preventDefault()}
+                        >
+                            <option value="">-</option>
+                            {FIBONACCI.map((v) => (
+                                <option key={v} value={v}>{v}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        <span
+                            onClick={(e) => {
+                                e.preventDefault();
+                                if (canEditStoryPoint) setIsEditingSP(true);
+                            }}
+                            className={`text-xs px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-medium ${canEditStoryPoint ? 'hover:bg-indigo-100 dark:hover:bg-indigo-900 cursor-pointer' : ''
+                                }`}
+                        >
+                            {task.storyPoint !== null ? `${task.storyPoint} SP` : canEditStoryPoint ? '+ SP' : ''}
+                        </span>
+                    )}
                 </div>
 
-                {/* Alt Satır: Öncelik + Atanan Avatar + SP */}
-                <div className="flex items-center justify-between gap-2 text-xs pt-0.5">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                        {/* Öncelik Rozeti */}
-                        <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${PRIORITY_COLORS[priorityNum]}`}>
-                            <PriorityIcon priorityNum={priorityNum} />
-                            <span>{PRIORITY_LABELS[priorityNum]}</span>
-                        </span>
-
-                        {/* Atanan Kullanıcı (Tekil Avatar) */}
-                        <div onClick={(e) => e.stopPropagation()} className="flex items-center min-w-0">
-                            {isReassigning ? (
-                                <select
-                                    autoFocus
-                                    defaultValue={task.assigneeName ?? ''}
-                                    onChange={(e) => handleReassign(e.target.value)}
-                                    onBlur={() => setIsReassigning(false)}
-                                    className="text-[11px] border border-slate-300 rounded px-1 py-0.5 bg-white max-w-[110px] focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                >
-                                    <option value="">Atanmamış</option>
-                                    {members?.map((m) => (
-                                        <option key={m.userId} value={m.userId}>
-                                            {m.userName}
-                                        </option>
-                                    ))}
-                                </select>
-                            ) : (
-                                <div
-                                    className={`flex items-center gap-1.5 min-w-0 ${isPM ? 'hover:opacity-80 cursor-pointer' : 'cursor-default'}`}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        if (isPM) setIsReassigning(true);
-                                    }}
-                                >
-                                    <Avatar userId={task.assigneeId ?? ''} name={task.assigneeName ?? '?'} size="xs" />
-                                    <span className={`text-xs text-gray-600 truncate ${isPM ? 'hover:text-indigo-600 hover:underline' : ''}`}>
-                                        {task.assigneeName ?? 'Atanmamış'}
-                                    </span>
-                                </div>
-                            )}
+                <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                    {isReassigning ? (
+                        <select
+                            autoFocus
+                            defaultValue={task.assigneeId ?? ''}
+                            onChange={(e) => handleReassign(e.target.value)}
+                            onBlur={() => setIsReassigning(false)}
+                            className="text-xs input-base border rounded px-1 py-0.5"
+                            onClick={(e) => e.preventDefault()}
+                        >
+                            <option value="">Atanmamış</option>
+                            {members?.map((m) => (
+                                <option key={m.userId} value={m.userId}>{m.userName}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        <div className="flex items-center gap-1.5">
+                            {task.assigneeId && task.assigneeName && <Avatar userId={task.assigneeId} name={task.assigneeName} size="xs" />}
+                            <span
+                                className={`text-xs text-muted ${isPM ? 'hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline cursor-pointer' : ''}`}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    if (isPM) setIsReassigning(true);
+                                }}
+                            >
+                                {task.assigneeName ?? 'Atanmamış'}
+                            </span>
                         </div>
-                    </div>
-
-                    {/* Story Point */}
-                    {task.storyPoint !== null && task.storyPoint !== undefined && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200 shrink-0 whitespace-nowrap leading-none">
-                            {task.storyPoint} SP
-                        </span>
                     )}
                 </div>
             </Link>
 
-            {/* Alt Görevler */}
             {hasSubtasks && (
-                <div className="border-t border-slate-100 bg-slate-50/50">
+                <div className="border-t border-gray-200 dark:border-gray-700">
                     <button
-                        type="button"
                         onClick={(e) => {
                             e.preventDefault();
-                            e.stopPropagation();
                             setIsExpanded((v) => !v);
                         }}
-                        className="w-full text-left px-3 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 transition flex items-center gap-1.5 cursor-pointer"
+                        className="w-full text-left px-3 py-1.5 text-xs text-muted hover-surface flex items-center gap-1"
                     >
-                        {isExpanded ? (
-                            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                        ) : (
-                            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                        )}
-                        <span>{subtasks.length} alt görev</span>
+                        <span>{isExpanded ? '▾' : '▸'}</span>
+                        {subtasks!.length} alt görev
                     </button>
 
                     {isExpanded && (
-                        <div className="px-3 pb-2 pt-1 space-y-1 border-t border-slate-100">
-                            {subtasks.map((st) => (
-                                <Link
-                                    key={st.id}
-                                    to={`/tasks/${st.id}`}
-                                    className="flex items-center gap-2 text-[11px] px-2 py-1 rounded-md hover:bg-white hover:shadow-2xs transition text-slate-700 group"
-                                >
-                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[st.status] ?? 'bg-slate-300'}`} />
-                                    <span className="truncate flex-1 font-medium group-hover:text-blue-600">{st.title}</span>
-                                    <span className="text-[10px] text-slate-400 shrink-0 font-mono">{st.assigneeName ?? '-'}</span>
+                        <div className="pl-3 pb-2 space-y-1">
+                            {subtasks!.map((st) => (
+                                <Link key={st.id} to={`/tasks/${st.id}`} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded hover-surface">
+                                    <span className="truncate flex-1 text-secondary">{st.title}</span>
+                                    <span className="text-muted shrink-0">{st.assigneeName ?? '-'}</span>
                                 </Link>
                             ))}
                         </div>

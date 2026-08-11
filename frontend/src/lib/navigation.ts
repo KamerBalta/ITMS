@@ -58,6 +58,12 @@ export const navItems: NavItem[] = [
         section: 'PROJECT_PLANNING'
     },
     {
+        label: 'Roadmap',
+        path: '/roadmap',
+        icon: BarChart3,
+        section: 'PROJECT_PLANNING'
+    },
+    {
         label: 'Issue Listesi',
         path: '/issues',
         icon: List,

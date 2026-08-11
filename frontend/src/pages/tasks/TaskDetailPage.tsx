@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import type { AxiosError } from 'axios';
 import type { ApiErrorResponse } from '../../types/api';
+import { CustomFieldsSection } from './sections/CustomFieldsSection';
 import { useAuthStore } from '../../store/authStore';
 import {
     useTaskDetail,
@@ -45,12 +46,12 @@ import {
 } from 'lucide-react';
 
 const ALL_STATUSES: { value: ItemStatus; label: string; color: string }[] = [
-    { value: 'ToDo', label: 'TO DO', color: 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200' },
-    { value: 'InProgress', label: 'IN PROGRESS', color: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' },
-    { value: 'ReadyForReview', label: 'IN REVIEW', color: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' },
-    { value: 'ReadyForQA', label: 'READY FOR QA', color: 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100' },
-    { value: 'Done', label: 'DONE', color: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' },
-    { value: 'Closed', label: 'CLOSED', color: 'bg-slate-200 text-slate-600 border-slate-300 hover:bg-slate-300' },
+    { value: 'ToDo', label: 'TO DO', color: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700' },
+    { value: 'InProgress', label: 'IN PROGRESS', color: 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900 hover:bg-blue-100 dark:hover:bg-blue-900' },
+    { value: 'ReadyForReview', label: 'IN REVIEW', color: 'bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-900 hover:bg-purple-100 dark:hover:bg-purple-900' },
+    { value: 'ReadyForQA', label: 'READY FOR QA', color: 'bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-900 hover:bg-amber-100 dark:hover:bg-amber-900' },
+    { value: 'Done', label: 'DONE', color: 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900 hover:bg-emerald-100 dark:hover:bg-emerald-900' },
+    { value: 'Closed', label: 'CLOSED', color: 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-300 dark:hover:bg-slate-600' },
 ];
 
 const PRIORITY_OPTIONS: { value: Priority; label: string; icon: React.ReactNode; color: string }[] = [
@@ -118,8 +119,8 @@ export function TaskDetailPage() {
     if (isError) {
         return (
             <div className="text-center py-16">
-                <p className="text-gray-500">Bu görev bulunamadı veya erişim yetkiniz yok.</p>
-                <Link to="/dashboard" className="text-sm text-indigo-600 hover:underline mt-2 inline-block">
+                <p className="text-secondary">Bu görev bulunamadı veya erişim yetkiniz yok.</p>
+                <Link to="/dashboard" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
                     ← Dashboard'a dön
                 </Link>
             </div>
@@ -246,7 +247,7 @@ export function TaskDetailPage() {
     const currentStatusObj = ALL_STATUSES.find((s) => s.value === draft.status) || ALL_STATUSES[0];
 
     return (
-        <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-4 space-y-6 pb-24 text-slate-800">
+        <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-4 space-y-6 pb-24 text-primary">
             {/* Gizli Dosya Yükleyici Input */}
             <input
                 type="file"
@@ -264,10 +265,10 @@ export function TaskDetailPage() {
                     issueKey={task.issueKey}
                 />
                 <div className="flex items-center gap-2">
-                    <button className="p-1.5 hover:bg-slate-100 rounded text-slate-500 transition cursor-pointer">
+                    <button className="p-1.5 hover-surface rounded text-secondary transition cursor-pointer">
                         <Share2 size={16} />
                     </button>
-                    <button className="p-1.5 hover:bg-slate-100 rounded text-slate-500 transition cursor-pointer">
+                    <button className="p-1.5 hover-surface rounded text-secondary transition cursor-pointer">
                         <MoreHorizontal size={16} />
                     </button>
                 </div>
@@ -283,11 +284,11 @@ export function TaskDetailPage() {
                             <input
                                 value={draft.title}
                                 onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-                                className="text-2xl font-bold w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white rounded px-2 py-1.5 focus:outline-none transition-all text-slate-900"
+                                className="text-2xl font-bold text-primary w-full bg-transparent border border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 rounded input-base px-2 py-1.5 focus:outline-none transition-all"
                                 placeholder="Görev başlığı"
                             />
                         ) : (
-                            <h1 className="text-2xl font-bold px-2 py-1.5 text-slate-900">{task.title}</h1>
+                            <h1 className="text-2xl font-bold text-primary px-2 py-1.5">{task.title}</h1>
                         )}
                     </div>
 
@@ -296,41 +297,41 @@ export function TaskDetailPage() {
                         <button
                             onClick={handleAssignToMe}
                             disabled={!canReassign || draft.assigneeId === currentUser?.userId}
-                            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-2.5 py-1.5 rounded transition cursor-pointer disabled:opacity-50"
+                            className="flex items-center gap-1.5 surface hover-surface text-secondary font-medium px-2.5 py-1.5 rounded transition cursor-pointer border border-gray-200 dark:border-gray-700 disabled:opacity-50"
                         >
                             <UserCheck size={14} />
                             <span>Bana Ata</span>
                         </button>
                         <button
                             onClick={handleAttachClick}
-                            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-2.5 py-1.5 rounded transition cursor-pointer"
+                            className="flex items-center gap-1.5 surface hover-surface text-secondary font-medium px-2.5 py-1.5 rounded transition cursor-pointer border border-gray-200 dark:border-gray-700"
                         >
                             <Paperclip size={14} />
                             <span>Ekle</span>
                         </button>
-                        <button className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-2.5 py-1.5 rounded transition cursor-pointer">
+                        <button className="flex items-center gap-1.5 surface hover-surface text-secondary font-medium px-2.5 py-1.5 rounded transition cursor-pointer border border-gray-200 dark:border-gray-700">
                             <Plus size={14} />
                             <span>Alt Görev Ekle</span>
                         </button>
-                        <button className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-2.5 py-1.5 rounded transition cursor-pointer">
+                        <button className="flex items-center gap-1.5 surface hover-surface text-secondary font-medium px-2.5 py-1.5 rounded transition cursor-pointer border border-gray-200 dark:border-gray-700">
                             <Link2 size={14} />
                             <span>İlişkilendir</span>
                         </button>
                         {task.allowsChildren && isPM && task.status !== 'Closed' && (
                             <button
                                 onClick={handleCloseEpic}
-                                className="flex items-center gap-1.5 border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium px-2.5 py-1.5 rounded transition cursor-pointer"
+                                className="flex items-center gap-1.5 border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 font-medium px-2.5 py-1.5 rounded transition cursor-pointer"
                             >
                                 <CheckCircle2 size={14} />
                                 <span>Epic'i Kapat</span>
                             </button>
                         )}
                     </div>
-                    {closeEpicError && <p className="text-red-500 text-xs font-medium">{closeEpicError}</p>}
+                    {closeEpicError && <p className="text-red-500 dark:text-red-400 text-xs font-medium">{closeEpicError}</p>}
 
                     {/* Açıklama Alanı */}
                     <div className="space-y-2">
-                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Açıklama</h3>
+                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider">Açıklama</h3>
                         {canEditDescription ? (
                             <RichTextEditor
                                 value={draft.description}
@@ -340,28 +341,30 @@ export function TaskDetailPage() {
                                 rows={5}
                             />
                         ) : task.description ? (
-                            <MarkdownContent content={task.description} />
+                            <div className="text-secondary">
+                                <MarkdownContent content={task.description} />
+                            </div>
                         ) : (
-                            <p className="text-gray-400">Açıklama yok.</p>
+                            <p className="text-muted">Açıklama yok.</p>
                         )}
                     </div>
 
-                    {/* Subtasks */}
+                    <CustomFieldsSection taskId={task.id} projectId={task.projectId} />
                     <SubtasksSection taskId={task.id} projectId={task.projectId} />
 
                     {/* Checklist */}
                     <ChecklistSection taskId={task.id} />
 
                     {/* Activity Tabs */}
-                    <div className="space-y-4 pt-4 border-t border-slate-200">
-                        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Aktivite</h3>
-                            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-md text-xs font-medium">
+                    <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
+                            <h3 className="text-xs font-bold text-muted uppercase tracking-wider">Aktivite</h3>
+                            <div className="flex items-center gap-1 surface-muted p-1 rounded-md text-xs font-medium">
                                 <button
                                     onClick={() => setActiveActivityTab('comments')}
                                     className={`px-3 py-1 rounded transition cursor-pointer ${activeActivityTab === 'comments'
-                                        ? 'bg-white text-slate-800 shadow-2xs font-semibold'
-                                        : 'text-slate-600 hover:text-slate-900'
+                                        ? 'surface text-primary shadow-2xs font-semibold'
+                                        : 'text-secondary hover:text-primary'
                                         }`}
                                 >
                                     Yorumlar ({task.commentCount ?? 0})
@@ -369,8 +372,8 @@ export function TaskDetailPage() {
                                 <button
                                     onClick={() => setActiveActivityTab('worklogs')}
                                     className={`px-3 py-1 rounded transition cursor-pointer ${activeActivityTab === 'worklogs'
-                                        ? 'bg-white text-slate-800 shadow-2xs font-semibold'
-                                        : 'text-slate-600 hover:text-slate-900'
+                                        ? 'surface text-primary shadow-2xs font-semibold'
+                                        : 'text-secondary hover:text-primary'
                                         }`}
                                 >
                                     Çalışma Günlükleri
@@ -378,8 +381,8 @@ export function TaskDetailPage() {
                                 <button
                                     onClick={() => setActiveActivityTab('attachments')}
                                     className={`px-3 py-1 rounded transition cursor-pointer ${activeActivityTab === 'attachments'
-                                        ? 'bg-white text-slate-800 shadow-2xs font-semibold'
-                                        : 'text-slate-600 hover:text-slate-900'
+                                        ? 'surface text-primary shadow-2xs font-semibold'
+                                        : 'text-secondary hover:text-primary'
                                         }`}
                                 >
                                     Ekler ({task.attachmentCount ?? 0})
@@ -399,7 +402,7 @@ export function TaskDetailPage() {
                 <div className="lg:col-span-4 space-y-6">
                     {/* Status Dropdown */}
                     <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Status</label>
+                        <label className="text-xs font-bold text-muted uppercase tracking-wider block">Status</label>
                         <div className="relative">
                             <select
                                 value={draft.status}
@@ -407,7 +410,7 @@ export function TaskDetailPage() {
                                 className={`appearance-none w-full border font-bold text-xs px-3 py-2 rounded-md cursor-pointer transition focus:outline-none ${currentStatusObj.color}`}
                             >
                                 {ALL_STATUSES.map((s) => (
-                                    <option key={s.value} value={s.value} className="bg-white text-slate-800 font-normal">
+                                    <option key={s.value} value={s.value} className="surface text-primary font-normal">
                                         {s.label}
                                     </option>
                                 ))}
@@ -416,20 +419,20 @@ export function TaskDetailPage() {
                     </div>
 
                     {/* Property List (Details) */}
-                    <div className="bg-white border border-slate-200 rounded-lg divide-y divide-slate-100 text-xs">
-                        <div className="p-3 font-bold text-slate-700 uppercase tracking-wider text-[11px] bg-slate-50/50 rounded-t-lg">
+                    <div className="surface border rounded-lg p-4 divide-y divide-gray-100 dark:divide-gray-800 text-xs">
+                        <div className="p-3 font-bold text-primary uppercase tracking-wider text-[11px] surface-muted rounded-t-lg -mx-4 -mt-4 mb-1">
                             Details
                         </div>
 
                         {/* Assignee */}
-                        <div className="p-3 grid grid-cols-12 items-center gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium">Assignee</span>
+                        <div className="py-3 grid grid-cols-12 items-center gap-2">
+                            <span className="col-span-4 text-muted font-medium">Assignee</span>
                             <div className="col-span-8">
                                 {canReassign ? (
                                     <select
                                         value={draft.assigneeId}
                                         onChange={(e) => setDraft({ ...draft, assigneeId: e.target.value })}
-                                        className="w-full bg-transparent hover:bg-slate-50 font-medium text-slate-800 border border-transparent hover:border-slate-200 rounded px-1.5 py-1 transition focus:bg-white focus:border-blue-500 cursor-pointer"
+                                        className="w-full bg-transparent hover-surface font-medium text-primary input-base border border-transparent hover:border-gray-200 dark:hover:border-gray-700 rounded px-1.5 py-1 transition focus:bg-white dark:focus:bg-gray-800 focus:border-blue-500 cursor-pointer"
                                     >
                                         <option value="">Unassigned</option>
                                         {members?.map((m) => (
@@ -439,7 +442,7 @@ export function TaskDetailPage() {
                                         ))}
                                     </select>
                                 ) : (
-                                    <div className="flex items-center gap-2 font-medium text-slate-800 px-1.5 py-1">
+                                    <div className="flex items-center gap-2 font-medium text-primary px-1.5 py-1">
                                         <Avatar name={task.assigneeName ?? 'U'} />
                                         <span>{task.assigneeName ?? 'Unassigned'}</span>
                                     </div>
@@ -448,14 +451,14 @@ export function TaskDetailPage() {
                         </div>
 
                         {/* Priority */}
-                        <div className="p-3 grid grid-cols-12 items-center gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium">Priority</span>
+                        <div className="py-3 grid grid-cols-12 items-center gap-2">
+                            <span className="col-span-4 text-muted font-medium">Priority</span>
                             <div className="col-span-8">
                                 {canEditPriority ? (
                                     <select
                                         value={draft.priority}
                                         onChange={(e) => setDraft({ ...draft, priority: Number(e.target.value) as Priority })}
-                                        className="w-full bg-transparent hover:bg-slate-50 font-semibold text-slate-800 border border-transparent hover:border-slate-200 rounded px-1.5 py-1 transition focus:bg-white focus:border-blue-500 cursor-pointer"
+                                        className="w-full bg-transparent hover-surface font-semibold text-primary input-base border border-transparent hover:border-gray-200 dark:hover:border-gray-700 rounded px-1.5 py-1 transition focus:bg-white dark:focus:bg-gray-800 focus:border-blue-500 cursor-pointer"
                                     >
                                         {PRIORITY_OPTIONS.map((p) => (
                                             <option key={p.value} value={p.value}>
@@ -464,7 +467,7 @@ export function TaskDetailPage() {
                                         ))}
                                     </select>
                                 ) : (
-                                    <div className="flex items-center gap-2 font-semibold text-slate-800 px-1.5 py-1">
+                                    <div className="flex items-center gap-2 font-semibold text-primary px-1.5 py-1">
                                         {currentPriorityObj.icon}
                                         <span>{currentPriorityObj.label}</span>
                                     </div>
@@ -473,14 +476,14 @@ export function TaskDetailPage() {
                         </div>
 
                         {/* Story Points */}
-                        <div className="p-3 grid grid-cols-12 items-center gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium">Story Points</span>
+                        <div className="py-3 grid grid-cols-12 items-center gap-2">
+                            <span className="col-span-4 text-muted font-medium">Story Points</span>
                             <div className="col-span-8">
                                 {canEditStoryPoint ? (
                                     <select
                                         value={draft.storyPoint}
                                         onChange={(e) => setDraft({ ...draft, storyPoint: e.target.value })}
-                                        className="w-full bg-transparent hover:bg-slate-50 font-semibold text-slate-800 border border-transparent hover:border-slate-200 rounded px-1.5 py-1 transition focus:bg-white focus:border-blue-500 cursor-pointer"
+                                        className="w-full bg-transparent hover-surface font-semibold text-primary input-base border border-transparent hover:border-gray-200 dark:hover:border-gray-700 rounded px-1.5 py-1 transition focus:bg-white dark:focus:bg-gray-800 focus:border-blue-500 cursor-pointer"
                                     >
                                         <option value="">None</option>
                                         {FIBONACCI.map((v) => (
@@ -492,11 +495,11 @@ export function TaskDetailPage() {
                                 ) : (
                                     <div className="px-1.5 py-1">
                                         {task.storyPoint ? (
-                                            <span className="inline-flex items-center justify-center min-w-6 h-6 px-2 text-xs font-bold bg-slate-100 text-slate-700 rounded-full border border-slate-200">
+                                            <span className="inline-flex items-center justify-center min-w-6 h-6 px-2 text-xs font-bold bg-gray-100 dark:bg-gray-700 text-secondary rounded-full border border-gray-200 dark:border-gray-600">
                                                 {task.storyPoint}
                                             </span>
                                         ) : (
-                                            <span className="text-slate-400 font-medium">-</span>
+                                            <span className="text-muted font-medium">-</span>
                                         )}
                                     </div>
                                 )}
@@ -504,27 +507,27 @@ export function TaskDetailPage() {
                         </div>
 
                         {/* Reporter */}
-                        <div className="p-3 grid grid-cols-12 items-center gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium">Reporter</span>
-                            <div className="col-span-8 flex items-center gap-2 font-medium text-slate-800 px-1.5 py-1">
+                        <div className="py-3 grid grid-cols-12 items-center gap-2">
+                            <span className="col-span-4 text-muted font-medium">Reporter</span>
+                            <div className="col-span-8 flex items-center gap-2 font-medium text-primary px-1.5 py-1">
                                 <Avatar name={task.reporterName} />
                                 <span>{task.reporterName}</span>
                             </div>
                         </div>
 
                         {/* Due Date */}
-                        <div className="p-3 grid grid-cols-12 items-center gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium">Due Date</span>
+                        <div className="py-3 grid grid-cols-12 items-center gap-2">
+                            <span className="col-span-4 text-muted font-medium">Due Date</span>
                             <div className="col-span-8">
                                 {canEditDueDate ? (
                                     <input
                                         type="date"
                                         value={draft.dueDate}
                                         onChange={(e) => setDraft({ ...draft, dueDate: e.target.value })}
-                                        className="w-full bg-transparent hover:bg-slate-50 font-medium text-slate-800 border border-transparent hover:border-slate-200 rounded px-1.5 py-1 transition focus:bg-white focus:border-blue-500 cursor-pointer"
+                                        className="w-full bg-transparent hover-surface font-medium text-primary input-base border border-transparent hover:border-gray-200 dark:hover:border-gray-700 rounded px-1.5 py-1 transition focus:bg-white dark:focus:bg-gray-800 focus:border-blue-500 cursor-pointer"
                                     />
                                 ) : (
-                                    <span className="px-1.5 py-1 font-medium text-slate-800 block">
+                                    <span className="px-1.5 py-1 font-medium text-primary block">
                                         {task.dueDate ? new Date(task.dueDate).toLocaleDateString('tr-TR') : '-'}
                                     </span>
                                 )}
@@ -532,14 +535,14 @@ export function TaskDetailPage() {
                         </div>
 
                         {/* Release */}
-                        <div className="p-3 grid grid-cols-12 items-center gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium">Fix Version</span>
+                        <div className="py-3 grid grid-cols-12 items-center gap-2">
+                            <span className="col-span-4 text-muted font-medium">Fix Version</span>
                             <div className="col-span-8">
                                 {canEditRelease ? (
                                     <select
                                         value={draft.releaseId}
                                         onChange={(e) => setDraft({ ...draft, releaseId: e.target.value })}
-                                        className="w-full bg-transparent hover:bg-slate-50 font-medium text-slate-800 border border-transparent hover:border-slate-200 rounded px-1.5 py-1 transition focus:bg-white focus:border-blue-500 cursor-pointer"
+                                        className="w-full bg-transparent hover-surface font-medium text-primary input-base border border-transparent hover:border-gray-200 dark:hover:border-gray-700 rounded px-1.5 py-1 transition focus:bg-white dark:focus:bg-gray-800 focus:border-blue-500 cursor-pointer"
                                     >
                                         <option value="">Unreleased</option>
                                         {releases?.map((r) => (
@@ -551,11 +554,11 @@ export function TaskDetailPage() {
                                 ) : (
                                     <div className="px-1.5 py-1">
                                         {task.releaseVersion ? (
-                                            <span className="inline-block px-2 py-0.5 text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded">
+                                            <span className="inline-block px-2 py-0.5 text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded">
                                                 {task.releaseVersion}
                                             </span>
                                         ) : (
-                                            <span className="text-slate-400 font-medium">-</span>
+                                            <span className="text-muted font-medium">-</span>
                                         )}
                                     </div>
                                 )}
@@ -563,16 +566,16 @@ export function TaskDetailPage() {
                         </div>
 
                         {/* Watchers */}
-                        <div className="p-3 grid grid-cols-12 items-center gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium">Watchers</span>
+                        <div className="py-3 grid grid-cols-12 items-center gap-2">
+                            <span className="col-span-4 text-muted font-medium">Watchers</span>
                             <div className="col-span-8 px-1.5 py-1">
                                 <WatchersSection taskId={task.id} watcherCount={task.watcherCount} />
                             </div>
                         </div>
 
                         {/* Labels */}
-                        <div className="p-3 grid grid-cols-12 items-start gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium pt-1">Labels</span>
+                        <div className="py-3 grid grid-cols-12 items-start gap-2">
+                            <span className="col-span-4 text-muted font-medium pt-1">Labels</span>
                             <div className="col-span-8">
                                 <LabelsSection taskId={task.id} currentLabels={task.labels} />
                             </div>
@@ -580,7 +583,7 @@ export function TaskDetailPage() {
                     </div>
 
                     {/* Metadata Footer */}
-                    <div className="text-[11px] text-slate-400 space-y-1 px-1">
+                    <div className="text-[11px] text-muted space-y-1 px-1">
                         <p>Oluşturulma: {new Date(task.createdAt).toLocaleDateString('tr-TR')}</p>
                         <p>Son Güncelleme: {new Date(task.updatedAt).toLocaleDateString('tr-TR')}</p>
                     </div>
@@ -589,16 +592,16 @@ export function TaskDetailPage() {
 
             {/* Jira Unsaved Changes Floating Bar */}
             {isDirty && (
-                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-amber-50 border border-amber-300 shadow-xl rounded-lg px-6 py-3 flex items-center gap-6 z-50 text-xs animate-in slide-in-from-bottom duration-200">
-                    <div className="flex items-center gap-2 text-amber-800 font-medium">
-                        <AlertCircle size={16} className="text-amber-600 shrink-0" />
+                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-amber-50 dark:bg-amber-950/90 border border-amber-300 dark:border-amber-700 surface border-t shadow-lg dark:shadow-black/30 rounded-lg px-6 py-3 flex items-center gap-6 z-50 text-xs animate-in slide-in-from-bottom duration-200">
+                    <div className="flex items-center gap-2 text-secondary font-medium">
+                        <AlertCircle size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
                         <span>Kaydedilmemiş değişiklikleriniz var.</span>
                     </div>
-                    {saveError && <span className="text-red-600 font-semibold">{saveError}</span>}
+                    {saveError && <span className="text-red-600 dark:text-red-400 font-semibold">{saveError}</span>}
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handleCancel}
-                            className="px-3 py-1.5 text-slate-600 hover:text-slate-800 hover:bg-amber-100 rounded transition font-medium cursor-pointer"
+                            className="px-3 py-1.5 text-secondary hover:text-primary hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded transition font-medium cursor-pointer"
                         >
                             İptal
                         </button>
@@ -638,16 +641,16 @@ function Avatar({ name }: { name: string }) {
 function TaskDetailSkeleton() {
     return (
         <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-6 space-y-6 animate-pulse">
-            <div className="h-4 bg-slate-200 rounded w-1/4" />
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 <div className="lg:col-span-8 space-y-6">
-                    <div className="h-8 bg-slate-200 rounded w-3/4" />
-                    <div className="h-8 bg-slate-100 rounded w-full" />
-                    <div className="h-32 bg-slate-100 rounded w-full" />
+                    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+                    <div className="h-8 bg-gray-100 dark:bg-gray-800 rounded w-full" />
+                    <div className="h-32 bg-gray-100 dark:bg-gray-800 rounded w-full" />
                 </div>
                 <div className="lg:col-span-4 space-y-4">
-                    <div className="h-10 bg-slate-200 rounded w-full" />
-                    <div className="h-64 bg-slate-100 rounded w-full" />
+                    <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-full" />
+                    <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded w-full" />
                 </div>
             </div>
         </div>

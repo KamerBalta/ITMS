@@ -215,3 +215,49 @@ public class WorkflowTransitionConfiguration : IEntityTypeConfiguration<Workflow
         b.HasIndex(x => new { x.ProjectId, x.FromStatus, x.ToStatus }).IsUnique();
     }
 }
+public class CustomFieldDefinitionConfiguration : IEntityTypeConfiguration<CustomFieldDefinition>
+{
+    public void Configure(EntityTypeBuilder<CustomFieldDefinition> b)
+    {
+        b.ToTable("CustomFieldDefinitions");
+        b.Property(x => x.Name).HasMaxLength(80).IsRequired();
+        b.Property(x => x.FieldType).HasMaxLength(20).IsRequired();
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasIndex(x => new { x.ProjectId, x.Name }).IsUnique();
+    }
+}
+
+public class TaskCustomFieldValueConfiguration : IEntityTypeConfiguration<TaskCustomFieldValue>
+{
+    public void Configure(EntityTypeBuilder<TaskCustomFieldValue> b)
+    {
+        b.ToTable("TaskCustomFieldValues");
+        b.Property(x => x.Value).HasMaxLength(500);
+        b.HasOne(x => x.Task).WithMany().HasForeignKey(x => x.TaskId);
+        b.HasOne(x => x.CustomFieldDefinition).WithMany().HasForeignKey(x => x.CustomFieldDefinitionId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => new { x.TaskId, x.CustomFieldDefinitionId }).IsUnique();
+    }
+}
+public class AutomationRuleConfiguration : IEntityTypeConfiguration<AutomationRule>
+{
+    public void Configure(EntityTypeBuilder<AutomationRule> b)
+    {
+        b.ToTable("AutomationRules");
+        b.Property(x => x.Name).HasMaxLength(100).IsRequired();
+        b.Property(x => x.TriggerType).HasMaxLength(40).IsRequired();
+        b.Property(x => x.ActionType).HasMaxLength(40).IsRequired();
+        b.Property(x => x.TriggerConditionJson).HasColumnType("jsonb");
+        b.Property(x => x.ActionParamsJson).HasColumnType("jsonb");
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+    }
+}
+public class ProjectPermissionOverrideConfiguration : IEntityTypeConfiguration<ProjectPermissionOverride>
+{
+    public void Configure(EntityTypeBuilder<ProjectPermissionOverride> b)
+    {
+        b.ToTable("ProjectPermissionOverrides");
+        b.Property(x => x.PermissionKey).HasMaxLength(50).IsRequired();
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasIndex(x => new { x.ProjectId, x.PermissionKey }).IsUnique();
+    }
+}

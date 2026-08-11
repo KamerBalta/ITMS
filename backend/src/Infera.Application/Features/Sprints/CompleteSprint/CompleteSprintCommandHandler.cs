@@ -1,4 +1,5 @@
 ﻿using Infera.Application.Common.Interfaces;
+using Infera.Application.Common.Services;
 using Infera.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -11,17 +12,23 @@ public class CompleteSprintCommandHandler : IRequestHandler<CompleteSprintComman
     private readonly IProjectAccessService _access;
     private readonly INotificationService _notificationService;
     private readonly IRealtimeNotifier _realtime;
+    private readonly ICurrentUserService _currentUser;
+    private readonly IProjectPermissionService _permissionService;
 
     public CompleteSprintCommandHandler(
         IAppDbContext db,
         IProjectAccessService access,
         INotificationService notificationService,
-        IRealtimeNotifier realtime)
+        IRealtimeNotifier realtime,
+        ICurrentUserService currentUser,
+        IProjectPermissionService permissionService)
     {
         _db = db;
         _access = access;
         _notificationService = notificationService;
         _realtime = realtime;
+        _currentUser = currentUser;
+        _permissionService = permissionService;
     }
 
     public async System.Threading.Tasks.Task Handle(CompleteSprintCommand request, CancellationToken ct)
@@ -31,6 +38,14 @@ public class CompleteSprintCommandHandler : IRequestHandler<CompleteSprintComman
 
         if (!await _access.HasProjectAccessAsync(sprint.ProjectId, ct))
             throw new UnauthorizedAccessException("Bu sprinti tamamlama yetkiniz yok.");
+
+        var isPrivileged = _currentUser.IsAdmin || _currentUser.Roles.Contains("Project Manager");
+        if (!isPrivileged)
+        {
+            var developerCanManage = await _permissionService.IsOverrideEnabledAsync(sprint.ProjectId, "DeveloperCanManageSprints", ct);
+            if (!developerCanManage)
+                throw new UnauthorizedAccessException("Sprint tamamlama yetkiniz yok.");
+        }
 
         if (sprint.Status == SprintStatus.Completed)
             throw new InvalidOperationException("Sprint zaten tamamlanmış.");

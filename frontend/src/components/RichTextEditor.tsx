@@ -18,19 +18,25 @@ export function RichTextEditor({ value, onChange, members, placeholder, rows = 4
 
     return (
         <div>
-            <div className="flex items-center justify-between border-b bg-gray-50 rounded-t px-1">
+            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 surface-muted rounded-t px-1">
                 <div className="flex">
                     <button
                         type="button"
                         onClick={() => setTab('write')}
-                        className={`text-xs px-3 py-1.5 border-b-2 ${tab === 'write' ? 'border-indigo-500 text-indigo-600 font-medium' : 'border-transparent text-gray-400'}`}
+                        className={`text-xs px-3 py-1.5 border-b-2 transition-colors cursor-pointer ${tab === 'write'
+                                ? 'border-indigo-500 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400 font-medium'
+                                : 'border-transparent text-muted'
+                            }`}
                     >
                         Yaz
                     </button>
                     <button
                         type="button"
                         onClick={() => setTab('preview')}
-                        className={`text-xs px-3 py-1.5 border-b-2 ${tab === 'preview' ? 'border-indigo-500 text-indigo-600 font-medium' : 'border-transparent text-gray-400'}`}
+                        className={`text-xs px-3 py-1.5 border-b-2 transition-colors cursor-pointer ${tab === 'preview'
+                                ? 'border-indigo-500 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400 font-medium'
+                                : 'border-transparent text-muted'
+                            }`}
                     >
                         Önizleme
                     </button>
@@ -47,15 +53,15 @@ export function RichTextEditor({ value, onChange, members, placeholder, rows = 4
                         members={members}
                         placeholder={placeholder}
                         rows={rows}
-                        className="w-full border rounded-b px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                        className="w-full input-base border rounded-b px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-indigo-300 dark:focus:ring-indigo-700"
                     />
                 </div>
             ) : (
-                <div className="border border-t-0 rounded-b px-3 py-2 min-h-[80px] bg-white">
+                <div className="border border-t-0 border-gray-200 dark:border-gray-700 rounded-b px-3 py-2 min-h-[80px] surface">
                     {value.trim() ? (
                         <MarkdownContent content={value} />
                     ) : (
-                        <p className="text-sm text-gray-300 italic">Önizlenecek içerik yok.</p>
+                        <p className="text-sm text-muted italic">Önizlenecek içerik yok.</p>
                     )}
                 </div>
             )}

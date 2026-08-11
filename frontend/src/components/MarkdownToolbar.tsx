@@ -91,12 +91,12 @@ export function MarkdownToolbar({ textareaRef, value, onChange }: MarkdownToolba
     };
 
     return (
-        <div className="flex items-center gap-1 p-1.5 border-b bg-gray-50 text-gray-600 rounded-t select-none">
+        <div className="flex items-center gap-1 p-1.5 border-b border-gray-200 dark:border-gray-700 surface-muted text-secondary rounded-t select-none">
             {/* Kalın (Bold) */}
             <button
                 type="button"
                 onClick={() => handleWrapFormat('**', '**', 'kalın metin')}
-                className="p-1.5 hover:bg-gray-200 rounded text-gray-700 transition"
+                className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-muted hover:text-secondary transition cursor-pointer"
                 title="Kalın (**metin**)"
             >
                 <Bold size={15} />
@@ -106,7 +106,7 @@ export function MarkdownToolbar({ textareaRef, value, onChange }: MarkdownToolba
             <button
                 type="button"
                 onClick={() => handleWrapFormat('*', '*', 'italik metin')}
-                className="p-1.5 hover:bg-gray-200 rounded text-gray-700 transition"
+                className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-muted hover:text-secondary transition cursor-pointer"
                 title="İtalik (*metin*)"
             >
                 <Italic size={15} />
@@ -116,7 +116,7 @@ export function MarkdownToolbar({ textareaRef, value, onChange }: MarkdownToolba
             <button
                 type="button"
                 onClick={() => handleWrapFormat('`', '`', 'kod')}
-                className="p-1.5 hover:bg-gray-200 rounded text-gray-700 transition"
+                className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-muted hover:text-secondary transition cursor-pointer"
                 title="Satır İçi Kod (`kod`)"
             >
                 <Code size={15} />
@@ -126,19 +126,19 @@ export function MarkdownToolbar({ textareaRef, value, onChange }: MarkdownToolba
             <button
                 type="button"
                 onClick={() => handleWrapFormat('\n```\n', '\n```\n', 'kod bloğu')}
-                className="p-1.5 hover:bg-gray-200 rounded text-gray-700 transition"
+                className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-muted hover:text-secondary transition cursor-pointer"
                 title="Kod Bloğu (```kod```)"
             >
                 <FileCode size={15} />
             </button>
 
-            <div className="w-px h-4 bg-gray-300 mx-1" />
+            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
 
             {/* Madde İşaretli Liste (Unordered List) */}
             <button
                 type="button"
                 onClick={() => handleListFormat('ul')}
-                className="p-1.5 hover:bg-gray-200 rounded text-gray-700 transition"
+                className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-muted hover:text-secondary transition cursor-pointer"
                 title="Madde İşaretli Liste"
             >
                 <List size={15} />
@@ -148,7 +148,7 @@ export function MarkdownToolbar({ textareaRef, value, onChange }: MarkdownToolba
             <button
                 type="button"
                 onClick={() => handleListFormat('ol')}
-                className="p-1.5 hover:bg-gray-200 rounded text-gray-700 transition"
+                className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-muted hover:text-secondary transition cursor-pointer"
                 title="Numaralı Liste"
             >
                 <ListOrdered size={15} />
@@ -158,7 +158,7 @@ export function MarkdownToolbar({ textareaRef, value, onChange }: MarkdownToolba
             <button
                 type="button"
                 onClick={handleLinkFormat}
-                className="p-1.5 hover:bg-gray-200 rounded text-gray-700 transition"
+                className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-muted hover:text-secondary transition cursor-pointer"
                 title="Bağlantı Ekle ([metin](url))"
             >
                 <LinkIcon size={15} />

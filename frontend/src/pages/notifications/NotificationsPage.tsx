@@ -20,10 +20,10 @@ import {
 } from 'lucide-react';
 
 const TYPE_BADGES: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-    Task: { label: 'TASK', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckSquare },
-    Sprint: { label: 'SPRINT', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Zap },
-    Mention: { label: 'MENTION', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: AtSign },
-    Release: { label: 'RELEASE', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: Rocket },
+    Task: { label: 'TASK', color: 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900', icon: CheckSquare },
+    Sprint: { label: 'SPRINT', color: 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-900', icon: Zap },
+    Mention: { label: 'MENTION', color: 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900', icon: AtSign },
+    Release: { label: 'RELEASE', color: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900', icon: Rocket },
 };
 
 function timeAgo(dateStr: string) {
@@ -120,16 +120,16 @@ export function NotificationsPage() {
     return (
         <div className="max-w-3xl mx-auto space-y-6">
             {/* Üst Başlık & Eylemler */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-800 pb-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Bildirimler</h1>
-                    <p className="text-sm text-gray-500">Aktiviteler, atamalar ve güncellemeler.</p>
+                    <h1 className="text-2xl font-bold text-primary">Bildirimler</h1>
+                    <p className="text-sm text-secondary">Aktiviteler, atamalar ve güncellemeler.</p>
                 </div>
 
                 {unreadCount > 0 && (
                     <button
                         onClick={() => markAllAsRead.mutate()}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-lg transition cursor-pointer"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 px-3 py-1.5 rounded-lg transition cursor-pointer"
                     >
                         <CheckCheck className="w-3.5 h-3.5" />
                         Tümünü Okundu İşaretle ({unreadCount})
@@ -138,16 +138,16 @@ export function NotificationsPage() {
             </div>
 
             {/* Arama Barı ve Filtre Tabları */}
-            <div className="bg-white p-3 border rounded-xl shadow-sm space-y-3">
+            <div className="surface p-3 border rounded-xl shadow-sm space-y-3">
                 {/* Arama Barı */}
                 <div className="relative">
-                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted" />
                     <input
                         type="text"
                         placeholder="Bildirimlerde ara veya görev anahtarı yaz (Örn: PROJ-12)..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full border rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300"
+                        className="w-full input-base border rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 dark:border-gray-600"
                     />
                 </div>
 
@@ -166,7 +166,7 @@ export function NotificationsPage() {
                             onClick={() => setSelectedFilter(tab.id)}
                             className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition cursor-pointer ${selectedFilter === tab.id
                                     ? 'bg-indigo-600 text-white shadow-xs'
-                                    : 'text-gray-600 hover:bg-slate-100'
+                                    : 'text-secondary hover-surface'
                                 }`}
                         >
                             {tab.label}
@@ -177,29 +177,29 @@ export function NotificationsPage() {
 
             {/* Bildirim Listesi */}
             {isLoading ? (
-                <div className="p-8 text-center text-gray-500 text-sm">Bildirimler yükleniyor...</div>
+                <div className="p-8 text-center text-secondary text-sm">Bildirimler yükleniyor...</div>
             ) : filteredNotifications.length === 0 ? (
-                <div className="p-12 text-center text-gray-400 bg-white border rounded-xl shadow-sm text-sm">
+                <div className="p-12 text-center text-muted surface border rounded-xl shadow-sm text-sm">
                     Henüz gösterilecek bildirim bulunmuyor.
                 </div>
             ) : (
-                <div className="bg-white border rounded-xl shadow-sm divide-y divide-gray-100 overflow-hidden">
+                <div className="surface border rounded-xl shadow-sm divide-y divide-gray-100 dark:divide-gray-800 overflow-hidden">
                     {Object.entries(groupedNotifications).map(([groupTitle, items]) => {
                         if (items.length === 0) return null;
 
                         return (
                             <div key={groupTitle}>
                                 {/* Tarih Grubu Başlığı */}
-                                <div className="bg-slate-50 px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-y border-gray-100">
+                                <div className="surface-muted px-4 py-2 text-xs font-bold text-muted uppercase tracking-wider border-y border-gray-100 dark:border-gray-800">
                                     {groupTitle}
                                 </div>
 
                                 {/* Bildirim Satırları */}
-                                <div className="divide-y divide-gray-100">
+                                <div className="divide-y divide-gray-100 dark:divide-gray-800">
                                     {items.map((n: any) => {
                                         const badge = TYPE_BADGES[n.type] ?? {
                                             label: 'BİLDİRİM',
-                                            color: 'bg-gray-100 text-gray-700 border-gray-200',
+                                            color: 'bg-gray-100 dark:bg-gray-800 text-secondary border-gray-200 dark:border-gray-700',
                                             icon: Bell,
                                         };
 
@@ -218,12 +218,12 @@ export function NotificationsPage() {
                                             <div
                                                 key={n.id}
                                                 onClick={() => handleNotificationClick(n)}
-                                                className={`group relative flex items-start gap-3.5 p-4 transition ${isClickable ? 'cursor-pointer hover:bg-slate-50/80' : ''
-                                                    } ${!n.isRead ? 'bg-indigo-50/40' : 'bg-white'}`}
+                                                className={`group relative flex items-start gap-3.5 p-4 transition ${isClickable ? 'cursor-pointer hover-surface' : ''
+                                                    } ${!n.isRead ? 'bg-indigo-50/40 dark:bg-indigo-950/30' : 'surface'}`}
                                             >
                                                 {/* Mavi Okunmadı Noktası */}
                                                 {!n.isRead && (
-                                                    <span className="absolute left-2 top-6 w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                                                    <span className="absolute left-2 top-6 w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0" />
                                                 )}
 
                                                 {/* Avatar */}
@@ -231,10 +231,10 @@ export function NotificationsPage() {
                                                     <img
                                                         src={n.avatarUrl}
                                                         alt={senderName}
-                                                        className="w-9 h-9 rounded-full object-cover shrink-0 border border-gray-200"
+                                                        className="w-9 h-9 rounded-full object-cover shrink-0 border border-gray-200 dark:border-gray-700"
                                                     />
                                                 ) : (
-                                                    <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0 border border-indigo-200">
+                                                    <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-xs shrink-0 border border-indigo-200 dark:border-indigo-800">
                                                         {initials}
                                                     </div>
                                                 )}
@@ -242,7 +242,7 @@ export function NotificationsPage() {
                                                 {/* Bildirim İçeriği */}
                                                 <div className="flex-1 min-w-0 pr-16">
                                                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                        <span className="font-semibold text-gray-900 text-sm">
+                                                        <span className="font-semibold text-primary text-sm">
                                                             {senderName}
                                                         </span>
 
@@ -256,35 +256,35 @@ export function NotificationsPage() {
 
                                                         {/* Task Key Linki */}
                                                         {n.taskKey && (
-                                                            <span className="font-mono text-xs font-bold text-indigo-600 hover:underline">
+                                                            <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
                                                                 {n.taskKey}
                                                             </span>
                                                         )}
                                                     </div>
 
-                                                    <p className="text-sm font-semibold text-gray-900 leading-snug">
+                                                    <p className="text-sm font-semibold text-primary leading-snug">
                                                         {n.title}
                                                     </p>
                                                     {n.message && (
-                                                        <p className="text-sm text-gray-600 leading-snug line-clamp-2 mt-0.5">
+                                                        <p className="text-sm text-secondary leading-snug line-clamp-2 mt-0.5">
                                                             {n.message}
                                                         </p>
                                                     )}
-                                                    <span className="text-xs text-gray-400 mt-1 block">
+                                                    <span className="text-xs text-muted mt-1 block">
                                                         {timeAgo(n.createdAt)}
                                                     </span>
                                                 </div>
 
                                                 {/* Hover Durumında Görünür Olan Eylemler */}
                                                 <div
-                                                    className="absolute right-4 top-4 hidden group-hover:flex items-center gap-1 bg-white/90 backdrop-blur-xs p-1 rounded-lg border border-gray-200 shadow-xs"
+                                                    className="absolute right-4 top-4 hidden group-hover:flex items-center gap-1 surface/90 backdrop-blur-xs p-1 rounded-lg border border-gray-200 dark:border-gray-700 shadow-xs"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     {!n.isRead && (
                                                         <button
                                                             onClick={() => markAsRead.mutate(n.id)}
                                                             title="Okundu İşaretle"
-                                                            className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition cursor-pointer"
+                                                            className="p-1.5 text-secondary hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded-md transition cursor-pointer"
                                                         >
                                                             <Check className="w-4 h-4" />
                                                         </button>
@@ -292,7 +292,7 @@ export function NotificationsPage() {
                                                     <button
                                                         onClick={() => deleteNotification.mutate(n.id)}
                                                         title="Sil"
-                                                        className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition cursor-pointer"
+                                                        className="p-1.5 text-secondary hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 rounded-md transition cursor-pointer"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
@@ -311,7 +311,7 @@ export function NotificationsPage() {
             <div className="pt-2">
                 <Link
                     to="/dashboard"
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:underline"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
                 >
                     <ArrowLeft className="w-4 h-4" /> Dashboard'a dön
                 </Link>

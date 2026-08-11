@@ -41,6 +41,10 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<BoardColumnSetting> BoardColumnSettings => Set<BoardColumnSetting>();
     public DbSet<SavedFilter> SavedFilters => Set<SavedFilter>();
     public DbSet<WorkflowTransition> WorkflowTransitions => Set<WorkflowTransition>();
+    public DbSet<CustomFieldDefinition> CustomFieldDefinitions => Set<CustomFieldDefinition>();
+    public DbSet<TaskCustomFieldValue> TaskCustomFieldValues => Set<TaskCustomFieldValue>();
+    public DbSet<AutomationRule> AutomationRules => Set<AutomationRule>();
+    public DbSet<ProjectPermissionOverride> ProjectPermissionOverrides => Set<ProjectPermissionOverride>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

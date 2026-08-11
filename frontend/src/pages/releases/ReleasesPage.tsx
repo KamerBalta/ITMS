@@ -22,7 +22,7 @@ export function ReleasesPage() {
     const [editingId, setEditingId] = useState<string | null>(null);
 
     if (!selectedProjectId) {
-        return <p className="text-gray-500">Devam etmek için üstten bir proje seçin.</p>;
+        return <p className="text-secondary">Devam etmek için üstten bir proje seçin.</p>;
     }
 
     return (
@@ -30,8 +30,8 @@ export function ReleasesPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-semibold">Releases</h1>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <h1 className="text-3xl font-semibold text-primary">Releases</h1>
+                    <p className="text-sm text-secondary mt-1">
                         Projenin sürümlerini ve yayın planlarını yönetin.
                     </p>
                 </div>
@@ -48,32 +48,32 @@ export function ReleasesPage() {
 
             {/* İçerik */}
             {isLoading ? (
-                <p className="text-gray-500">Yükleniyor...</p>
+                <p className="text-secondary">Yükleniyor...</p>
             ) : !releases || releases.length === 0 ? (
-                <div className="bg-white border rounded-lg p-8 text-center text-gray-400 text-sm">
+                <div className="surface border rounded-lg p-8 text-center text-muted text-sm">
                     Henüz bu proje için bir sürüm (release) oluşturulmamış.
                 </div>
             ) : (
                 <div className="space-y-3">
                     {releases.map((r) => (
-                        <div key={r.id} className="bg-white border rounded-lg p-4 shadow-xs hover:border-gray-300 transition">
+                        <div key={r.id} className="surface border rounded-lg p-4 shadow-xs hover:border-gray-300 dark:hover:border-gray-600 transition">
                             <div className="flex items-center justify-between">
-                                <span className="font-semibold text-indigo-600">{r.version}</span>
+                                <span className="font-semibold text-indigo-600 dark:text-indigo-400">{r.version}</span>
                                 <div className="flex items-center gap-3">
-                                    <span className="text-xs text-gray-400">
+                                    <span className="text-xs text-muted">
                                         {r.releaseDate ? new Date(r.releaseDate).toLocaleDateString('tr-TR') : 'Tarih belirtilmemiş'}
                                     </span>
                                     {isPM && (
                                         <button
                                             onClick={() => setEditingId(r.id)}
-                                            className="text-xs text-indigo-600 hover:underline cursor-pointer font-medium"
+                                            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-medium"
                                         >
                                             Düzenle
                                         </button>
                                     )}
                                 </div>
                             </div>
-                            {r.description && <p className="text-sm text-gray-600 mt-1">{r.description}</p>}
+                            {r.description && <p className="text-sm text-secondary mt-1">{r.description}</p>}
                             <ReleaseTasksList releaseId={r.id} />
                         </div>
                     ))}
@@ -136,52 +136,52 @@ function CreateReleaseModal({
         <Modal title="Yeni Release Oluştur" isOpen={isOpen} onClose={onClose}>
             <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Versiyon</label>
+                    <label className="block text-xs font-medium text-secondary mb-1">Versiyon</label>
                     <input
                         type="text"
                         placeholder="Örn: v1.0.0"
                         value={version}
                         onChange={(e) => setVersion(e.target.value)}
                         required
-                        className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full input-base border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Yayın Tarihi</label>
+                    <label className="block text-xs font-medium text-secondary mb-1">Yayın Tarihi</label>
                     <input
                         type="date"
                         value={releaseDate}
                         onChange={(e) => setReleaseDate(e.target.value)}
-                        className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full input-base border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Sürüm Notu</label>
+                    <label className="block text-xs font-medium text-secondary mb-1">Sürüm Notu</label>
                     <textarea
                         placeholder="Sürüm notu (opsiyonel)"
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         rows={3}
-                        className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full input-base border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                 </div>
 
-                {error && <p className="text-red-500 text-sm">{error}</p>}
+                {error && <p className="text-red-500 dark:text-red-400 text-sm">{error}</p>}
 
-                <div className="flex justify-end gap-2 pt-2 border-t">
+                <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50"
+                        className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover-surface text-secondary cursor-pointer"
                     >
                         İptal
                     </button>
                     <button
                         type="submit"
                         disabled={createRelease.isPending}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
                     >
                         {createRelease.isPending ? 'Oluşturuluyor...' : 'Oluştur'}
                     </button>
@@ -224,39 +224,39 @@ function EditReleaseModal({
         <Modal title="Release Düzenle" isOpen onClose={onClose}>
             <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Yayın Tarihi</label>
+                    <label className="block text-xs font-medium text-secondary mb-1">Yayın Tarihi</label>
                     <input
                         type="date"
                         value={releaseDate}
                         onChange={(e) => setReleaseDate(e.target.value)}
-                        className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full input-base border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Açıklama / Sürüm Notu</label>
+                    <label className="block text-xs font-medium text-secondary mb-1">Açıklama / Sürüm Notu</label>
                     <textarea
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         rows={3}
-                        className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full input-base border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                 </div>
 
-                {error && <p className="text-red-500 text-sm">{error}</p>}
+                {error && <p className="text-red-500 dark:text-red-400 text-sm">{error}</p>}
 
-                <div className="flex justify-end gap-2 pt-2 border-t">
+                <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50"
+                        className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover-surface text-secondary cursor-pointer"
                     >
                         İptal
                     </button>
                     <button
                         type="submit"
                         disabled={updateRelease.isPending}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
                     >
                         {updateRelease.isPending ? 'Kaydediliyor...' : 'Kaydet'}
                     </button>
@@ -273,21 +273,21 @@ function ReleaseTasksList({ releaseId }: { releaseId: string }) {
     if (!tasks || tasks.length === 0) return null;
 
     return (
-        <div className="mt-2 border-t pt-2">
+        <div className="mt-2 border-t border-gray-100 dark:border-gray-800 pt-2">
             <button
                 onClick={() => setExpanded((v) => !v)}
-                className="text-xs text-indigo-600 hover:underline cursor-pointer font-medium"
+                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-medium"
             >
                 {expanded ? 'Gizle' : `${tasks.length} görevi göster`}
             </button>
             {expanded && (
-                <ul className="mt-2 space-y-1.5 pl-2 border-l-2 border-indigo-100">
+                <ul className="mt-2 space-y-1.5 pl-2 border-l-2 border-indigo-100 dark:border-indigo-900">
                     {tasks.map((t) => (
-                        <li key={t.id} className="text-xs text-gray-600 flex items-center justify-between">
-                            <Link to={`/tasks/${t.id}`} className="hover:underline font-medium text-gray-800">
+                        <li key={t.id} className="text-xs text-secondary flex items-center justify-between">
+                            <Link to={`/tasks/${t.id}`} className="hover:underline font-medium text-primary">
                                 {t.title}
                             </Link>
-                            <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[10px] font-semibold">
+                            <span className="surface-muted text-secondary px-1.5 py-0.5 rounded text-[10px] font-semibold border border-gray-200 dark:border-gray-700">
                                 {t.status}
                             </span>
                         </li>

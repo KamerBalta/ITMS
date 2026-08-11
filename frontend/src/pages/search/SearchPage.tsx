@@ -63,8 +63,8 @@ export function SearchPage() {
         <div className="space-y-6 max-w-5xl mx-auto">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-semibold text-gray-900">Search</h1>
-                <p className="text-sm text-gray-500 mt-1">
+                <h1 className="text-3xl font-semibold text-primary">Search</h1>
+                <p className="text-sm text-secondary mt-1">
                     Görev, proje ve kullanıcılar arasında arama yapın.
                 </p>
             </div>
@@ -82,21 +82,21 @@ export function SearchPage() {
                         }}
                         onFocus={() => setShowSuggestions(true)}
                         autoFocus
-                        className="w-full bg-white border rounded-lg px-5 py-4 text-base shadow-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-200 transition"
+                        className="w-full input-base border border-gray-200 dark:border-gray-700 rounded-lg px-5 py-4 text-base shadow-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                     />
                 </form>
 
                 {/* Öneri Açılır Menüsü (Suggestions Dropdown) */}
                 {showSuggestionDropdown && (
-                    <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="absolute z-20 top-full mt-1 left-0 right-0 surface border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
                         {suggestions!.map((s) => (
                             <button
                                 key={s}
                                 onClick={() => handleSelectSuggestion(s)}
-                                className="w-full text-left px-5 py-3 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition flex items-center gap-3 border-b border-gray-50 last:border-0"
+                                className="w-full text-left px-5 py-3 text-sm text-secondary hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 transition flex items-center gap-3 border-b border-gray-100 dark:border-gray-800 last:border-0 cursor-pointer"
                             >
-                                <span className="text-gray-400">🔎</span>
-                                <span className="font-medium">{s}</span>
+                                <span className="text-muted">🔎</span>
+                                <span className="font-medium text-primary">{s}</span>
                             </button>
                         ))}
                     </div>
@@ -105,12 +105,12 @@ export function SearchPage() {
 
             {/* Son Aramalar Kartı */}
             {committedQuery.trim().length < 2 && recentSearches.length > 0 && (
-                <div className="bg-white border rounded-lg p-4 shadow-xs">
+                <div className="surface border rounded-lg p-4 shadow-xs">
                     <div className="flex items-center justify-between mb-3">
-                        <p className="font-medium text-sm text-gray-700">Recent searches</p>
+                        <p className="font-medium text-sm text-primary">Recent searches</p>
                         <button
                             onClick={handleClearRecent}
-                            className="text-xs text-indigo-600 hover:underline font-medium"
+                            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium cursor-pointer"
                         >
                             Clear
                         </button>
@@ -123,9 +123,9 @@ export function SearchPage() {
                                     setQuery(q);
                                     commitSearch(q);
                                 }}
-                                className="block w-full text-left px-3 py-2 rounded-md hover:bg-gray-50 text-sm text-gray-600 transition flex items-center gap-2"
+                                className="block w-full text-left px-3 py-2 rounded-md hover-surface text-sm text-secondary transition flex items-center gap-2 cursor-pointer"
                             >
-                                <span>🔎</span>
+                                <span className="text-muted">🔎</span>
                                 <span>{q}</span>
                             </button>
                         ))}
@@ -136,15 +136,14 @@ export function SearchPage() {
             {/* Arama Sonuçları */}
             {committedQuery.trim().length >= 2 && (
                 <>
-                    
-                    <div className="bg-white border rounded-lg p-1.5 flex gap-2 shadow-xs">
+                    <div className="surface border rounded-lg p-1.5 flex gap-2 shadow-xs">
                         {(['tasks', 'projects', 'users'] as TabKey[]).map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
-                                className={`px-4 py-2 rounded-md text-sm font-medium transition ${activeTab === tab
-                                        ? 'bg-indigo-50 text-indigo-600 font-semibold'
-                                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition cursor-pointer ${activeTab === tab
+                                        ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-semibold border border-indigo-200 dark:border-indigo-800'
+                                        : 'text-muted hover-surface hover:text-primary'
                                     }`}
                             >
                                 {tab === 'tasks' ? 'Issues' : tab === 'projects' ? 'Projects' : 'Users'} ({tabCounts[tab]})
@@ -154,25 +153,25 @@ export function SearchPage() {
 
                     {/* Sonuç Listeleri */}
                     {isFetching ? (
-                        <p className="text-sm text-gray-400 p-2">Aranıyor...</p>
+                        <p className="text-sm text-muted p-2">Aranıyor...</p>
                     ) : (
                         <div className="space-y-3">
                             {/* TASKS (ISSUES) */}
                             {activeTab === 'tasks' &&
                                 (results?.tasks.length === 0 ? (
-                                    <p className="text-sm text-gray-400 p-2">Sonuç bulunamadı.</p>
+                                    <p className="text-sm text-muted p-2">Sonuç bulunamadı.</p>
                                 ) : (
                                     results?.tasks.map((t) => (
                                         <Link
                                             key={t.id}
                                             to={`/tasks/${t.id}`}
-                                            className="block bg-white border rounded-lg p-5 hover:border-indigo-300 hover:shadow-xs transition"
+                                            className="block surface border rounded-lg p-5 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-xs transition"
                                         >
-                                            <p className="font-semibold text-indigo-600 text-base">{t.title}</p>
-                                            <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                                            <p className="font-semibold text-indigo-600 dark:text-indigo-400 text-base">{t.title}</p>
+                                            <div className="flex items-center gap-3 mt-2 text-xs text-muted">
                                                 <span className="flex items-center gap-1">📁 {t.projectName}</span>
                                                 <span>•</span>
-                                                <span className="font-medium text-gray-700">{t.status}</span>
+                                                <span className="font-medium text-secondary">{t.status}</span>
                                             </div>
                                         </Link>
                                     ))
@@ -181,22 +180,22 @@ export function SearchPage() {
                             {/* PROJECTS */}
                             {activeTab === 'projects' &&
                                 (results?.projects.length === 0 ? (
-                                    <p className="text-sm text-gray-400 p-2">Sonuç bulunamadı.</p>
+                                    <p className="text-sm text-muted p-2">Sonuç bulunamadı.</p>
                                 ) : (
                                     results?.projects.map((p) => (
                                         <Link
                                             key={p.id}
                                             to={`/projects/${p.id}`}
-                                            className="block bg-white border rounded-lg p-5 hover:border-indigo-300 hover:shadow-xs transition"
+                                            className="block surface border rounded-lg p-5 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-xs transition"
                                         >
                                             <div className="flex items-center justify-between">
                                                 <div>
-                                                    <p className="font-semibold text-gray-900 text-base">{p.name}</p>
-                                                    <p className="text-xs text-gray-400 mt-1 font-mono">
+                                                    <p className="font-semibold text-primary text-base">{p.name}</p>
+                                                    <p className="text-xs text-muted mt-1 font-mono">
                                                         Project key: {p.key}
                                                     </p>
                                                 </div>
-                                                <span className="text-xs bg-gray-100 text-gray-600 font-medium px-2.5 py-1 rounded-md border">
+                                                <span className="text-xs surface-muted text-secondary font-medium px-2.5 py-1 rounded-md border border-gray-200 dark:border-gray-700">
                                                     Project
                                                 </span>
                                             </div>
@@ -207,20 +206,20 @@ export function SearchPage() {
                             {/* USERS */}
                             {activeTab === 'users' &&
                                 (results?.users.length === 0 ? (
-                                    <p className="text-sm text-gray-400 p-2">Sonuç bulunamadı.</p>
+                                    <p className="text-sm text-muted p-2">Sonuç bulunamadı.</p>
                                 ) : (
                                     results?.users.map((u) => (
                                         <div
                                             key={u.id}
-                                            className="bg-white border rounded-lg p-4 flex items-center justify-between hover:shadow-xs transition"
+                                            className="surface border rounded-lg p-4 flex items-center justify-between hover:shadow-xs transition"
                                         >
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm border border-indigo-200 shrink-0">
+                                                <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-sm border border-indigo-200 dark:border-indigo-800 shrink-0">
                                                     {u.name.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
-                                                    <p className="font-semibold text-gray-900 text-sm">{u.name}</p>
-                                                    <p className="text-xs text-gray-400 mt-0.5">{u.email}</p>
+                                                    <p className="font-semibold text-primary text-sm">{u.name}</p>
+                                                    <p className="text-xs text-muted mt-0.5">{u.email}</p>
                                                 </div>
                                             </div>
                                         </div>

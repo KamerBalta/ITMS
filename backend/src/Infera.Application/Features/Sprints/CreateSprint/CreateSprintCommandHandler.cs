@@ -1,4 +1,5 @@
 ﻿using Infera.Application.Common.Interfaces;
+using Infera.Application.Common.Services;
 using Infera.Domain.Entities;
 using Infera.Domain.Enums;
 using MediatR;
@@ -12,17 +13,23 @@ public class CreateSprintCommandHandler : IRequestHandler<CreateSprintCommand, G
     private readonly IProjectAccessService _access;
     private readonly INotificationService _notificationService;
     private readonly IRealtimeNotifier _realtime;
+    private readonly ICurrentUserService _currentUser;
+    private readonly IProjectPermissionService _permissionService;
 
     public CreateSprintCommandHandler(
         IAppDbContext db,
         IProjectAccessService access,
         INotificationService notificationService,
-        IRealtimeNotifier realtime)
+        IRealtimeNotifier realtime,
+        ICurrentUserService currentUser,
+        IProjectPermissionService permissionService)
     {
         _db = db;
         _access = access;
         _notificationService = notificationService;
         _realtime = realtime;
+        _currentUser = currentUser;
+        _permissionService = permissionService;
     }
 
     public async System.Threading.Tasks.Task<Guid> Handle(CreateSprintCommand request, CancellationToken ct)
@@ -32,6 +39,14 @@ public class CreateSprintCommandHandler : IRequestHandler<CreateSprintCommand, G
 
         if (!await _access.HasProjectAccessAsync(request.ProjectId, ct))
             throw new UnauthorizedAccessException("Bu projede sprint oluşturma yetkiniz yok.");
+
+        var isPrivileged = _currentUser.IsAdmin || _currentUser.Roles.Contains("Project Manager");
+        if (!isPrivileged)
+        {
+            var developerCanManage = await _permissionService.IsOverrideEnabledAsync(request.ProjectId, "DeveloperCanManageSprints", ct);
+            if (!developerCanManage)
+                throw new UnauthorizedAccessException("Sprint oluşturma yetkiniz yok.");
+        }
 
         if (request.EndDate <= request.StartDate)
             throw new InvalidOperationException("Bitiş tarihi başlangıç tarihinden sonra olmalıdır.");

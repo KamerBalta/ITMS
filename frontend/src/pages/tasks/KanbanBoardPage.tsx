@@ -184,13 +184,15 @@ export function KanbanBoardPage() {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold">Kanban Board</h1>
-                    <p className="text-sm text-gray-400">{activeSprint.name}</p>
+                    <h1 className="text-2xl font-bold text-primary">Kanban Board</h1>
+                    <p className="text-sm text-muted">{activeSprint.name}</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => setSwimlaneMode((v) => !v)}
-                        className={`text-sm px-3 py-2 rounded border ${swimlaneMode ? 'bg-indigo-50 border-indigo-300 text-indigo-600' : 'border-gray-200 text-gray-600'
+                        className={`text-sm px-3 py-2 rounded border ${swimlaneMode
+                                ? 'bg-indigo-50 dark:bg-indigo-950 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400'
+                                : 'border-gray-200 dark:border-gray-600 text-secondary'
                             }`}
                     >
                         {swimlaneMode ? '☰ Epic Görünümü Açık' : "☰ Epic'e Göre Grupla"}
@@ -238,7 +240,7 @@ export function KanbanBoardPage() {
                         return (
                             <div key={groupKey} className={swimlaneMode && groupKey !== EPIC_GROUP_KEY ? `border-l-4 ${colorForEpic(groupKey)} pl-3` : ''}>
                                 {swimlaneMode && groupKey !== EPIC_GROUP_KEY && (
-                                    <p className="text-xs font-semibold text-gray-500 mb-2">
+                                    <p className="text-xs font-semibold text-secondary mb-2">
                                         📦 {epicTask?.title ?? 'Epic'}
                                     </p>
                                 )}
@@ -261,11 +263,16 @@ export function KanbanBoardPage() {
                                                 }}
                                                 onDragLeave={() => setDragOverColumn(null)}
                                                 onDrop={(e) => handleDrop(e, col.status)}
-                                                className={`bg-gray-100 rounded-lg p-2 min-h-[200px] transition-colors ${dragOverColumn === col.status ? 'bg-indigo-50 ring-2 ring-indigo-300' : ''
-                                                    } ${isOverLimit ? 'ring-2 ring-red-300 bg-red-50' : ''}`}
+                                                className={`bg-gray-100 dark:bg-gray-900 rounded-lg p-2 min-h-[200px] transition-colors ${dragOverColumn === col.status
+                                                        ? 'bg-indigo-50 dark:bg-indigo-950 ring-2 ring-indigo-300 dark:ring-indigo-700'
+                                                        : ''
+                                                    } ${isOverLimit
+                                                        ? 'ring-2 ring-red-300 dark:ring-red-700 bg-red-50 dark:bg-red-950'
+                                                        : ''
+                                                    }`}
                                             >
                                                 <div className="flex items-center justify-between px-1 mb-2">
-                                                    <span className="text-xs font-semibold text-gray-500">{col.label}</span>
+                                                    <span className="text-xs font-semibold text-secondary">{col.label}</span>
 
                                                     {editingWipFor === col.status ? (
                                                         <div className="flex items-center gap-1">

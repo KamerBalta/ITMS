@@ -9,12 +9,14 @@ export function WatchersSection({ taskId, watcherCount }: { taskId: string; watc
     const toggleWatch = useToggleWatch(taskId, isWatching);
 
     return (
-        <div className="bg-white border rounded-lg p-3 space-y-2">
+        <div className="surface border rounded-lg p-3 space-y-2">
             <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">👁️ {watchers?.length ?? watcherCount} kişi izliyor</span>
+                <span className="text-sm text-secondary">👁️ {watchers?.length ?? watcherCount} kişi izliyor</span>
                 <button
                     onClick={() => toggleWatch.mutate()}
-                    className={`text-sm px-3 py-1 rounded border ${isWatching ? 'border-indigo-300 text-indigo-600 bg-indigo-50' : 'border-gray-200 text-gray-600'
+                    className={`text-sm px-3 py-1 rounded border transition-colors cursor-pointer ${isWatching
+                            ? 'border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950'
+                            : 'border-gray-200 dark:border-gray-600 text-secondary'
                         }`}
                 >
                     {isWatching ? 'İzlemeyi Bırak' : 'İzle'}
@@ -23,7 +25,7 @@ export function WatchersSection({ taskId, watcherCount }: { taskId: string; watc
             {watchers && watchers.length > 0 && (
                 <div className="flex -space-x-2">
                     {watchers.map((w) => (
-                        <div key={w.userId} className="ring-2 ring-white rounded-full">
+                        <div key={w.userId} className="ring-2 ring-white dark:ring-gray-800 rounded-full">
                             <Avatar userId={w.userId} name={w.userName} size="sm" />
                         </div>
                     ))}

@@ -11,9 +11,10 @@ import { ProjectSelector } from './ProjectSelector';
 import { CreateTaskModal } from './CreateTaskModal';
 import { NotificationDropdown } from './NotificationDropdown';
 import { RealtimeIndicator } from './RealtimeIndicator';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { GlobalSearchPopover } from './GlobalSearchPopover';
-import { useGlobalSearchShortcut } from '../hooks/useGlobalSearchShortcut';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
+import { ShortcutsHelpModal } from './ShortcutsHelpModal';
 import logoImg from '../assets/logo.png';
 
 const SECTION_LABELS: Record<string, string> = {
@@ -38,14 +39,18 @@ export function AppLayout() {
     const isAdmin = user?.roles.includes('System Admin') ?? false;
     const unreadCount = notifications?.filter((n) => !n.isRead).length ?? 0;
     const [isCreateOpen, setCreateOpen] = useState(false);
+    const [isHelpOpen, setHelpOpen] = useState(false);
 
     // Canlı Arama Popover State ve Ref
     const [isSearchOpen, setSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const searchInputRef = useRef<HTMLInputElement>(null);
 
-    // Global Kısayol (Ctrl+K)
-    useGlobalSearchShortcut();
+    // Global Kısayollar
+    useKeyboardShortcuts({
+        onCreateTask: () => setCreateOpen(true),
+        onShowHelp: () => setHelpOpen(true),
+    });
 
     // Realtime Sync Hook'u
     useRealtimeSync();
@@ -85,7 +90,7 @@ export function AppLayout() {
     };
 
     return (
-        <div className="min-h-screen flex bg-slate-50 text-slate-800">
+        <div className="min-h-screen flex bg-slate-50 dark:bg-gray-950 text-slate-800 dark:text-gray-100">
             {/* Mobil Sidebar Perdesi */}
             {isMobileSidebarOpen && (
                 <div
@@ -96,11 +101,11 @@ export function AppLayout() {
 
             {/* Sidebar */}
             <aside
-                className={`w-60 bg-white border-r border-slate-200 flex flex-col fixed md:static inset-y-0 left-0 z-40 transition-transform duration-200 select-none ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+                className={`w-60 surface border-r border-slate-200 dark:border-gray-800 flex flex-col fixed md:static inset-y-0 left-0 z-40 transition-transform duration-200 select-none ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
                     }`}
             >
                 {/* Logo & Başlık Alanı */}
-                <div className="px-4 py-3.5 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div className="px-4 py-3.5 border-b border-slate-100 dark:border-gray-800 flex items-center justify-between shrink-0">
                     <Link
                         to="/dashboard"
                         className="flex items-center gap-3 group cursor-pointer"
@@ -112,22 +117,22 @@ export function AppLayout() {
                             className="w-8 h-8 object-cover scale-150 shrink-0 transition-transform group-hover:scale-160"
                         />
                         <div>
-                            <span className="text-lg font-extrabold text-slate-900 leading-none block group-hover:text-blue-600 transition-colors">
+                            <span className="text-lg font-extrabold text-primary leading-none block group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                                 ITMS
                             </span>
-                            <span className="text-[10px] text-slate-400 font-medium leading-none">
+                            <span className="text-[10px] text-muted font-medium leading-none">
                                 Software Management
                             </span>
                         </div>
                     </Link>
 
-                    <button onClick={closeMobileSidebar} className="md:hidden text-slate-400 hover:text-slate-600">
+                    <button onClick={closeMobileSidebar} className="md:hidden text-muted hover:text-primary">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
                 {/* Oluştur Butonu */}
-                <div className="px-3 py-3 border-b border-slate-100 shrink-0">
+                <div className="px-3 py-3 border-b border-slate-100 dark:border-gray-800 shrink-0">
                     <button
                         onClick={() => setCreateOpen(true)}
                         className="w-full h-9 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
@@ -145,7 +150,7 @@ export function AppLayout() {
 
                         return (
                             <div key={sectionKey} className="space-y-0.5">
-                                <div className="px-2 pb-1.5 text-[11px] font-semibold text-slate-400 tracking-widest uppercase">
+                                <div className="px-2 pb-1.5 text-[11px] font-semibold text-muted tracking-widest uppercase">
                                     {SECTION_LABELS[sectionKey] ?? sectionKey}
                                 </div>
 
@@ -158,8 +163,8 @@ export function AppLayout() {
                                             to={item.path}
                                             className={({ isActive }) =>
                                                 `flex items-center justify-between px-3 py-2 rounded-r-md text-sm transition-all duration-150 ${isActive
-                                                    ? 'bg-blue-50 text-blue-700 font-semibold border-l-4 border-blue-600 -ml-3 pl-2.5'
-                                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-4 border-transparent -ml-3 pl-2.5'
+                                                    ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold border-l-4 border-blue-600 dark:border-blue-400 -ml-3 pl-2.5'
+                                                    : 'text-secondary hover-surface hover:text-primary border-l-4 border-transparent -ml-3 pl-2.5'
                                                 }`
                                             }
                                         >
@@ -189,12 +194,12 @@ export function AppLayout() {
             {/* Ana İçerik */}
             <div className="flex-1 flex flex-col min-w-0">
                 {/* Responsive Header */}
-                <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-3 md:px-6 gap-2 sm:gap-4 shrink-0 relative z-30">
+                <header className="h-14 surface border-b border-slate-200 dark:border-gray-800 flex items-center justify-between px-3 md:px-6 gap-2 sm:gap-4 shrink-0 relative z-30">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                         {/* Mobil Hamburger Menü */}
                         <button
                             onClick={toggleMobileSidebar}
-                            className="md:hidden text-slate-500 hover:text-slate-700 shrink-0 p-1.5 rounded-md hover:bg-slate-100 transition"
+                            className="md:hidden text-secondary hover:text-primary shrink-0 p-1.5 rounded-md hover-surface transition"
                         >
                             <Menu className="w-5 h-5" />
                         </button>
@@ -204,11 +209,11 @@ export function AppLayout() {
                             <ProjectSelector />
                         </div>
 
-                        {/* Responsive Arama Alanı (Doğrudan Aktif Input) */}
+                        {/* Responsive Arama Alanı */}
                         <div className="relative min-w-0">
                             {/* Masaüstü Arama Input'u */}
-                            <div className="hidden lg:flex items-center gap-2 bg-slate-100 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/20 border border-slate-200 rounded-md px-3 py-1.5 w-64 transition">
-                                <Search className="w-4 h-4 shrink-0 text-slate-400" />
+                            <div className="hidden lg:flex items-center gap-2 surface-muted focus-within:surface focus-within:ring-2 focus-within:ring-blue-500/20 border border-slate-200 dark:border-gray-700 rounded-md px-3 py-1.5 w-64 transition">
+                                <Search className="w-4 h-4 shrink-0 text-muted" />
                                 <input
                                     ref={searchInputRef}
                                     type="text"
@@ -219,17 +224,17 @@ export function AppLayout() {
                                     }}
                                     onFocus={() => setSearchOpen(true)}
                                     placeholder="ITMS'de ara..."
-                                    className="text-xs text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full"
+                                    className="text-xs text-primary placeholder:text-muted bg-transparent outline-none w-full"
                                 />
                                 {searchQuery ? (
                                     <button
                                         onClick={() => setSearchQuery('')}
-                                        className="text-slate-400 hover:text-slate-600 text-xs shrink-0"
+                                        className="text-muted hover:text-primary text-xs shrink-0 cursor-pointer"
                                     >
                                         <X className="w-3.5 h-3.5" />
                                     </button>
                                 ) : (
-                                    <kbd className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded shrink-0">
+                                    <kbd className="text-[10px] bg-gray-100 dark:bg-gray-700 text-secondary px-1.5 py-0.5 rounded shrink-0">
                                         Ctrl K
                                     </kbd>
                                 )}
@@ -238,13 +243,13 @@ export function AppLayout() {
                             {/* Mobil / Tablet Arama Butonu */}
                             <button
                                 onClick={() => setSearchOpen(true)}
-                                className="lg:hidden p-1.5 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition shrink-0"
+                                className="lg:hidden p-1.5 rounded-md text-secondary hover:text-primary hover-surface transition shrink-0 cursor-pointer"
                                 title="Arama yap"
                             >
                                 <Search className="w-5 h-5" />
                             </button>
 
-                            {/* Sonuç Liste Popover'ı (İçinde Arama Kutusu Barındırmayan Temiz Sonuç Paneli) */}
+                            {/* Sonuç Liste Popover'ı */}
                             <GlobalSearchPopover
                                 isOpen={isSearchOpen}
                                 searchQuery={searchQuery}
@@ -260,17 +265,17 @@ export function AppLayout() {
 
                         <NavLink
                             to="/profile"
-                            className="flex items-center gap-2 p-0.5 sm:p-1 rounded-full hover:bg-slate-100 transition"
+                            className="flex items-center gap-2 p-0.5 sm:p-1 rounded-full hover-surface transition"
                             title={user?.email}
                         >
-                            <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center border-2 border-indigo-200 shadow-2xs shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-800 shadow-2xs shrink-0">
                                 {getUserInitials()}
                             </div>
                         </NavLink>
 
                         <button
                             onClick={handleLogout}
-                            className="flex items-center gap-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-1.5 sm:px-2.5 rounded-md transition font-medium cursor-pointer"
+                            className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/50 px-2 py-1.5 sm:px-2.5 rounded-md transition font-medium cursor-pointer"
                         >
                             <LogOut className="w-4 h-4" />
                             <span className="hidden sm:inline">Çıkış</span>
@@ -289,6 +294,11 @@ export function AppLayout() {
                 sprintId={null}
                 isOpen={isCreateOpen}
                 onClose={() => setCreateOpen(false)}
+            />
+
+            <ShortcutsHelpModal
+                isOpen={isHelpOpen}
+                onClose={() => setHelpOpen(false)}
             />
         </div>
     );

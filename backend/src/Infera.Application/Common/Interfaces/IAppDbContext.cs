@@ -36,6 +36,10 @@ public interface IAppDbContext
     DbSet<BoardColumnSetting> BoardColumnSettings { get; }
     DbSet<SavedFilter> SavedFilters { get; }
     DbSet<WorkflowTransition> WorkflowTransitions { get; }
+    DbSet<CustomFieldDefinition> CustomFieldDefinitions { get; }
+    DbSet<TaskCustomFieldValue> TaskCustomFieldValues { get; }
+    DbSet<AutomationRule> AutomationRules { get; }
+    DbSet<ProjectPermissionOverride> ProjectPermissionOverrides { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

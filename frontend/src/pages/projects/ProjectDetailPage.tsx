@@ -16,17 +16,22 @@ import {
     useRemoveProjectMember,
     useUpdateProjectMember,
 } from '../../hooks/useProjectMembers';
+import { useConfirm } from '../../hooks/useConfirm';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Avatar } from '../../components/Avatar';
 import type { AxiosError } from 'axios';
 import type { ApiErrorResponse } from '../../types/api';
-
-const ROLE_BADGE_COLORS: Record<string, string> = {
-    'Project Manager': 'bg-purple-100 text-purple-800 border-purple-200',
-    'PM': 'bg-purple-100 text-purple-800 border-purple-200',
-    'Developer': 'bg-blue-100 text-blue-800 border-blue-200',
-    'QA': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    'Tester': 'bg-green-100 text-green-800 border-green-200',
-};
+import {
+    ArrowLeft,
+    Archive,
+    Check,
+    ChevronRight,
+    MoreHorizontal,
+    Pencil,
+    Plus,
+    Settings2,
+    X,
+} from 'lucide-react';
 
 export function ProjectDetailPage() {
     const { projectId } = useParams<{ projectId: string }>();
@@ -42,6 +47,8 @@ export function ProjectDetailPage() {
     const addTeam = useAddTeamToProject(projectId!);
     const removeTeam = useRemoveTeamFromProject(projectId!);
 
+    const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
+
     // Proje üyeleriyle ilgili Hook'lar ve State'ler
     const { data: projectMembers } = useProjectMembers(projectId ?? null);
     const [selectedMemberTeamId, setSelectedMemberTeamId] = useState('');
@@ -50,7 +57,6 @@ export function ProjectDetailPage() {
     const { data: teamForMemberPicker } = useTeamDetail(selectedMemberTeamId || null);
     const addProjectMember = useAddProjectMember(projectId!);
     const removeProjectMember = useRemoveProjectMember(projectId!);
-    const updateProjectMember = useUpdateProjectMember(projectId!);
 
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState('');
@@ -61,12 +67,8 @@ export function ProjectDetailPage() {
     // Modal State'leri
     const [isAddTeamModalOpen, setIsAddTeamModalOpen] = useState(false);
     const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
-    const [isEditMemberModalOpen, setIsEditMemberModalOpen] = useState(false);
-    const [editingMemberId, setEditingMemberId] = useState('');
-    const [editingMemberTeamId, setEditingMemberTeamId] = useState('');
-    const [editingMemberRole, setEditingMemberRole] = useState('1');
 
-    if (isLoading || !project) return <p className="text-gray-500">Yükleniyor...</p>;
+    if (isLoading || !project) return <p className="text-secondary p-4">Yükleniyor...</p>;
 
     const projectTeamIds = allTeams?.filter((t) => project.teamNames.includes(t.name)).map((t) => t.id) ?? [];
 
@@ -89,7 +91,13 @@ export function ProjectDetailPage() {
 
     const handleArchive = async () => {
         setError(null);
-        if (!confirm('Bu projeyi arşivlemek istediğinize emin misiniz?')) return;
+        const ok = await confirm(
+            'Projeyi Arşivle',
+            'Bu projeyi arşivlemek istediğinize emin misiniz?',
+            true
+        );
+        if (!ok) return;
+
         try {
             await archiveProject.mutateAsync(project.id);
             navigate('/projects');
@@ -152,25 +160,6 @@ export function ProjectDetailPage() {
         }
     };
 
-    const handleUpdateProjectMember = async () => {
-        setError(null);
-        try {
-            await updateProjectMember.mutateAsync({
-                memberId: editingMemberId,
-                data: {
-                    teamId: editingMemberTeamId,
-                    projectRole: Number(editingMemberRole),
-                },
-            });
-            setIsEditMemberModalOpen(false);
-        } catch (err) {
-            const axiosError = err as AxiosError<ApiErrorResponse>;
-            setError(
-                axiosError.response?.data?.message ?? 'Üye güncellenemedi.'
-            );
-        }
-    };
-
     const availableTeamMembers =
         teamForMemberPicker?.members.filter(
             (m) => !projectMembers?.some((pm) => pm.userId === m.userId)
@@ -179,17 +168,7 @@ export function ProjectDetailPage() {
     const availableTeamsToAdd = allTeams?.filter((t) => !project.teamNames.includes(t.name)) ?? [];
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6">
-            {/* Geri Gitme Butonu (Navigasyon) */}
-            <div className="flex items-center">
-                <Link
-                    to="/projects"
-                    className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-indigo-600 transition"
-                >
-                    <span>←</span> Projelere Dön
-                </Link>
-            </div>
-
+        <div className="mx-auto max-w-[1400px] space-y-6 p-6">
             {/* Hata Bildirimi */}
             {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between text-sm">
@@ -200,169 +179,257 @@ export function ProjectDetailPage() {
                 </div>
             )}
 
-            <div className="bg-white border rounded-lg p-6 shadow-sm">
-                <div className="flex justify-between items-start">
-                    <div className="flex-1 mr-4">
-                        <div className="text-xs font-semibold uppercase text-gray-400 tracking-wider">
-                            Project
+            {/* Header */}
+            <div className="border-b border-border pb-5">
+                <Link
+                    to="/projects"
+                    className="mb-5 inline-flex items-center gap-2 text-sm text-secondary hover:text-primary"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Projeler
+                </Link>
+
+                <div className="flex items-start justify-between gap-6">
+                    <div className="flex min-w-0 items-start gap-4">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                            <Settings2 className="h-6 w-6" />
                         </div>
 
-                        {isEditing ? (
-                            <div className="mt-2 space-y-2">
-                                <input
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    className="text-2xl font-bold border rounded px-2 py-1 w-full"
-                                />
-                                <textarea
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    rows={3}
-                                    className="w-full border rounded px-3 py-2 text-sm"
-                                    placeholder="Açıklama ekleyin..."
-                                />
-                            </div>
-                        ) : (
-                            <>
-                                <h1 className="text-3xl font-bold mt-1 text-gray-900">
-                                    {project.name}
-                                </h1>
-                                <p className="text-sm text-gray-500 mt-2">
-                                    {project.description || 'Açıklama bulunmuyor.'}
-                                </p>
-                            </>
-                        )}
-                    </div>
+                        <div className="min-w-0 flex-1">
+                            {isEditing ? (
+                                <div className="space-y-2">
+                                    <input
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        className="text-2xl font-bold text-primary input-base border rounded px-2 py-1 w-full"
+                                    />
+                                    <textarea
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        rows={3}
+                                        className="w-full input-base border rounded px-3 py-2 text-sm"
+                                        placeholder="Açıklama ekleyin..."
+                                    />
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex items-center gap-3">
+                                        <h1 className="text-2xl font-semibold text-primary">
+                                            {project.name}
+                                        </h1>
 
-                    <div className="flex flex-col items-end gap-3">
-                        <div className="text-right">
-                            <div className="text-xs text-gray-400 font-semibold uppercase">Key</div>
-                            <div className="font-mono font-bold text-lg text-indigo-600">{project.key}</div>
+                                        <span
+                                            className={`rounded-full px-2.5 py-1 text-xs font-medium ${project.status === 'Archived'
+                                                    ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
+                                                    : 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
+                                                }`}
+                                        >
+                                            {project.status === 'Archived'
+                                                ? 'Arşivlenmiş'
+                                                : 'Aktif'}
+                                        </span>
+                                    </div>
+
+                                    <div className="mt-1 flex items-center gap-2 text-sm text-secondary">
+                                        <span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
+                                            {project.key}
+                                        </span>
+                                        <span>·</span>
+                                        <span>Proje</span>
+                                    </div>
+
+                                    <p className="mt-3 max-w-3xl text-sm text-secondary">
+                                        {project.description || 'Açıklama bulunmuyor.'}
+                                    </p>
+                                </>
+                            )}
                         </div>
-
-                        {/* Yönetim Butonları (Header Sağ Üst) */}
-                        {canManage && (
-                            <div className="flex gap-2">
-                                {isEditing ? (
-                                    <>
-                                        <button
-                                            onClick={handleSave}
-                                            className="bg-indigo-600 text-white px-3 py-1.5 rounded text-sm hover:bg-indigo-700 font-medium"
-                                        >
-                                            Kaydet
-                                        </button>
-                                        <button
-                                            onClick={() => setIsEditing(false)}
-                                            className="px-3 py-1.5 rounded text-sm border hover:bg-gray-50"
-                                        >
-                                            İptal
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <button
-                                            onClick={startEditing}
-                                            className="px-3 py-1.5 rounded text-sm border hover:bg-gray-50 font-medium text-gray-700"
-                                        >
-                                            Düzenle
-                                        </button>
-                                        {project.status !== 'Archived' ? (
-                                            <button
-                                                onClick={handleArchive}
-                                                className="px-3 py-1.5 rounded text-sm border border-red-300 text-red-600 hover:bg-red-50 font-medium"
-                                            >
-                                                Arşivle
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={handleUnarchive}
-                                                className="px-3 py-1.5 rounded text-sm border border-green-300 text-green-600 hover:bg-green-50 font-medium"
-                                            >
-                                                Arşivden Çıkar
-                                            </button>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        )}
                     </div>
+
+                    {canManage && (
+                        <div className="flex shrink-0 items-center gap-2">
+                            {isEditing ? (
+                                <>
+                                    <button
+                                        onClick={handleSave}
+                                        disabled={updateProject.isPending}
+                                        className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                                    >
+                                        <Check className="h-4 w-4" />
+                                        Kaydet
+                                    </button>
+
+                                    <button
+                                        onClick={() => setIsEditing(false)}
+                                        className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-secondary hover:bg-surface-muted"
+                                    >
+                                        <X className="h-4 w-4" />
+                                        İptal
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={startEditing}
+                                        className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-secondary hover:bg-surface-muted"
+                                    >
+                                        <Pencil className="h-4 w-4" />
+                                        Düzenle
+                                    </button>
+
+                                    {project.status !== 'Archived' ? (
+                                        <button
+                                            onClick={handleArchive}
+                                            className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+                                        >
+                                            <Archive className="h-4 w-4" />
+                                            Arşivle
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={handleUnarchive}
+                                            className="inline-flex items-center gap-2 rounded-md border border-green-200 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50 dark:border-green-900 dark:text-green-400 dark:hover:bg-green-950"
+                                        >
+                                            <Archive className="h-4 w-4" />
+                                            Arşivden Çıkar
+                                        </button>
+                                    )}
+
+                                    <button
+                                        type="button"
+                                        className="rounded-md border border-border p-2 text-secondary hover:bg-surface-muted"
+                                        title="Diğer seçenekler"
+                                    >
+                                        <MoreHorizontal className="h-5 w-5" />
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
+            </div>
 
-                {canManage && (
-                    <div className="mt-6 pt-4 border-t flex items-center gap-4">
+            {/* İstatistik Kartları */}
+            <div className="grid grid-cols-2 border-y border-border md:grid-cols-4 bg-surface rounded-lg overflow-hidden border">
+                <div className="border-r border-border px-5 py-4">
+                    <p className="text-xs font-medium text-secondary">Sorumlu</p>
+                    <p className="mt-1 truncate text-sm font-semibold text-primary">{project.ownerName}</p>
+                </div>
+                <div className="border-r border-border px-5 py-4">
+                    <p className="text-xs font-medium text-secondary">Proje Üyeleri</p>
+                    <p className="mt-1 text-sm font-semibold text-primary">{project.memberCount}</p>
+                </div>
+                <div className="border-r border-border px-5 py-4">
+                    <p className="text-xs font-medium text-secondary">Görevler</p>
+                    <p className="mt-1 text-sm font-semibold text-primary">{project.taskCount}</p>
+                </div>
+                <div className="px-5 py-4">
+                    <p className="text-xs font-medium text-secondary">Durum</p>
+                    <p className="mt-1 text-sm font-semibold text-primary">
+                        {project.status === 'Archived' ? 'Arşivlenmiş' : 'Aktif'}
+                    </p>
+                </div>
+            </div>
+
+            {/* Proje Ayarları Listesi */}
+            {canManage && (
+                <section>
+                    <div className="mb-3">
+                        <h2 className="text-lg font-semibold text-primary">Proje ayarları</h2>
+                        <p className="mt-1 text-sm text-secondary">Projenizin işleyişini ve yapılandırmasını yönetin.</p>
+                    </div>
+
+                    <div className="overflow-hidden rounded-lg border border-border bg-surface">
                         <Link
                             to={`/projects/${projectId}/issue-types`}
-                            className="inline-block text-sm text-indigo-600 hover:underline font-medium"
+                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
                         >
-                            Issue Types Yönetimi →
+                            <div>
+                                <p className="text-sm font-medium text-primary">Issue Types</p>
+                                <p className="mt-1 text-xs text-secondary">Projede kullanılabilecek iş türlerini yönetin.</p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-muted" />
                         </Link>
+
                         <Link
                             to={`/projects/${projectId}/workflow`}
-                            className="inline-block text-sm text-indigo-600 hover:underline font-medium"
+                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
                         >
-                            Workflow Editörü →
+                            <div>
+                                <p className="text-sm font-medium text-primary">Workflow</p>
+                                <p className="mt-1 text-xs text-secondary">İş akışı ve durum geçişlerini yapılandırın.</p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-muted" />
+                        </Link>
+
+                        <Link
+                            to={`/projects/${projectId}/custom-fields`}
+                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
+                        >
+                            <div>
+                                <p className="text-sm font-medium text-primary">Özel Alanlar</p>
+                                <p className="mt-1 text-xs text-secondary">Projeye özel alanları yönetin.</p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-muted" />
+                        </Link>
+
+                        <Link
+                            to={`/projects/${projectId}/automation`}
+                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
+                        >
+                            <div>
+                                <p className="text-sm font-medium text-primary">Otomasyon</p>
+                                <p className="mt-1 text-xs text-secondary">Otomatik çalışan proje kurallarını yönetin.</p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-muted" />
+                        </Link>
+
+                        <Link
+                            to={`/projects/${projectId}/permissions`}
+                            className="flex items-center justify-between px-5 py-4 hover:bg-surface-muted"
+                        >
+                            <div>
+                                <p className="text-sm font-medium text-primary">Yetkiler</p>
+                                <p className="mt-1 text-xs text-secondary">Proje erişim ve yetki ayarlarını yönetin.</p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-muted" />
                         </Link>
                     </div>
-                )}
-            </div>
+                </section>
+            )}
 
-            {/* İstatistik Kartları (4 Kolon) */}
-            <div className="grid grid-cols-4 gap-4 text-sm">
-                <div className="bg-white border rounded-lg p-4 shadow-sm">
-                    <p className="text-xs font-medium text-gray-400 uppercase">Sorumlu</p>
-                    <p className="font-semibold text-gray-800 mt-1 text-base truncate">{project.ownerName}</p>
-                </div>
-                <div className="bg-white border rounded-lg p-4 shadow-sm">
-                    <p className="text-xs font-medium text-gray-400 uppercase">Üye Sayısı</p>
-                    <p className="font-semibold text-gray-800 mt-1 text-base">{project.memberCount}</p>
-                </div>
-                <div className="bg-white border rounded-lg p-4 shadow-sm">
-                    <p className="text-xs font-medium text-gray-400 uppercase">Görev Sayısı</p>
-                    <p className="font-semibold text-gray-800 mt-1 text-base">{project.taskCount}</p>
-                </div>
-                <div className="bg-white border rounded-lg p-4 shadow-sm">
-                    <p className="text-xs font-medium text-gray-400 uppercase">Durum</p>
-                    <span
-                        className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${project.status === 'Archived'
-                                ? 'bg-red-100 text-red-800 border-red-200'
-                                : 'bg-green-100 text-green-800 border-green-200'
-                            }`}
-                    >
-                        {project.status === 'Archived' ? 'Archived' : 'Active'}
-                    </span>
-                </div>
-            </div>
-
-            {/* İki Kolonlu Yapı: Takımlar & Üyeler */}
-            <div className="grid grid-cols-2 gap-6">
+            {/* Takımlar & Üyeler */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* SOL KOLON: TAKIMLAR */}
-                <div className="bg-white border rounded-lg p-5 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b pb-3">
-                        <h2 className="font-bold text-gray-800 text-base">TAKIMLAR</h2>
+                <div className="surface border rounded-lg p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-border pb-3">
+                        <div>
+                            <h2 className="text-base font-semibold text-primary">Takımlar</h2>
+                            <p className="mt-1 text-xs text-secondary">Bu projede çalışan takımlar</p>
+                        </div>
                         {canManage && availableTeamsToAdd.length > 0 && (
                             <button
                                 onClick={() => setIsAddTeamModalOpen(true)}
-                                className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 px-3 py-1.5 rounded-md hover:bg-indigo-100 font-semibold"
+                                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-secondary hover:bg-surface-muted"
                             >
-                                + Takım Ekle
+                                <Plus className="h-3.5 w-3.5" />
+                                Takım Ekle
                             </button>
                         )}
                     </div>
 
                     {project.teamNames.length === 0 ? (
-                        <p className="text-sm text-gray-400">Projeye henüz takım atanmamış.</p>
+                        <p className="text-sm text-muted">Projeye henüz takım atanmamış.</p>
                     ) : (
                         <div className="space-y-2">
                             {project.teamNames.map((teamName) => (
                                 <div
                                     key={teamName}
-                                    className="flex items-center justify-between p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition"
+                                    className="flex items-center justify-between p-3 border rounded-lg surface-muted"
                                 >
                                     <div className="flex items-center gap-2">
                                         <span className="text-lg">👥</span>
-                                        <div>
-                                            <p className="font-semibold text-gray-800 text-sm">{teamName}</p>
-                                        </div>
+                                        <p className="font-semibold text-primary text-sm">{teamName}</p>
                                     </div>
                                     {canManage && (
                                         <button
@@ -379,32 +446,36 @@ export function ProjectDetailPage() {
                 </div>
 
                 {/* SAĞ KOLON: PROJE ÜYELERİ */}
-                <div className="bg-white border rounded-lg p-5 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b pb-3">
-                        <h2 className="font-bold text-gray-800 text-base">PROJE ÜYELERİ</h2>
+                <div className="surface border rounded-lg p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-border pb-3">
+                        <div>
+                            <h2 className="text-base font-semibold text-primary">Proje Üyeleri</h2>
+                            <p className="mt-1 text-xs text-secondary">Projede yer alan üyeler</p>
+                        </div>
                         {canManage && projectTeamIds.length > 0 && (
                             <button
                                 onClick={() => setIsAddMemberModalOpen(true)}
-                                className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 px-3 py-1.5 rounded-md hover:bg-indigo-100 font-semibold"
+                                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-secondary hover:bg-surface-muted"
                             >
-                                + Üye Ekle
+                                <Plus className="h-3.5 w-3.5" />
+                                Üye Ekle
                             </button>
                         )}
                     </div>
 
                     {!projectMembers || projectMembers.length === 0 ? (
-                        <p className="text-sm text-gray-400">Bu projede henüz üye yok.</p>
+                        <p className="text-sm text-muted">Bu projede henüz üye yok.</p>
                     ) : (
                         <ul className="space-y-2">
                             {projectMembers.map((m) => (
-                                <li key={m.memberId} className="flex items-center gap-2 text-sm bg-white border rounded px-3 py-2">
+                                <li key={m.memberId} className="flex items-center gap-2 text-sm surface border rounded px-3 py-2">
                                     <Avatar userId={m.userId} name={m.userName} size="sm" />
-                                    <span className="flex-1">
-                                        {m.userName} {m.title && <span className="text-gray-400">· {m.title}</span>}
-                                        <span className="text-gray-400"> — {m.teamName} — {m.projectRole}</span>
+                                    <span className="flex-1 truncate">
+                                        {m.userName} {m.title && <span className="text-muted">· {m.title}</span>}
+                                        <span className="text-muted"> — {m.teamName} — {m.projectRole}</span>
                                     </span>
                                     {canManage && (
-                                        <button onClick={() => removeProjectMember.mutate(m.memberId)} className="text-red-500 text-xs hover:underline">
+                                        <button onClick={() => removeProjectMember.mutate(m.memberId)} className="text-red-500 text-xs hover:underline shrink-0">
                                             Çıkar
                                         </button>
                                     )}
@@ -418,12 +489,12 @@ export function ProjectDetailPage() {
             {/* MODAL: Takım Ekle */}
             {isAddTeamModalOpen && (
                 <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full space-y-4">
-                        <div className="flex justify-between items-center border-b pb-2">
-                            <h3 className="font-bold text-lg text-gray-800">Takım Ekle</h3>
+                    <div className="surface rounded-lg shadow-lg p-6 max-w-md w-full space-y-4">
+                        <div className="flex justify-between items-center border-b border-border pb-2">
+                            <h3 className="font-bold text-lg text-primary">Takım Ekle</h3>
                             <button
                                 onClick={() => setIsAddTeamModalOpen(false)}
-                                className="text-gray-400 hover:text-gray-600 font-bold"
+                                className="text-muted hover:text-secondary font-bold"
                             >
                                 ✕
                             </button>
@@ -431,7 +502,7 @@ export function ProjectDetailPage() {
                         <select
                             value={selectedNewTeamId}
                             onChange={(e) => setSelectedNewTeamId(e.target.value)}
-                            className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-full input-base border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         >
                             <option value="">Takım seçin...</option>
                             {availableTeamsToAdd.map((t) => (
@@ -443,7 +514,7 @@ export function ProjectDetailPage() {
                         <div className="flex justify-end gap-2 pt-2">
                             <button
                                 onClick={() => setIsAddTeamModalOpen(false)}
-                                className="px-4 py-2 text-sm border rounded hover:bg-gray-50"
+                                className="px-4 py-2 text-sm border rounded hover-surface"
                             >
                                 İptal
                             </button>
@@ -462,30 +533,30 @@ export function ProjectDetailPage() {
             {/* MODAL: Üye Ekle */}
             {isAddMemberModalOpen && (
                 <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full space-y-4">
-                        <div className="flex justify-between items-center border-b pb-2">
-                            <h3 className="font-bold text-lg text-gray-800">Proje Üyesi Ekle</h3>
+                    <div className="surface rounded-lg shadow-lg p-6 max-w-md w-full space-y-4">
+                        <div className="flex justify-between items-center border-b border-border pb-2">
+                            <h3 className="font-bold text-lg text-primary">Proje Üyesi Ekle</h3>
                             <button
                                 onClick={() => setIsAddMemberModalOpen(false)}
-                                className="text-gray-400 hover:text-gray-600 font-bold"
+                                className="text-muted hover:text-secondary font-bold"
                             >
                                 ✕
                             </button>
                         </div>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-muted">
                             Kademeli seçim: Önce Takım, sonra o takımın üyesi, sonra Proje Rolü seçin.
                         </p>
 
                         <div className="space-y-3">
                             <div>
-                                <label className="block text-xs font-semibold text-gray-600 mb-1">Takım</label>
+                                <label className="block text-xs font-semibold text-secondary mb-1">Takım</label>
                                 <select
                                     value={selectedMemberTeamId}
                                     onChange={(e) => {
                                         setSelectedMemberTeamId(e.target.value);
                                         setSelectedMemberUserId('');
                                     }}
-                                    className="w-full border rounded px-3 py-2 text-sm"
+                                    className="w-full input-base border rounded px-3 py-2 text-sm"
                                 >
                                     <option value="">Takım seçin...</option>
                                     {allTeams?.filter((t) => projectTeamIds.includes(t.id)).map((t) => (
@@ -498,11 +569,11 @@ export function ProjectDetailPage() {
 
                             {selectedMemberTeamId && (
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-600 mb-1">Kullanıcı</label>
+                                    <label className="block text-xs font-semibold text-secondary mb-1">Kullanıcı</label>
                                     <select
                                         value={selectedMemberUserId}
                                         onChange={(e) => setSelectedMemberUserId(e.target.value)}
-                                        className="w-full border rounded px-3 py-2 text-sm"
+                                        className="w-full input-base border rounded px-3 py-2 text-sm"
                                     >
                                         <option value="">Kullanıcı seçin...</option>
                                         {availableTeamMembers.map((m) => (
@@ -515,11 +586,11 @@ export function ProjectDetailPage() {
                             )}
 
                             <div>
-                                <label className="block text-xs font-semibold text-gray-600 mb-1">Proje Rolü</label>
+                                <label className="block text-xs font-semibold text-secondary mb-1">Proje Rolü</label>
                                 <select
                                     value={selectedProjectRole}
                                     onChange={(e) => setSelectedProjectRole(e.target.value)}
-                                    className="w-full border rounded px-3 py-2 text-sm"
+                                    className="w-full input-base border rounded px-3 py-2 text-sm"
                                 >
                                     <option value="0">Project Manager</option>
                                     <option value="1">Developer</option>
@@ -529,10 +600,10 @@ export function ProjectDetailPage() {
                             </div>
                         </div>
 
-                        <div className="flex justify-end gap-2 pt-2 border-t">
+                        <div className="flex justify-end gap-2 pt-2 border-t border-border">
                             <button
                                 onClick={() => setIsAddMemberModalOpen(false)}
-                                className="px-4 py-2 text-sm border rounded hover:bg-gray-50"
+                                className="px-4 py-2 text-sm border rounded hover-surface"
                             >
                                 İptal
                             </button>
@@ -548,71 +619,15 @@ export function ProjectDetailPage() {
                 </div>
             )}
 
-            {/* MODAL: Üye Düzenle */}
-            {isEditMemberModalOpen && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md space-y-4">
-                        <div className="flex justify-between items-center border-b pb-2">
-                            <h3 className="text-lg font-bold text-gray-800">Üye Düzenle</h3>
-                            <button
-                                onClick={() => setIsEditMemberModalOpen(false)}
-                                className="text-gray-400 hover:text-gray-600 font-bold"
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        <div className="space-y-3">
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-600 mb-1">Takım</label>
-                                <select
-                                    value={editingMemberTeamId}
-                                    onChange={(e) => setEditingMemberTeamId(e.target.value)}
-                                    className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                >
-                                    <option value="">Takım seçin...</option>
-                                    {allTeams
-                                        ?.filter((t) => projectTeamIds.includes(t.id))
-                                        .map((t) => (
-                                            <option key={t.id} value={t.id}>
-                                                {t.name}
-                                            </option>
-                                        ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-600 mb-1">Proje Rolü</label>
-                                <select
-                                    value={editingMemberRole}
-                                    onChange={(e) => setEditingMemberRole(e.target.value)}
-                                    className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                >
-                                    <option value="0">Project Manager</option>
-                                    <option value="1">Developer</option>
-                                    <option value="2">QA</option>
-                                    <option value="3">Tester</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end gap-2 pt-2 border-t">
-                            <button
-                                onClick={() => setIsEditMemberModalOpen(false)}
-                                className="px-4 py-2 text-sm border rounded hover:bg-gray-50"
-                            >
-                                İptal
-                            </button>
-                            <button
-                                onClick={handleUpdateProjectMember}
-                                className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 font-medium"
-                            >
-                                Kaydet
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmDialog
+                isOpen={confirmState.isOpen}
+                title={confirmState.title}
+                message={confirmState.message}
+                danger={confirmState.danger}
+                confirmLabel="Arşivle"
+                onConfirm={handleConfirm}
+                onCancel={handleCancel}
+            />
         </div>
     );
 }

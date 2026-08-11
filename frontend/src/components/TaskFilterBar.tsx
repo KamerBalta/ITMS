@@ -29,17 +29,19 @@ export function TaskFilterBar({ filters, members }: TaskFilterBarProps) {
     const hasActiveFilters = filters.search || filters.onlyMine || filters.teamId || filters.priority || filters.labelId;
 
     return (
-        <div className="flex flex-wrap items-center gap-2 bg-white border rounded-lg p-2">
+        <div className="flex flex-wrap items-center gap-2 surface border rounded-lg p-2">
             <input
                 type="text"
                 placeholder="Görevlerde ara..."
                 value={filters.search}
                 onChange={(e) => filters.setSearch(e.target.value)}
-                className="border rounded px-3 py-1.5 text-sm flex-1 min-w-[160px]"
+                className="input-base border rounded px-3 py-1.5 text-sm flex-1 min-w-[160px]"
             />
             <button
                 onClick={() => filters.setOnlyMine(!filters.onlyMine)}
-                className={`text-sm px-3 py-1.5 rounded border whitespace-nowrap ${filters.onlyMine ? 'bg-indigo-50 border-indigo-300 text-indigo-600' : 'border-gray-200 text-gray-600'
+                className={`text-sm px-3 py-1.5 rounded border whitespace-nowrap cursor-pointer transition-colors ${filters.onlyMine
+                        ? 'bg-indigo-50 dark:bg-indigo-950 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400'
+                        : 'border-gray-200 dark:border-gray-600 text-secondary'
                     }`}
             >
                 Yalnızca Benim Görevlerim
@@ -48,7 +50,7 @@ export function TaskFilterBar({ filters, members }: TaskFilterBarProps) {
             <select
                 value={filters.priority}
                 onChange={(e) => filters.setPriority(e.target.value)}
-                className="border rounded px-3 py-1.5 text-sm"
+                className="input-base border rounded px-3 py-1.5 text-sm cursor-pointer"
             >
                 <option value="">Tüm Öncelikler</option>
                 {Object.entries(PRIORITY_VALUES).map(([value, priorityName]) => (
@@ -61,7 +63,7 @@ export function TaskFilterBar({ filters, members }: TaskFilterBarProps) {
             <select
                 value={filters.labelId}
                 onChange={(e) => filters.setLabelId(e.target.value)}
-                className="border rounded px-3 py-1.5 text-sm"
+                className="input-base border rounded px-3 py-1.5 text-sm cursor-pointer"
             >
                 <option value="">Tüm Etiketler</option>
                 {labels?.map((l) => (
@@ -72,7 +74,7 @@ export function TaskFilterBar({ filters, members }: TaskFilterBarProps) {
             </select>
 
             {hasActiveFilters && (
-                <button onClick={filters.reset} className="text-xs text-gray-400 hover:text-red-600 whitespace-nowrap">
+                <button onClick={filters.reset} className="text-xs text-muted hover:text-red-600 dark:hover:text-red-400 whitespace-nowrap cursor-pointer">
                     Filtreleri Temizle
                 </button>
             )}

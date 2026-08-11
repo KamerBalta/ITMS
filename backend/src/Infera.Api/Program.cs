@@ -75,8 +75,10 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<INotificationService, Infera.Application.Common.Services.NotificationService>();
 builder.Services.AddScoped<IProjectAccessService, Infera.Application.Common.Services.ProjectAccessService>();
 builder.Services.AddScoped<ITaskStatusTransitionService, Infera.Application.Common.Services.TaskStatusTransitionService>();
+builder.Services.AddScoped<Infera.Application.Common.Interfaces.IAutomationEngine, Infera.Application.Common.Services.AutomationEngine>();
 builder.Services.AddScoped<IFileStorageService, Infera.Infrastructure.Storage.LocalFileStorageService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<Infera.Application.Common.Interfaces.IProjectPermissionService, Infera.Application.Common.Services.ProjectPermissionService>();
 
 // Dynamic Email Service Registration
 var smtpHost = builder.Configuration["Smtp:Host"];

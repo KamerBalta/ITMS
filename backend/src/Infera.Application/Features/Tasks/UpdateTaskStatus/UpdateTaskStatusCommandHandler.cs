@@ -1,4 +1,5 @@
 ﻿using Infera.Application.Common.Interfaces;
+using Infera.Application.Common.Services;
 using Infera.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,19 +13,22 @@ public class UpdateTaskStatusCommandHandler : IRequestHandler<UpdateTaskStatusCo
     private readonly ITaskStatusTransitionService _transitionService;
     private readonly INotificationService _notificationService;
     private readonly IRealtimeNotifier _realtime;
+    private readonly IAutomationEngine _automationEngine;
 
     public UpdateTaskStatusCommandHandler(
         IAppDbContext db,
         ICurrentUserService currentUser,
         ITaskStatusTransitionService transitionService,
         INotificationService notificationService,
-        IRealtimeNotifier realtime)
+        IRealtimeNotifier realtime,
+        IAutomationEngine automationEngine)
     {
         _db = db;
         _currentUser = currentUser;
         _transitionService = transitionService;
         _notificationService = notificationService;
         _realtime = realtime;
+        _automationEngine = automationEngine;
     }
 
     public async System.Threading.Tasks.Task Handle(UpdateTaskStatusCommand request, CancellationToken ct)
@@ -58,5 +62,6 @@ public class UpdateTaskStatusCommandHandler : IRequestHandler<UpdateTaskStatusCo
         }
 
         await _realtime.NotifyProjectAsync(task.ProjectId, "task", "status-changed", ct);
+        await _automationEngine.ProcessStatusChangedAsync(task.Id, request.NewStatus.ToString(), ct);
     }
 }

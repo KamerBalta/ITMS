@@ -205,7 +205,7 @@ export const MentionTextarea = forwardRef<
             />
 
             {mentionQuery !== null && suggestions.length > 0 && (
-                <div className="absolute z-10 bottom-full mb-1 left-0 bg-white border rounded-lg shadow-lg w-56 max-h-40 overflow-y-auto">
+                <div className="absolute z-10 bottom-full mb-1 left-0 surface border rounded-lg shadow-lg w-56 max-h-40 overflow-y-auto">
                     {suggestions.map((member) => (
                         <button
                             key={member.userId}
@@ -214,10 +214,10 @@ export const MentionTextarea = forwardRef<
                                 e.preventDefault();
                                 handleSelectMention(member);
                             }}
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 flex items-center justify-between"
+                            className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-indigo-50 dark:hover:bg-indigo-950 flex items-center justify-between cursor-pointer"
                         >
                             <span>{member.userName}</span>
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-muted">
                                 {member.teamName}
                             </span>
                         </button>
