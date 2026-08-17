@@ -10,6 +10,7 @@ export function useProjectDetail(projectId: string | null) {
         queryKey: ['projects', projectId],
         queryFn: () => projectsApi.getById(projectId!),
         enabled: !!projectId,
+        retry: false,
     });
 }
 

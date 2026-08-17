@@ -249,18 +249,39 @@ export function useWorkLogs(taskId: string) {
 
 export function useAddWorkLog(taskId: string) {
     const qc = useQueryClient();
+
     return useMutation({
         mutationFn: ({ minutes, description }: { minutes: number; description?: string }) =>
             workLogsApi.add(taskId, minutes, description),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['worklogs', taskId] }),
+
+        onSuccess: async () => {
+            await qc.invalidateQueries({
+                queryKey: ['worklogs', taskId],
+            });
+
+            await qc.invalidateQueries({
+                queryKey: ['task', taskId],
+            });
+        },
     });
 }
 
 export function useDeleteWorkLog(taskId: string) {
     const qc = useQueryClient();
+
     return useMutation({
-        mutationFn: (workLogId: string) => workLogsApi.delete(taskId, workLogId),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['worklogs', taskId] }),
+        mutationFn: (workLogId: string) =>
+            workLogsApi.delete(taskId, workLogId),
+
+        onSuccess: async () => {
+            await qc.invalidateQueries({
+                queryKey: ['worklogs', taskId],
+            });
+
+            await qc.invalidateQueries({
+                queryKey: ['task', taskId],
+            });
+        },
     });
 }
 
@@ -291,6 +312,28 @@ export function useCreateSubtask(parentTaskId: string, projectId: string) {
         onSuccess: () => {
             invalidateTask(qc, parentTaskId);
             qc.invalidateQueries({ queryKey: ['tasks', projectId] });
+        },
+    });
+}
+export function useUpdateTaskEstimates(taskId: string) {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            originalEstimateMinutes,
+            remainingEstimateMinutes,
+        }: {
+            originalEstimateMinutes: number | null;
+            remainingEstimateMinutes: number | null;
+        }) =>
+            tasksApi.updateEstimates(
+                taskId,
+                originalEstimateMinutes,
+                remainingEstimateMinutes
+            ),
+
+        onSuccess: () => {
+            invalidateTask(qc, taskId);
         },
     });
 }

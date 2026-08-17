@@ -10,12 +10,14 @@ public class GetDashboardQueryHandler : IRequestHandler<GetDashboardQuery, Dashb
     private readonly IAppDbContext _db;
     private readonly IProjectAccessService _access;
     private readonly ICurrentUserService _currentUser;
+    private readonly ICacheService _cache;
 
-    public GetDashboardQueryHandler(IAppDbContext db, IProjectAccessService access, ICurrentUserService currentUser)
+    public GetDashboardQueryHandler(IAppDbContext db, IProjectAccessService access, ICurrentUserService currentUser, ICacheService cache)
     {
         _db = db;
         _access = access;
         _currentUser = currentUser;
+        _cache = cache;
     }
 
     public async System.Threading.Tasks.Task<DashboardDto> Handle(GetDashboardQuery request, CancellationToken ct)
@@ -23,8 +25,12 @@ public class GetDashboardQueryHandler : IRequestHandler<GetDashboardQuery, Dashb
         if (!await _access.HasProjectAccessAsync(request.ProjectId, ct))
             throw new UnauthorizedAccessException("Bu projeye erişim yetkiniz yok.");
 
-        // #4: Durum kartlari artik proje genelini degil, yalnizca oturum acan kullaniciya
-        // atanmis gorevleri yansitiyor.
+        // Cache anahtari kullaniciya ozel -- kartlar artik yalnizca kendi gorevlerini gosteriyordu (#4 fix),
+        // bu yuzden proje + kullanici kombinasyonu bazinda cache'lemek gerekiyor.
+        var cacheKey = $"dashboard:{request.ProjectId}:{_currentUser.UserId}";
+        var cached = await _cache.GetAsync<DashboardDto>(cacheKey, ct);
+        if (cached is not null) return cached;
+
         var tasks = await _db.Tasks
             .Where(t => t.ProjectId == request.ProjectId && t.AssigneeId == _currentUser.UserId)
             .Select(t => new { t.Status, t.DueDate })
@@ -35,21 +41,24 @@ public class GetDashboardQueryHandler : IRequestHandler<GetDashboardQuery, Dashb
             .Select(s => new { s.Name, s.EndDate, TaskCount = s.Tasks.Count })
             .FirstOrDefaultAsync(ct);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var now = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        return new DashboardDto(
+        var result = new DashboardDto(
             TotalTasks: tasks.Count,
             ToDoCount: tasks.Count(t => t.Status == ItemStatus.ToDo),
             InProgressCount: tasks.Count(t => t.Status == ItemStatus.InProgress),
             ReadyForReviewCount: tasks.Count(t => t.Status == ItemStatus.ReadyForReview),
             ReadyForQACount: tasks.Count(t => t.Status == ItemStatus.ReadyForQA),
             DoneCount: tasks.Count(t => t.Status == ItemStatus.Done),
-            OverdueCount: tasks.Count(t =>
-                t.DueDate != null &&
-                t.DueDate < today &&
-                t.Status != ItemStatus.Done),
+            OverdueCount: tasks.Count(t => t.DueDate != null && t.DueDate < now && t.Status != ItemStatus.Done),
             ActiveSprintName: activeSprint?.Name,
             ActiveSprintEndDate: activeSprint?.EndDate,
             ActiveSprintTaskCount: activeSprint?.TaskCount ?? 0);
+
+        // Kisa TTL (60sn) -- veri sik degisebiliyor (yeni gorev, durum degisimi vb.), taze kalmasi
+        // icin uzun tutmuyoruz, sadece ayni saniyeler icindeki tekrar cagrilar icin fayda sagliyor.
+        await _cache.SetAsync(cacheKey, result, TimeSpan.FromSeconds(60), ct);
+
+        return result;
     }
 }

@@ -6,9 +6,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Infera.Application.Features.NotificationPreferences;
 
 public record GetMyNotificationPreferencesQuery(Guid UserId) : IRequest<List<NotificationPreferenceDto>>;
-public record UpdateNotificationPreferenceCommand(Guid UserId, string NotificationType, bool InAppEnabled, bool EmailEnabled) : IRequest;
+public record UpdateNotificationPreferenceCommand(Guid UserId, string NotificationType, bool InAppEnabled, bool EmailEnabled, string EmailFrequency) : IRequest;
 
-public record NotificationPreferenceDto(string NotificationType, bool InAppEnabled, bool EmailEnabled);
+public record NotificationPreferenceDto(string NotificationType, bool InAppEnabled, bool EmailEnabled, string EmailFrequency);
 
 public class GetMyNotificationPreferencesQueryHandler : IRequestHandler<GetMyNotificationPreferencesQuery, List<NotificationPreferenceDto>>
 {
@@ -24,8 +24,8 @@ public class GetMyNotificationPreferencesQueryHandler : IRequestHandler<GetMyNot
 
         return AllTypes
             .Select(t => existing.TryGetValue(t, out var pref)
-                ? new NotificationPreferenceDto(t, pref.InAppEnabled, pref.EmailEnabled)
-                : new NotificationPreferenceDto(t, true, true)) // varsayilan: ikisi de acik
+                ? new NotificationPreferenceDto(t, pref.InAppEnabled, pref.EmailEnabled, pref.EmailFrequency)
+                : new NotificationPreferenceDto(t, true, true, "Instant"))
             .ToList();
     }
 }
@@ -48,12 +48,14 @@ public class UpdateNotificationPreferenceCommandHandler : IRequestHandler<Update
                 NotificationType = request.NotificationType,
                 InAppEnabled = request.InAppEnabled,
                 EmailEnabled = request.EmailEnabled,
+                EmailFrequency = request.EmailFrequency,
             });
         }
         else
         {
             pref.InAppEnabled = request.InAppEnabled;
             pref.EmailEnabled = request.EmailEnabled;
+            pref.EmailFrequency = request.EmailFrequency;
         }
 
         await _db.SaveChangesAsync(ct);

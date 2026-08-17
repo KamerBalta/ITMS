@@ -26,6 +26,8 @@ export const tasksApi = {
         apiClient.post<{ id: string }>(`/tasks/${parentTaskId}/subtasks`, data).then((res) => res.data),
 
     updateStatus: (taskId: string, status: number) => apiClient.put(`/tasks/${taskId}/status`, { status }),
+    updateEstimates: (taskId: string, originalEstimateMinutes: number | null, remainingEstimateMinutes: number | null) =>
+        apiClient.put(`/tasks/${taskId}/estimates`, { originalEstimateMinutes, remainingEstimateMinutes }),
     updateTitle: (taskId: string, title: string) => apiClient.put(`/tasks/${taskId}/title`, { title }),
     updateDescription: (taskId: string, description: string) =>
         apiClient.put(`/tasks/${taskId}/description`, { description }),

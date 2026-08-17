@@ -68,6 +68,9 @@ export const usersApi = {
     activate: (userId: string) =>
         apiClient.put(`/users/${userId}/activate`),
 
+    revokeAllSessions: () =>
+        apiClient.post('/users/me/revoke-all-sessions'),
+
     // 5) Kullanıcı rol güncelle
     updateRole: (
         userId: string,

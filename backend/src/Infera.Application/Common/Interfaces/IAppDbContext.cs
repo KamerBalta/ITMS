@@ -40,6 +40,10 @@ public interface IAppDbContext
     DbSet<TaskCustomFieldValue> TaskCustomFieldValues { get; }
     DbSet<AutomationRule> AutomationRules { get; }
     DbSet<ProjectPermissionOverride> ProjectPermissionOverrides { get; }
+    DbSet<ProjectComponent> ProjectComponents { get; }
+    DbSet<TaskComponent> TaskComponents { get; }
+    DbSet<TaskLink> TaskLinks { get; }
+    DbSet<PendingDigestEmail> PendingDigestEmails { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

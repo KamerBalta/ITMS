@@ -1,7 +1,11 @@
 ﻿import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useSearchResults, useSearchSuggestions } from '../../hooks/useSearch';
-import { getRecentSearches, addRecentSearch, clearRecentSearches } from '../../lib/recentSearches';
+import { useSearchResults, useSearchSuggestions } from "../../../hooks/useSearch";
+import {
+    getRecentSearches,
+    addRecentSearch,
+    clearRecentSearches,
+} from "../../../lib/recentSearches";
 
 type TabKey = 'tasks' | 'projects' | 'users';
 

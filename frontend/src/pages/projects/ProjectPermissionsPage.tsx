@@ -26,6 +26,7 @@ export function ProjectPermissionsPage() {
     const {
         data: permissions,
         isLoading,
+        isError,
     } = useProjectPermissions(projectId ?? null);
 
     const setPermission = useSetProjectPermission(projectId!);
@@ -56,7 +57,13 @@ export function ProjectPermissionsPage() {
             </div>
 
             {/* Content */}
-            {isLoading ? (
+            {isError ? (
+                <div className="surface border border-red-200 dark:border-red-900/60 rounded-lg p-8 text-center bg-red-50/50 dark:bg-red-950/20">
+                    <p className="text-sm font-medium text-red-500">
+                        Bu sayfayı görüntüleme yetkiniz yok veya bir hata oluştu.
+                    </p>
+                </div>
+            ) : isLoading ? (
                 <div className="surface rounded-xl border border-gray-200 p-6 dark:border-gray-700">
                     <div className="space-y-5 animate-pulse">
                         {[1, 2, 3, 4].map((item) => (
@@ -137,7 +144,7 @@ export function ProjectPermissionsPage() {
                                         className={`
                                             relative inline-flex h-6 w-11
                                             shrink-0 items-center rounded-full
-                                            transition-colors
+                                            transition-colors cursor-pointer
                                             disabled:cursor-wait
                                             disabled:opacity-60
                                             ${p.isEnabled

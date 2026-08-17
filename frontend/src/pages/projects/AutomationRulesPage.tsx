@@ -8,7 +8,7 @@ const STATUS_OPTIONS = ['ToDo', 'InProgress', 'ReadyForReview', 'ReadyForQA', 'D
 
 export function AutomationRulesPage() {
     const { projectId } = useParams<{ projectId: string }>();
-    const { data: rules, isLoading } = useAutomationRules(projectId ?? null);
+    const { data: rules, isLoading, isError } = useAutomationRules(projectId ?? null);
     const { data: members } = useProjectMembers(projectId ?? null);
     const { data: issueTypes } = useProjectIssueTypes(projectId ?? null);
     const createRule = useCreateAutomationRule(projectId!);
@@ -71,7 +71,11 @@ export function AutomationRulesPage() {
                 </div>
             </div>
 
-            {isLoading ? (
+            {isError ? (
+                <div className="surface border border-red-200 dark:border-red-900/60 rounded-lg p-8 text-center bg-red-50/50 dark:bg-red-950/20">
+                    <p className="text-sm font-medium text-red-500">Bu sayfayı görüntüleme yetkiniz yok veya bir hata oluştu.</p>
+                </div>
+            ) : isLoading ? (
                 <div className="surface border rounded-lg p-8 text-center">
                     <p className="text-sm text-secondary">Yükleniyor...</p>
                 </div>
@@ -115,8 +119,8 @@ export function AutomationRulesPage() {
 
                                             <span
                                                 className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${r.isActive
-                                                        ? 'bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400'
-                                                        : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+                                                    ? 'bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400'
+                                                    : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
                                                     }`}
                                             >
                                                 {r.isActive
@@ -129,7 +133,13 @@ export function AutomationRulesPage() {
                                             <span className="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800">
                                                 {r.triggerType === 'TaskCreated'
                                                     ? 'Görev oluşturulunca'
-                                                    : 'Durum değişince'}
+                                                    : r.triggerType === 'StatusChangedTo'
+                                                        ? 'Durum değişince'
+                                                        : r.triggerType === 'TaskAssigned'
+                                                            ? 'Görev atanınca'
+                                                            : r.triggerType === 'CommentAdded'
+                                                                ? 'Yorum eklenince'
+                                                                : r.triggerType}
                                             </span>
 
                                             <span className="text-muted">
@@ -150,8 +160,8 @@ export function AutomationRulesPage() {
                                             onClick={() => toggleRule.mutate(r.id)}
                                             disabled={toggleRule.isPending}
                                             className={`rounded-md border px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 cursor-pointer ${r.isActive
-                                                    ? 'border-gray-200 text-secondary hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800'
-                                                    : 'border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/40'
+                                                ? 'border-gray-200 text-secondary hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800'
+                                                : 'border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/40'
                                                 }`}
                                         >
                                             {r.isActive
@@ -195,177 +205,176 @@ export function AutomationRulesPage() {
                 </div>
             )}
 
-            <div className="surface overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
-                <div className="border-b border-gray-200 bg-surface-muted px-5 py-4 dark:border-gray-700">
-                    <h2 className="text-sm font-semibold text-primary">
-                        Yeni Otomasyon Kuralı
-                    </h2>
+            {!isError && (
+                <div className="surface overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+                    <div className="border-b border-gray-200 bg-surface-muted px-5 py-4 dark:border-gray-700">
+                        <h2 className="text-sm font-semibold text-primary">
+                            Yeni Otomasyon Kuralı
+                        </h2>
 
-                    <p className="mt-1 text-xs text-secondary">
-                        Bir olay gerçekleştiğinde hangi eylemin otomatik olarak yapılacağını belirleyin.
-                    </p>
-                </div>
-
-                <div className="space-y-5 p-5">
-                    <div>
-                        <label className="mb-1.5 block text-xs font-medium text-secondary">
-                            Kural adı
-                        </label>
-
-                        <input
-                            type="text"
-                            placeholder="Örn. Done olduğunda yöneticiyi bilgilendir"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="input-base w-full rounded-lg border px-3 py-2.5 text-sm"
-                        />
+                        <p className="mt-1 text-xs text-secondary">
+                            Bir olay gerçekleştiğinde hangi eylemin otomatik olarak yapılacağını belirleyin.
+                        </p>
                     </div>
 
-                    <div>
-                        <label className="mb-1.5 block text-xs font-medium text-secondary">
-                            Tetikleyici
-                        </label>
-
-                        <select
-                            value={triggerType}
-                            onChange={(e) => setTriggerType(e.target.value)}
-                            className="input-base w-full cursor-pointer rounded-lg border px-3 py-2.5 text-sm"
-                        >
-                            <option value="TaskCreated">
-                                Görev oluşturulunca
-                            </option>
-
-                            <option value="StatusChangedTo">
-                                Durum şuna değişince
-                            </option>
-                        </select>
-                    </div>
-
-                    {triggerType === 'TaskCreated' && (
+                    <div className="space-y-5 p-5">
                         <div>
                             <label className="mb-1.5 block text-xs font-medium text-secondary">
-                                Koşul
+                                Kural adı
+                            </label>
+
+                            <input
+                                type="text"
+                                placeholder="Örn. Done olduğunda yöneticiyi bilgilendir"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="input-base w-full rounded-lg border px-3 py-2.5 text-sm"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-1.5 block text-xs font-medium text-secondary">
+                                Tetikleyici
                             </label>
 
                             <select
-                                value={triggerIssueType}
-                                onChange={(e) =>
-                                    setTriggerIssueType(e.target.value)
-                                }
-                                className="input-base w-full cursor-pointer rounded-lg border px-3 py-2.5 text-sm"
+                                value={triggerType}
+                                onChange={(e) => setTriggerType(e.target.value)}
+                                className="w-full input-base border rounded px-3 py-2 text-sm mt-1 cursor-pointer"
                             >
-                                <option value="">
-                                    Herhangi bir issue type
-                                </option>
-
-                                {issueTypes?.map((t) => (
-                                    <option
-                                        key={t.issueTypeId}
-                                        value={t.issueTypeId}
-                                    >
-                                        {t.icon} {t.name}
-                                    </option>
-                                ))}
-                            </select>
-
-                            <p className="mt-1 text-[11px] text-muted">
-                                Boş bırakırsanız bu kural tüm issue type'lar için çalışır.
-                            </p>
-                        </div>
-                    )}
-
-                    {triggerType === 'StatusChangedTo' && (
-                        <div>
-                            <label className="mb-1.5 block text-xs font-medium text-secondary">
-                                Hedef durum
-                            </label>
-
-                            <select
-                                value={triggerStatus}
-                                onChange={(e) =>
-                                    setTriggerStatus(e.target.value)
-                                }
-                                className="input-base w-full cursor-pointer rounded-lg border px-3 py-2.5 text-sm"
-                            >
-                                {STATUS_OPTIONS.map((s) => (
-                                    <option key={s} value={s}>
-                                        {s}
-                                    </option>
-                                ))}
+                                <option value="TaskCreated">Görev oluşturulunca</option>
+                                <option value="StatusChangedTo">Durum şuna değişince</option>
+                                <option value="TaskAssigned">Görev birine atanınca</option>
+                                <option value="CommentAdded">Yoruma eklenince</option>
                             </select>
                         </div>
-                    )}
 
-                    <div>
-                        <label className="mb-1.5 block text-xs font-medium text-secondary">
-                            Eylem
-                        </label>
-
-                        <select
-                            value={actionType}
-                            onChange={(e) => setActionType(e.target.value)}
-                            className="input-base w-full cursor-pointer rounded-lg border px-3 py-2.5 text-sm"
-                        >
-                            <option value="NotifyUser">
-                                Kullanıcıya bildirim gönder
-                            </option>
-
-                            <option value="AssignToUser">
-                                Kullanıcıya ata
-                            </option>
-                        </select>
-                    </div>
-
-                    {(actionType === 'NotifyUser' ||
-                        actionType === 'AssignToUser') && (
+                        {triggerType === 'TaskCreated' && (
                             <div>
                                 <label className="mb-1.5 block text-xs font-medium text-secondary">
-                                    Kullanıcı
+                                    Koşul
                                 </label>
 
                                 <select
-                                    value={actionUserId}
+                                    value={triggerIssueType}
                                     onChange={(e) =>
-                                        setActionUserId(e.target.value)
+                                        setTriggerIssueType(e.target.value)
                                     }
                                     className="input-base w-full cursor-pointer rounded-lg border px-3 py-2.5 text-sm"
                                 >
                                     <option value="">
-                                        Kullanıcı seçin...
+                                        Herhangi bir issue type
                                     </option>
 
-                                    {members?.map((m) => (
+                                    {issueTypes?.map((t) => (
                                         <option
-                                            key={m.userId}
-                                            value={m.userId}
+                                            key={t.issueTypeId}
+                                            value={t.issueTypeId}
                                         >
-                                            {m.userName}
+                                            {t.icon} {t.name}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <p className="mt-1 text-[11px] text-muted">
+                                    Boş bırakırsanız bu kural tüm issue type'lar için çalışır.
+                                </p>
+                            </div>
+                        )}
+
+                        {triggerType === 'StatusChangedTo' && (
+                            <div>
+                                <label className="mb-1.5 block text-xs font-medium text-secondary">
+                                    Hedef durum
+                                </label>
+
+                                <select
+                                    value={triggerStatus}
+                                    onChange={(e) =>
+                                        setTriggerStatus(e.target.value)
+                                    }
+                                    className="input-base w-full cursor-pointer rounded-lg border px-3 py-2.5 text-sm"
+                                >
+                                    {STATUS_OPTIONS.map((s) => (
+                                        <option key={s} value={s}>
+                                            {s}
                                         </option>
                                     ))}
                                 </select>
                             </div>
                         )}
 
-                    <div className="flex justify-end border-t border-gray-200 pt-4 dark:border-gray-700">
-                        <button
-                            type="button"
-                            onClick={handleCreate}
-                            disabled={
-                                !name.trim() ||
-                                createRule.isPending ||
-                                ((actionType === 'NotifyUser' ||
-                                    actionType === 'AssignToUser') &&
-                                    !actionUserId)
-                            }
-                            className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
-                        >
-                            {createRule.isPending
-                                ? 'Oluşturuluyor...'
-                                : 'Kural Oluştur'}
-                        </button>
+                        <div>
+                            <label className="mb-1.5 block text-xs font-medium text-secondary">
+                                Eylem
+                            </label>
+
+                            <select
+                                value={actionType}
+                                onChange={(e) => setActionType(e.target.value)}
+                                className="input-base w-full cursor-pointer rounded-lg border px-3 py-2.5 text-sm"
+                            >
+                                <option value="NotifyUser">
+                                    Kullanıcıya bildirim gönder
+                                </option>
+
+                                <option value="AssignToUser">
+                                    Kullanıcıya ata
+                                </option>
+                            </select>
+                        </div>
+
+                        {(actionType === 'NotifyUser' ||
+                            actionType === 'AssignToUser') && (
+                                <div>
+                                    <label className="mb-1.5 block text-xs font-medium text-secondary">
+                                        Kullanıcı
+                                    </label>
+
+                                    <select
+                                        value={actionUserId}
+                                        onChange={(e) =>
+                                            setActionUserId(e.target.value)
+                                        }
+                                        className="input-base w-full cursor-pointer rounded-lg border px-3 py-2.5 text-sm"
+                                    >
+                                        <option value="">
+                                            Kullanıcı seçin...
+                                        </option>
+
+                                        {members?.map((m) => (
+                                            <option
+                                                key={m.userId}
+                                                value={m.userId}
+                                            >
+                                                {m.userName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                        <div className="flex justify-end border-t border-gray-200 pt-4 dark:border-gray-700">
+                            <button
+                                type="button"
+                                onClick={handleCreate}
+                                disabled={
+                                    !name.trim() ||
+                                    createRule.isPending ||
+                                    ((actionType === 'NotifyUser' ||
+                                        actionType === 'AssignToUser') &&
+                                        !actionUserId)
+                                }
+                                className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                            >
+                                {createRule.isPending
+                                    ? 'Oluşturuluyor...'
+                                    : 'Kural Oluştur'}
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

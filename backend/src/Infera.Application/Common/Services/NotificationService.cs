@@ -29,9 +29,9 @@ public class NotificationService : INotificationService
         var pref = await _db.NotificationPreferences
             .FirstOrDefaultAsync(p => p.UserId == userId && p.NotificationType == type.ToString(), ct);
 
-        // Tercih hic olusturulmamissa (kullanici hic ayar degistirmemis) varsayilan: her iki kanal da acik.
         var inAppEnabled = pref?.InAppEnabled ?? true;
         var emailEnabled = pref?.EmailEnabled ?? true;
+        var emailFrequency = pref?.EmailFrequency ?? "Instant";
 
         var fullActionUrl = actionUrl is not null
             ? $"{_config["Frontend:BaseUrl"]?.TrimEnd('/')}{actionUrl}"
@@ -51,10 +51,23 @@ public class NotificationService : INotificationService
             await _db.SaveChangesAsync(ct);
         }
 
-        if (emailEnabled)
+        if (!emailEnabled) return;
+
+        if (emailFrequency == "DailyDigest")
         {
-            await _emailService.SendHtmlAsync(
-                user.Email, title, title, message, fullActionUrl, GetActionLabel(type), ct);
+            // #Yuksek-7: anlik gondermek yerine biriktir -- Hangfire her gun tek seferde ozetleyip gonderir.
+            _db.PendingDigestEmails.Add(new PendingDigestEmail
+            {
+                UserId = userId,
+                Title = title,
+                Message = message,
+                ActionUrl = fullActionUrl,
+            });
+            await _db.SaveChangesAsync(ct);
+        }
+        else
+        {
+            await _emailService.SendHtmlAsync(user.Email, title, title, message, fullActionUrl, GetActionLabel(type), ct);
         }
     }
 

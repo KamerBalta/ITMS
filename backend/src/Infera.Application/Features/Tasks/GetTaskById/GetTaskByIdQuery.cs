@@ -13,4 +13,7 @@ public record TaskDetailDto(
     DateTime CreatedAt, DateTime? UpdatedAt,
     List<string> Labels, int CommentCount, int AttachmentCount,
     int ChecklistTotal, int ChecklistDone, int WatcherCount,
-    Guid? ReleaseId, string? ReleaseVersion);
+    Guid? ReleaseId, string? ReleaseVersion, List<TaskComponentDto> Components,
+    int? OriginalEstimateMinutes, int? RemainingEstimateMinutes);
+
+public record TaskComponentDto(Guid Id, string Name, Guid? LeadUserId, string? LeadUserName);

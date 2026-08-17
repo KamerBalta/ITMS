@@ -17,7 +17,7 @@ export function NotificationPreferencesPanel() {
         <div className="surface border rounded-lg p-4">
             <h2 className="font-semibold mb-1 text-primary">Bildirim Kanalları</h2>
             <p className="text-xs text-muted mb-3">
-                Her bildirim türü için uygulama içi ve e-posta kanallarını ayrı ayrı yönetin.
+                Her bildirim türü için uygulama içi, e-posta kanallarını ve e-posta sıklığını ayrı ayrı yönetin.
             </p>
 
             <table className="w-full text-sm">
@@ -26,6 +26,7 @@ export function NotificationPreferencesPanel() {
                         <th className="pb-2">Tür</th>
                         <th className="pb-2 text-center">Uygulama İçi</th>
                         <th className="pb-2 text-center">E-posta</th>
+                        <th className="pb-2 text-center">Sıklık</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -37,7 +38,12 @@ export function NotificationPreferencesPanel() {
                                     type="checkbox"
                                     checked={p.inAppEnabled}
                                     onChange={(e) =>
-                                        updatePreference.mutate({ type: p.notificationType, inApp: e.target.checked, email: p.emailEnabled })
+                                        updatePreference.mutate({
+                                            type: p.notificationType,
+                                            inApp: e.target.checked,
+                                            email: p.emailEnabled,
+                                            frequency: p.emailFrequency,
+                                        })
                                     }
                                     className="cursor-pointer rounded"
                                 />
@@ -47,10 +53,33 @@ export function NotificationPreferencesPanel() {
                                     type="checkbox"
                                     checked={p.emailEnabled}
                                     onChange={(e) =>
-                                        updatePreference.mutate({ type: p.notificationType, inApp: p.inAppEnabled, email: e.target.checked })
+                                        updatePreference.mutate({
+                                            type: p.notificationType,
+                                            inApp: p.inAppEnabled,
+                                            email: e.target.checked,
+                                            frequency: p.emailFrequency,
+                                        })
                                     }
                                     className="cursor-pointer rounded"
                                 />
+                            </td>
+                            <td className="py-2 text-center">
+                                <select
+                                    value={p.emailFrequency}
+                                    disabled={!p.emailEnabled}
+                                    onChange={(e) =>
+                                        updatePreference.mutate({
+                                            type: p.notificationType,
+                                            inApp: p.inAppEnabled,
+                                            email: p.emailEnabled,
+                                            frequency: e.target.value,
+                                        })
+                                    }
+                                    className="text-xs input-base border rounded px-1.5 py-0.5 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                                >
+                                    <option value="Instant">Anlık</option>
+                                    <option value="DailyDigest">Günlük Özet</option>
+                                </select>
                             </td>
                         </tr>
                     ))}

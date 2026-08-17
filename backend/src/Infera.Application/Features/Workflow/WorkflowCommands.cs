@@ -30,10 +30,19 @@ file static class WorkflowAuthorization
 public class GetWorkflowTransitionsQueryHandler : IRequestHandler<GetWorkflowTransitionsQuery, List<WorkflowTransitionDto>>
 {
     private readonly IAppDbContext _db;
-    public GetWorkflowTransitionsQueryHandler(IAppDbContext db) => _db = db;
+    private readonly IProjectAccessService _access;
+
+    public GetWorkflowTransitionsQueryHandler(IAppDbContext db, IProjectAccessService access)
+    {
+        _db = db;
+        _access = access;
+    }
 
     public async System.Threading.Tasks.Task<List<WorkflowTransitionDto>> Handle(GetWorkflowTransitionsQuery request, CancellationToken ct)
     {
+        if (!await _access.HasProjectAccessAsync(request.ProjectId, ct))
+            throw new UnauthorizedAccessException("Bu projeye erişim yetkiniz yok.");
+
         return await _db.WorkflowTransitions
             .Where(t => t.ProjectId == request.ProjectId)
             .OrderBy(t => t.FromStatus).ThenBy(t => t.ToStatus)

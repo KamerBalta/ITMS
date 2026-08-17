@@ -189,7 +189,7 @@ export function WorkflowEditorPage() {
         (user?.roles.includes('Project Manager') &&
             project?.ownerName === user?.email);
 
-    const { data: transitions, isLoading } = useWorkflowTransitions(
+    const { data: transitions, isLoading, isError } = useWorkflowTransitions(
         projectId ?? null
     );
 
@@ -382,14 +382,6 @@ export function WorkflowEditorPage() {
 
     if (!projectId) return null;
 
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-[600px]">
-                <p className="text-sm text-secondary">Workflow yükleniyor...</p>
-            </div>
-        );
-    }
-
     return (
         <div className="h-[calc(100vh-120px)] flex flex-col p-6">
             {/* Header */}
@@ -420,8 +412,8 @@ export function WorkflowEditorPage() {
                                 type="button"
                                 onClick={() => setViewMode('canvas')}
                                 className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${viewMode === 'canvas'
-                                        ? 'bg-white text-primary shadow-sm dark:bg-gray-800'
-                                        : 'text-secondary hover:text-primary'
+                                    ? 'bg-white text-primary shadow-sm dark:bg-gray-800'
+                                    : 'text-secondary hover:text-primary'
                                     }`}
                             >
                                 Canvas
@@ -431,8 +423,8 @@ export function WorkflowEditorPage() {
                                 type="button"
                                 onClick={() => setViewMode('list')}
                                 className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${viewMode === 'list'
-                                        ? 'bg-white text-primary shadow-sm dark:bg-gray-800'
-                                        : 'text-secondary hover:text-primary'
+                                    ? 'bg-white text-primary shadow-sm dark:bg-gray-800'
+                                    : 'text-secondary hover:text-primary'
                                     }`}
                             >
                                 Liste
@@ -446,7 +438,7 @@ export function WorkflowEditorPage() {
                                     setError(null);
                                     setIsAddOpen(true);
                                 }}
-                                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
+                                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 cursor-pointer"
                             >
                                 + Geçiş ekle
                             </button>
@@ -468,8 +460,17 @@ export function WorkflowEditorPage() {
                 </div>
             )}
 
-            {/* View Mode 1: Canvas (React Flow) */}
-            {viewMode === 'canvas' ? (
+            {/* İçerik Koşulu: isError -> isLoading -> normal görünüm */}
+            {isError ? (
+                <div className="flex items-center justify-center h-[400px]">
+                    <p className="text-red-500 text-sm">Bu sayfayı görüntüleme yetkiniz yok.</p>
+                </div>
+            ) : isLoading ? (
+                <div className="flex items-center justify-center h-[400px]">
+                    <p className="text-sm text-secondary">Workflow yükleniyor...</p>
+                </div>
+            ) : viewMode === 'canvas' ? (
+                /* View Mode 1: Canvas (React Flow) */
                 <div className="relative flex-1 min-h-0 overflow-hidden rounded-lg border border-border bg-surface">
                     <ReactFlow
                         nodes={nodes}
@@ -668,8 +669,8 @@ export function WorkflowEditorPage() {
                                         <label
                                             key={role}
                                             className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2.5 transition ${checked
-                                                    ? 'border-indigo-300 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950/40'
-                                                    : 'border-border hover:bg-surface-muted'
+                                                ? 'border-indigo-300 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950/40'
+                                                : 'border-border hover:bg-surface-muted'
                                                 }`}
                                         >
                                             <span className="text-sm text-primary">{role}</span>
@@ -803,8 +804,8 @@ function TransitionPanel({
                                 <label
                                     key={role}
                                     className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2.5 transition ${checked
-                                            ? 'border-indigo-300 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950/40'
-                                            : 'border-border hover:bg-surface-muted'
+                                        ? 'border-indigo-300 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950/40'
+                                        : 'border-border hover:bg-surface-muted'
                                         }`}
                                 >
                                     <span className="text-sm text-primary">{role}</span>

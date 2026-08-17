@@ -14,8 +14,8 @@ export interface BacklogTaskItem {
 }
 
 export const backlogApi = {
-    get: (projectId: string) =>
-        apiClient.get<BacklogTaskItem[]>('/backlog', { params: { projectId } }).then((res) => res.data),
+    get: (projectId: string, page = 1, pageSize = 25) =>
+        apiClient.get<BacklogTaskItem[]>('/backlog', { params: { projectId, page, pageSize } }).then((res) => res.data),
 
     moveToSprint: (taskId: string, sprintId: string) =>
         apiClient.put(`/backlog/${taskId}/move-to-sprint`, { sprintId }),

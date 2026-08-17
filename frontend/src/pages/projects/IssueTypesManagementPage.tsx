@@ -25,7 +25,7 @@ export function IssueTypesManagementPage() {
     const isProjectManager = user?.roles.includes('Project Manager') ?? false;
     const canManage = isAdmin || isProjectManager;
 
-    const { data: assigned, isLoading } = useProjectIssueTypes(projectId ?? null);
+    const { data: assigned, isLoading, isError } = useProjectIssueTypes(projectId ?? null);
     const { data: catalog } = useIssueTypes(true); // Yalnızca aktif global tipler seçilebilir
     const assign = useAssignIssueType(projectId!);
     const remove = useRemoveIssueType(projectId!);
@@ -113,7 +113,11 @@ export function IssueTypesManagementPage() {
                 </div>
             )}
 
-            {isLoading ? (
+            {isError ? (
+                <div className="surface border border-red-200 dark:border-red-900/60 rounded-lg p-8 text-center bg-red-50/50 dark:bg-red-950/20">
+                    <p className="text-sm font-medium text-red-500">Bu sayfayı görüntüleme yetkiniz yok veya bir hata oluştu.</p>
+                </div>
+            ) : isLoading ? (
                 <div className="surface border rounded-lg p-8 text-center">
                     <p className="text-sm text-secondary">Yükleniyor...</p>
                 </div>
@@ -241,7 +245,7 @@ export function IssueTypesManagementPage() {
                 </div>
             )}
 
-            {canManage && (
+            {!isError && canManage && (
                 <div className="surface overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
                     <div className="border-b border-gray-200 bg-surface-muted px-5 py-4 dark:border-gray-700">
                         <h2 className="text-sm font-semibold text-primary">

@@ -27,7 +27,8 @@ public class AutomationEngine : IAutomationEngine
 
         foreach (var rule in rules)
         {
-            if (!MatchesCondition(rule.TriggerConditionJson, "issueTypeName", task.IssueType?.Name)) continue;
+            var context = new Dictionary<string, string?> { ["issueTypeName"] = task.IssueType?.Name };
+            if (!MatchesAllConditions(rule.TriggerConditionJson, context)) continue;
             await ExecuteActionAsync(rule, task, ct);
         }
     }
@@ -43,24 +44,71 @@ public class AutomationEngine : IAutomationEngine
 
         foreach (var rule in rules)
         {
-            if (!MatchesCondition(rule.TriggerConditionJson, "status", newStatus)) continue;
+            var context = new Dictionary<string, string?> { ["status"] = newStatus, ["issueTypeName"] = task.IssueType?.Name };
+            if (!MatchesAllConditions(rule.TriggerConditionJson, context)) continue;
             await ExecuteActionAsync(rule, task, ct);
         }
     }
 
-    private static bool MatchesCondition(string? conditionJson, string key, string? actualValue)
+    // #Yuksek-8: yeni tetikleyici -- gorev birine atanınca
+    public async System.Threading.Tasks.Task ProcessTaskAssignedAsync(Guid taskId, Guid? newAssigneeId, CancellationToken ct = default)
     {
-        if (string.IsNullOrEmpty(conditionJson)) return true; // kosul yoksa her zaman eslesir
+        if (newAssigneeId is null) return;
+
+        var task = await _db.Tasks.Include(t => t.IssueType).FirstOrDefaultAsync(t => t.Id == taskId, ct);
+        if (task is null) return;
+
+        var rules = await _db.AutomationRules
+            .Where(r => r.ProjectId == task.ProjectId && r.IsActive && r.TriggerType == "TaskAssigned")
+            .ToListAsync(ct);
+
+        foreach (var rule in rules)
+        {
+            var context = new Dictionary<string, string?> { ["issueTypeName"] = task.IssueType?.Name };
+            if (!MatchesAllConditions(rule.TriggerConditionJson, context)) continue;
+            await ExecuteActionAsync(rule, task, ct);
+        }
+    }
+
+    // #Yuksek-8: yeni tetikleyici -- goreve yorum eklenince
+    public async System.Threading.Tasks.Task ProcessCommentAddedAsync(Guid taskId, CancellationToken ct = default)
+    {
+        var task = await _db.Tasks.Include(t => t.IssueType).FirstOrDefaultAsync(t => t.Id == taskId, ct);
+        if (task is null) return;
+
+        var rules = await _db.AutomationRules
+            .Where(r => r.ProjectId == task.ProjectId && r.IsActive && r.TriggerType == "CommentAdded")
+            .ToListAsync(ct);
+
+        foreach (var rule in rules)
+        {
+            var context = new Dictionary<string, string?> { ["issueTypeName"] = task.IssueType?.Name };
+            if (!MatchesAllConditions(rule.TriggerConditionJson, context)) continue;
+            await ExecuteActionAsync(rule, task, ct);
+        }
+    }
+
+    // #Yuksek-8: artik tek key degil, kosul JSON'undaki TUM key'ler eslesmeli (AND mantigi).
+    // Onceki versiyon yalnizca bilinen tek bir anahtari kontrol ediyordu; simdi kosul objesindeki
+    // her key context'teki karsiligiyla birebir eslesmezse kural atlanir.
+    private static bool MatchesAllConditions(string? conditionJson, Dictionary<string, string?> context)
+    {
+        if (string.IsNullOrEmpty(conditionJson)) return true;
 
         try
         {
             using var doc = JsonDocument.Parse(conditionJson);
-            if (!doc.RootElement.TryGetProperty(key, out var expected)) return true;
-            return string.Equals(expected.GetString(), actualValue, StringComparison.OrdinalIgnoreCase);
+            foreach (var property in doc.RootElement.EnumerateObject())
+            {
+                var expected = property.Value.GetString();
+                if (!context.TryGetValue(property.Name, out var actual)) continue; // bilinmeyen key -- yoksay
+                if (!string.Equals(expected, actual, StringComparison.OrdinalIgnoreCase)) return false;
+            }
+            return true;
         }
         catch
         {
-            return true; // bozuk JSON -- otomasyonu engelleme
+            return true;
         }
     }
 
@@ -114,7 +162,7 @@ public class AutomationEngine : IAutomationEngine
         }
         catch
         {
-            // Bir kuralin calisirken hata almasi diger islemleri (task olusturma vb.) engellemesin
+            // Bir kuralin calisirken hata almasi diger islemleri engellemesin
         }
     }
 }

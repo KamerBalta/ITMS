@@ -26,9 +26,9 @@ public class NotificationPreferencesController : ControllerBase
     public async Task<IActionResult> Update(string notificationType, UpdatePreferenceRequest request)
     {
         var userId = Guid.Parse(User.FindFirstValue("sub")!);
-        await _mediator.Send(new UpdateNotificationPreferenceCommand(userId, notificationType, request.InAppEnabled, request.EmailEnabled));
+        await _mediator.Send(new UpdateNotificationPreferenceCommand(userId, notificationType, request.InAppEnabled, request.EmailEnabled, request.EmailFrequency));
         return NoContent();
     }
 }
 
-public record UpdatePreferenceRequest(bool InAppEnabled, bool EmailEnabled);
+public record UpdatePreferenceRequest(bool InAppEnabled, bool EmailEnabled, string EmailFrequency);

@@ -108,5 +108,6 @@ export function useUserDetail(userId: string | null) {
         queryKey: ['user-detail', userId],
         queryFn: () => usersApi.getById(userId!),
         enabled: !!userId,
+        retry: false,
     });
 }

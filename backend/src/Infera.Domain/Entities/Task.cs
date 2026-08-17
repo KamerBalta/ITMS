@@ -17,6 +17,8 @@ public class Task : BaseEntity,ISoftDelete
     public string Title { get; set; } = default!;
     public string? Description { get; set; }
     public Guid? IssueTypeId { get; set; }
+    public int? OriginalEstimateMinutes { get; set; }
+    public int? RemainingEstimateMinutes { get; set; }
     public IssueType? IssueType { get; set; }
     public Priority Priority { get; set; }
     public int? StoryPoint { get; set; }

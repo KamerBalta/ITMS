@@ -1,14 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { backlogApi } from '../api/backlog';
 
-export function useBacklog(projectId: string | null) {
+export function useBacklog(projectId: string | null, page = 1, pageSize = 25) {
     return useQuery({
-        queryKey: ['backlog', projectId],
-        queryFn: () => backlogApi.get(projectId!),
+        queryKey: ['backlog', projectId, page, pageSize],
+        queryFn: () => backlogApi.get(projectId!, page, pageSize),
         enabled: !!projectId,
     });
 }
-
 export function useMoveToSprint(projectId: string) {
     const queryClient = useQueryClient();
     return useMutation({

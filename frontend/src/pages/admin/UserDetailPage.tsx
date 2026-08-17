@@ -4,9 +4,20 @@ import { AuthenticatedImage } from '../../components/AuthenticatedImage';
 
 export function UserDetailPage() {
     const { userId } = useParams<{ userId: string }>();
-    const { data: user, isLoading } = useUserDetail(userId ?? null);
+    const { data: user, isLoading, isError } = useUserDetail(userId ?? null);
 
-    if (isLoading || !user) return <p className="text-secondary">Yükleniyor...</p>;
+    if (isError) {
+        return (
+            <div className="text-center py-16">
+                <p className="text-muted">Bu kullanıcı bulunamadı ya da görüntüleme yetkiniz yok.</p>
+                <Link to="/admin/users" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
+                    ← Kullanıcı Yönetimine dön
+                </Link>
+            </div>
+        );
+    }
+
+    if (isLoading || !user) return <p className="text-muted">Yükleniyor...</p>;
 
     return (
         <div className="max-w-2xl space-y-6">
@@ -34,8 +45,8 @@ export function UserDetailPage() {
                 </div>
                 <span
                     className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold border ${user.isActive
-                            ? 'bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900/60'
-                            : 'bg-gray-100 dark:bg-gray-800 text-secondary border-gray-200 dark:border-gray-700'
+                        ? 'bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900/60'
+                        : 'bg-gray-100 dark:bg-gray-800 text-secondary border-gray-200 dark:border-gray-700'
                         }`}
                 >
                     {user.isActive ? 'Aktif' : 'Pasif'}

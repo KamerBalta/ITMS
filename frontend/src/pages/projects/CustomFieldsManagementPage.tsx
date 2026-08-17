@@ -15,7 +15,7 @@ const TYPE_ICONS: Record<string, string> = {
 
 export function CustomFieldsManagementPage() {
     const { projectId } = useParams<{ projectId: string }>();
-    const { data: fields, isLoading } = useCustomFields(projectId ?? null);
+    const { data: fields, isLoading, isError } = useCustomFields(projectId ?? null);
     const createField = useCreateCustomField(projectId!);
     const deleteField = useDeleteCustomField(projectId!);
 
@@ -74,7 +74,11 @@ export function CustomFieldsManagementPage() {
                 </div>
             )}
 
-            {isLoading ? (
+            {isError ? (
+                <div className="surface border border-red-200 dark:border-red-900/60 rounded-lg p-8 text-center bg-red-50/50 dark:bg-red-950/20">
+                    <p className="text-sm font-medium text-red-500">Bu sayfayı görüntüleme yetkiniz yok veya bir hata oluştu.</p>
+                </div>
+            ) : isLoading ? (
                 <div className="surface border rounded-lg p-8 text-center">
                     <p className="text-sm text-secondary">Yükleniyor...</p>
                 </div>
@@ -156,98 +160,100 @@ export function CustomFieldsManagementPage() {
                 </div>
             )}
 
-            <div className="surface overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
-                <div className="border-b border-gray-200 bg-surface-muted px-5 py-4 dark:border-gray-700">
-                    <h2 className="text-sm font-semibold text-primary">
-                        Yeni Özel Alan
-                    </h2>
+            {!isError && (
+                <div className="surface overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+                    <div className="border-b border-gray-200 bg-surface-muted px-5 py-4 dark:border-gray-700">
+                        <h2 className="text-sm font-semibold text-primary">
+                            Yeni Özel Alan
+                        </h2>
 
-                    <p className="mt-1 text-xs text-secondary">
-                        Görevlerde kullanılacak yeni bir alan oluşturun.
-                    </p>
-                </div>
-
-                <div className="space-y-5 p-5">
-                    <div>
-                        <label className="mb-1.5 block text-xs font-medium text-secondary">
-                            Alan adı
-                        </label>
-
-                        <input
-                            type="text"
-                            placeholder="Örn. Müşteri Adı"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="input-base w-full rounded-lg border px-3 py-2.5 text-sm"
-                        />
+                        <p className="mt-1 text-xs text-secondary">
+                            Görevlerde kullanılacak yeni bir alan oluşturun.
+                        </p>
                     </div>
 
-                    <div>
-                        <label className="mb-1.5 block text-xs font-medium text-secondary">
-                            Alan tipi
-                        </label>
+                    <div className="space-y-5 p-5">
+                        <div>
+                            <label className="mb-1.5 block text-xs font-medium text-secondary">
+                                Alan adı
+                            </label>
 
-                        <select
-                            value={fieldType}
-                            onChange={(e) => setFieldType(e.target.value)}
-                            className="input-base w-full cursor-pointer rounded-lg border px-3 py-2.5 text-sm"
-                        >
-                            <option value="text">
-                                Aa — Metin
-                            </option>
-
-                            <option value="number">
-                                # — Sayı
-                            </option>
-
-                            <option value="select">
-                                ☷ — Seçim Listesi
-                            </option>
-
-                            <option value="user">
-                                👤 — Kullanıcı
-                            </option>
-                        </select>
-                    </div>
-
-                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                        <input
-                            type="checkbox"
-                            checked={isRequired}
-                            onChange={(e) =>
-                                setIsRequired(e.target.checked)
-                            }
-                            className="mt-0.5 rounded"
-                        />
+                            <input
+                                type="text"
+                                placeholder="Örn. Müşteri Adı"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="input-base w-full rounded-lg border px-3 py-2.5 text-sm"
+                            />
+                        </div>
 
                         <div>
-                            <p className="text-sm font-medium text-primary">
-                                Zorunlu alan
-                            </p>
+                            <label className="mb-1.5 block text-xs font-medium text-secondary">
+                                Alan tipi
+                            </label>
 
-                            <p className="mt-0.5 text-xs text-secondary">
-                                Bu alan doldurulmadan görev oluşturulmasına veya güncellenmesine izin verilmez.
-                            </p>
+                            <select
+                                value={fieldType}
+                                onChange={(e) => setFieldType(e.target.value)}
+                                className="input-base w-full cursor-pointer rounded-lg border px-3 py-2.5 text-sm"
+                            >
+                                <option value="text">
+                                    Aa — Metin
+                                </option>
+
+                                <option value="number">
+                                    # — Sayı
+                                </option>
+
+                                <option value="select">
+                                    ☷ — Seçim Listesi
+                                </option>
+
+                                <option value="user">
+                                    👤 — Kullanıcı
+                                </option>
+                            </select>
                         </div>
-                    </label>
 
-                    <div className="flex justify-end border-t border-gray-200 pt-4 dark:border-gray-700">
-                        <button
-                            type="button"
-                            onClick={handleCreate}
-                            disabled={
-                                !name.trim() ||
-                                createField.isPending
-                            }
-                            className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
-                        >
-                            {createField.isPending
-                                ? 'Oluşturuluyor...'
-                                : 'Alan Oluştur'}
-                        </button>
+                        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                            <input
+                                type="checkbox"
+                                checked={isRequired}
+                                onChange={(e) =>
+                                    setIsRequired(e.target.checked)
+                                }
+                                className="mt-0.5 rounded"
+                            />
+
+                            <div>
+                                <p className="text-sm font-medium text-primary">
+                                    Zorunlu alan
+                                </p>
+
+                                <p className="mt-0.5 text-xs text-secondary">
+                                    Bu alan doldurulmadan görev oluşturulmasına veya güncellenmesine izin verilmez.
+                                </p>
+                            </div>
+                        </label>
+
+                        <div className="flex justify-end border-t border-gray-200 pt-4 dark:border-gray-700">
+                            <button
+                                type="button"
+                                onClick={handleCreate}
+                                disabled={
+                                    !name.trim() ||
+                                    createField.isPending
+                                }
+                                className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                            >
+                                {createField.isPending
+                                    ? 'Oluşturuluyor...'
+                                    : 'Alan Oluştur'}
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

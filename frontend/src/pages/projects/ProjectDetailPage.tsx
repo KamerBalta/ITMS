@@ -39,7 +39,7 @@ export function ProjectDetailPage() {
     const user = useAuthStore((state) => state.user);
     const canManage = user?.roles.some((r) => r === 'System Admin' || r === 'Project Manager') ?? false;
 
-    const { data: project, isLoading } = useProjectDetail(projectId ?? null);
+    const { data: project, isLoading, isError } = useProjectDetail(projectId ?? null);
     const { data: allTeams } = useTeams();
     const updateProject = useUpdateProject(projectId!);
     const archiveProject = useArchiveProject();
@@ -68,7 +68,18 @@ export function ProjectDetailPage() {
     const [isAddTeamModalOpen, setIsAddTeamModalOpen] = useState(false);
     const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
 
-    if (isLoading || !project) return <p className="text-secondary p-4">Yükleniyor...</p>;
+    if (isError) {
+        return (
+            <div className="text-center py-16">
+                <p className="text-muted">Bu proje bulunamadı veya erişim yetkiniz yok.</p>
+                <Link to="/projects" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
+                    ← Projelere dön
+                </Link>
+            </div>
+        );
+    }
+
+    if (isLoading || !project) return <p className="text-muted">Yükleniyor...</p>;
 
     const projectTeamIds = allTeams?.filter((t) => project.teamNames.includes(t.name)).map((t) => t.id) ?? [];
 
@@ -220,8 +231,8 @@ export function ProjectDetailPage() {
 
                                         <span
                                             className={`rounded-full px-2.5 py-1 text-xs font-medium ${project.status === 'Archived'
-                                                    ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
-                                                    : 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
+                                                ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
+                                                : 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
                                                 }`}
                                         >
                                             {project.status === 'Archived'
@@ -386,11 +397,22 @@ export function ProjectDetailPage() {
 
                         <Link
                             to={`/projects/${projectId}/permissions`}
-                            className="flex items-center justify-between px-5 py-4 hover:bg-surface-muted"
+                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
                         >
                             <div>
                                 <p className="text-sm font-medium text-primary">Yetkiler</p>
                                 <p className="mt-1 text-xs text-secondary">Proje erişim ve yetki ayarlarını yönetin.</p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-muted" />
+                        </Link>
+
+                        <Link
+                            to={`/projects/${projectId}/components`}
+                            className="flex items-center justify-between px-5 py-4 hover:bg-surface-muted"
+                        >
+                            <div>
+                                <p className="text-sm font-medium text-primary">Component'ler</p>
+                                <p className="mt-1 text-xs text-secondary">Projeye ait modül ve bileşenleri yönetin.</p>
                             </div>
                             <ChevronRight className="h-5 w-5 text-muted" />
                         </Link>

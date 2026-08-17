@@ -17,7 +17,7 @@ const SIZE_CLASSES = {
 export function Avatar({ userId, name, hasAvatar = true, size = 'sm' }: AvatarProps) {
     const initial = name.charAt(0).toUpperCase();
     const fallback = (
-        <span className="w-full h-full flex items-center justify-center bg-indigo-100 text-indigo-600 font-bold">
+        <span className="w-full h-full flex items-center justify-center bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold">
             {initial}
         </span>
     );
@@ -25,7 +25,13 @@ export function Avatar({ userId, name, hasAvatar = true, size = 'sm' }: AvatarPr
     return (
         <div className={`${SIZE_CLASSES[size]} rounded-full overflow-hidden shrink-0`}>
             {hasAvatar ? (
-                <AuthenticatedImage src={`/users/${userId}/avatar`} alt={name} className="w-full h-full object-cover" fallback={fallback} />
+                <AuthenticatedImage
+                    src={`/users/${userId}/avatar`}
+                    alt={name}
+                    className="w-full h-full object-cover"
+                    fallback={fallback}
+                    cacheKey={`avatar:${userId}`}
+                />
             ) : (
                 fallback
             )}

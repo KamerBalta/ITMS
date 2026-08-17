@@ -1,11 +1,13 @@
 import { NavLink, Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
-import { Search, Menu, X, Plus, LogOut } from 'lucide-react';
+import { Search, Menu, X, Plus, LogOut, ChevronDown, User } from 'lucide-react';
+
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import { useProjectStore } from '../store/projectStore';
 import { authApi } from '../api/auth';
 import { navItems } from '../lib/navigation';
+
 import { useNotifications } from '../hooks/useNotifications';
 import { ProjectSelector } from './ProjectSelector';
 import { CreateTaskModal } from './CreateTaskModal';
@@ -15,6 +17,7 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { GlobalSearchPopover } from './GlobalSearchPopover';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
 import { ShortcutsHelpModal } from './ShortcutsHelpModal';
+
 import logoImg from '../assets/logo.png';
 
 const SECTION_LABELS: Record<string, string> = {
@@ -24,42 +27,91 @@ const SECTION_LABELS: Record<string, string> = {
     SETTINGS: 'ADMINISTRATION',
 };
 
-const SECTION_ORDER = ['YOUR_WORK', 'PROJECT_PLANNING', 'TEAMS_REPORTS', 'SETTINGS'];
+const SECTION_ORDER = [
+    'YOUR_WORK',
+    'PROJECT_PLANNING',
+    'TEAMS_REPORTS',
+    'SETTINGS',
+];
 
 export function AppLayout() {
     const navigate = useNavigate();
     const location = useLocation();
+
     const user = useAuthStore((state) => state.user);
     const refreshToken = useAuthStore((state) => state.refreshToken);
     const logout = useAuthStore((state) => state.logout);
+
     const { data: notifications } = useNotifications();
-    const { isMobileSidebarOpen, toggleMobileSidebar, closeMobileSidebar } = useUIStore();
-    const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
+
+    const {
+        isMobileSidebarOpen,
+        toggleMobileSidebar,
+        closeMobileSidebar,
+    } = useUIStore();
+
+    const selectedProjectId = useProjectStore(
+        (state) => state.selectedProjectId
+    );
 
     const isAdmin = user?.roles.includes('System Admin') ?? false;
-    const unreadCount = notifications?.filter((n) => !n.isRead).length ?? 0;
+
+    const unreadCount =
+        notifications?.filter((n) => !n.isRead).length ?? 0;
+
     const [isCreateOpen, setCreateOpen] = useState(false);
     const [isHelpOpen, setHelpOpen] = useState(false);
+    const [isProfileOpen, setProfileOpen] = useState(false);
+    const profileRef = useRef<HTMLDivElement>(null);
 
-    // Canlı Arama Popover State ve Ref
+    // Global Search
     const [isSearchOpen, setSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const searchInputRef = useRef<HTMLInputElement>(null);
 
-    // Global Kısayollar
+    // Keyboard Shortcuts
     useKeyboardShortcuts({
         onCreateTask: () => setCreateOpen(true),
         onShowHelp: () => setHelpOpen(true),
     });
 
-    // Realtime Sync Hook'u
+    // Realtime
     useRealtimeSync();
 
+    // Route değiştiğinde mobil sidebar, search ve profile dropdown kapanır
     useEffect(() => {
         closeMobileSidebar();
         setSearchOpen(false);
+        setProfileOpen(false);
+
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [location.pathname]);
+
+    // Dışarı tıklandığında profil menüsünü kapat
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (
+                profileRef.current &&
+                !profileRef.current.contains(event.target as Node)
+            ) {
+                setProfileOpen(false);
+            }
+        };
+
+        if (isProfileOpen) {
+            document.addEventListener(
+                'mousedown',
+                handleClickOutside
+            );
+        }
+
+        return () => {
+            document.removeEventListener(
+                'mousedown',
+                handleClickOutside
+            );
+        };
+    }, [isProfileOpen]);
 
     const handleLogout = async () => {
         if (refreshToken) {
@@ -69,12 +121,15 @@ export function AppLayout() {
                 // Logout hatasında istemci tarafında oturumu kapatmaya devam et
             }
         }
+
         logout();
         navigate('/login');
     };
 
     const visibleNavItems = navItems.filter(
-        (item) => (!item.adminOnly || isAdmin) && item.path !== '/search'
+        (item) =>
+            (!item.adminOnly || isAdmin) &&
+            item.path !== '/search'
     );
 
     const getUserInitials = () => {
@@ -86,208 +141,782 @@ export function AppLayout() {
                 .toUpperCase()
                 .slice(0, 2);
         }
+
         return user?.email?.slice(0, 2).toUpperCase() ?? 'UI';
     };
 
     return (
-        <div className="min-h-screen flex bg-slate-50 dark:bg-gray-950 text-slate-800 dark:text-gray-100">
-            {/* Mobil Sidebar Perdesi */}
+        <div
+            className="
+                min-h-screen
+                flex
+                bg-slate-50
+                dark:bg-gray-950
+                text-slate-800
+                dark:text-gray-100
+            "
+        >
+            {/* =====================================================
+                MOBİL SIDEBAR OVERLAY
+            ====================================================== */}
+
             {isMobileSidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-30 md:hidden transition-opacity"
+                    className="
+                        fixed
+                        inset-0
+                        bg-slate-900/40
+                        backdrop-blur-xs
+                        z-30
+                        md:hidden
+                        transition-opacity
+                    "
                     onClick={closeMobileSidebar}
                 />
             )}
 
-            {/* Sidebar */}
+            {/* =====================================================
+                SIDEBAR
+            ====================================================== */}
+
             <aside
-                className={`w-60 surface border-r border-slate-200 dark:border-gray-800 flex flex-col fixed md:static inset-y-0 left-0 z-40 transition-transform duration-200 select-none ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-                    }`}
+                className={`
+                    w-[232px]
+                    surface
+                    border-r
+                    border-slate-200/80
+                    dark:border-gray-800
+                    flex
+                    flex-col
+                    fixed
+                    md:static
+                    inset-y-0
+                    left-0
+                    z-40
+                    transition-transform
+                    duration-200
+                    select-none
+
+                    ${isMobileSidebarOpen
+                        ? 'translate-x-0'
+                        : '-translate-x-full md:translate-x-0'
+                    }
+                `}
             >
-                {/* Logo & Başlık Alanı */}
-                <div className="px-4 py-3.5 border-b border-slate-100 dark:border-gray-800 flex items-center justify-between shrink-0">
+                {/* =================================================
+                    LOGO
+                ================================================== */}
+
+                <div
+                    className="
+                        h-14
+                        px-4
+                        border-b
+                        border-slate-100
+                        dark:border-gray-800
+                        flex
+                        items-center
+                        justify-between
+                        shrink-0
+                    "
+                >
                     <Link
                         to="/dashboard"
-                        className="flex items-center gap-3 group cursor-pointer"
+                        className="
+                            flex
+                            items-center
+                            gap-2.5
+                            group
+                            cursor-pointer
+                        "
                         title="Dashboard'a git"
                     >
                         <img
                             src={logoImg}
                             alt="ITMS Logo"
-                            className="w-8 h-8 object-cover scale-150 shrink-0 transition-transform group-hover:scale-160"
+                            className="
+                                w-7
+                                h-7
+                                object-contain
+                                shrink-0
+                                transition-transform
+                                group-hover:scale-105
+                            "
                         />
-                        <div>
-                            <span className="text-lg font-extrabold text-primary leading-none block group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+
+                        <div className="flex flex-col">
+                            <span
+                                className="
+                                    text-base
+                                    font-bold
+                                    text-primary
+                                    leading-none
+                                    group-hover:text-blue-600
+                                    dark:group-hover:text-blue-400
+                                    transition-colors
+                                "
+                            >
                                 ITMS
                             </span>
-                            <span className="text-[10px] text-muted font-medium leading-none">
+
+                            <span
+                                className="
+                                    text-[9px]
+                                    text-muted
+                                    mt-1
+                                    leading-none
+                                "
+                            >
                                 Software Management
                             </span>
                         </div>
                     </Link>
 
-                    <button onClick={closeMobileSidebar} className="md:hidden text-muted hover:text-primary">
+                    {/* Mobil kapatma */}
+                    <button
+                        onClick={closeMobileSidebar}
+                        className="
+                            md:hidden
+                            p-1.5
+                            rounded-md
+                            text-muted
+                            hover:text-primary
+                            hover-surface
+                            transition
+                        "
+                    >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                {/* Oluştur Butonu */}
-                <div className="px-3 py-3 border-b border-slate-100 dark:border-gray-800 shrink-0">
+                {/* =================================================
+                    OLUŞTUR BUTONU
+                ================================================== */}
+
+                <div
+                    className="
+                        px-3
+                        py-3
+                        border-b
+                        border-slate-100
+                        dark:border-gray-800
+                        shrink-0
+                    "
+                >
                     <button
                         onClick={() => setCreateOpen(true)}
-                        className="w-full h-9 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                        className="
+                            w-full
+                            h-9
+                            bg-blue-600
+                            text-white
+                            rounded-md
+                            text-sm
+                            font-medium
+                            hover:bg-blue-700
+                            active:bg-blue-800
+                            transition
+                            flex
+                            items-center
+                            justify-center
+                            gap-2
+                            shadow-sm
+                            cursor-pointer
+                        "
                     >
                         <Plus className="w-4 h-4 stroke-[2.5]" />
+
                         <span>Oluştur</span>
                     </button>
                 </div>
 
-                {/* Navigasyon Linkleri */}
-                <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                {/* =================================================
+                    NAVIGATION
+                ================================================== */}
+
+                <nav
+                    className="
+                        flex-1
+                        px-3
+                        py-4
+                        overflow-y-auto
+
+                        [&::-webkit-scrollbar]:hidden
+                        [-ms-overflow-style:none]
+                        [scrollbar-width:none]
+                    "
+                >
                     {SECTION_ORDER.map((sectionKey) => {
-                        const itemsInSection = visibleNavItems.filter((item) => (item.section ?? 'YOUR_WORK') === sectionKey);
-                        if (itemsInSection.length === 0) return null;
+                        const itemsInSection =
+                            visibleNavItems.filter(
+                                (item) =>
+                                    (item.section ?? 'YOUR_WORK') ===
+                                    sectionKey
+                            );
+
+                        if (itemsInSection.length === 0) {
+                            return null;
+                        }
 
                         return (
-                            <div key={sectionKey} className="space-y-0.5">
-                                <div className="px-2 pb-1.5 text-[11px] font-semibold text-muted tracking-widest uppercase">
-                                    {SECTION_LABELS[sectionKey] ?? sectionKey}
+                            <div
+                                key={sectionKey}
+                                className="mb-5"
+                            >
+                                {/* Section başlığı */}
+
+                                <div
+                                    className="
+                                        px-3
+                                        mb-1
+                                        text-[11px]
+                                        font-semibold
+                                        text-slate-500
+                                        dark:text-gray-500
+                                        uppercase
+                                        tracking-wide
+                                    "
+                                >
+                                    {SECTION_LABELS[sectionKey] ??
+                                        sectionKey}
                                 </div>
 
-                                {itemsInSection.map((item) => {
-                                    const IconComponent = item.icon;
+                                {/* Navigation Items */}
 
-                                    return (
-                                        <NavLink
-                                            key={item.path}
-                                            to={item.path}
-                                            className={({ isActive }) =>
-                                                `flex items-center justify-between px-3 py-2 rounded-r-md text-sm transition-all duration-150 ${isActive
-                                                    ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold border-l-4 border-blue-600 dark:border-blue-400 -ml-3 pl-2.5'
-                                                    : 'text-secondary hover-surface hover:text-primary border-l-4 border-transparent -ml-3 pl-2.5'
-                                                }`
-                                            }
-                                        >
-                                            <span className="flex items-center gap-2.5 min-w-0">
-                                                {IconComponent && (
-                                                    <span className="shrink-0 flex items-center justify-center">
-                                                        <IconComponent size={18} strokeWidth={2} />
+                                <div className="space-y-0.5">
+                                    {itemsInSection.map((item) => {
+                                        const IconComponent =
+                                            item.icon;
+
+                                        return (
+                                            <NavLink
+                                                key={item.path}
+                                                to={item.path}
+                                                className={({
+                                                    isActive,
+                                                }) =>
+                                                    `
+                                                    flex
+                                                    items-center
+                                                    justify-between
+                                                    px-3
+                                                    py-2
+                                                    rounded-md
+                                                    text-sm
+                                                    transition-colors
+                                                    duration-150
+
+                                                    ${isActive
+                                                        ? `
+                                                            bg-blue-50
+                                                            dark:bg-blue-950/60
+                                                            text-blue-700
+                                                            dark:text-blue-300
+                                                            font-semibold
+                                                        `
+                                                        : `
+                                                            text-secondary
+                                                            hover-surface
+                                                            hover:text-primary
+                                                        `
+                                                    }
+                                                    `
+                                                }
+                                            >
+                                                <span
+                                                    className="
+                                                        flex
+                                                        items-center
+                                                        gap-3
+                                                        min-w-0
+                                                    "
+                                                >
+                                                    {IconComponent && (
+                                                        <span
+                                                            className="
+                                                                shrink-0
+                                                                flex
+                                                                items-center
+                                                                justify-center
+                                                            "
+                                                        >
+                                                            <IconComponent
+                                                                size={17}
+                                                                strokeWidth={
+                                                                    2
+                                                                }
+                                                            />
+                                                        </span>
+                                                    )}
+
+                                                    <span className="truncate">
+                                                        {item.label}
                                                     </span>
-                                                )}
-                                                <span className="truncate">{item.label}</span>
-                                            </span>
-
-                                            {item.path === '/notifications' && unreadCount > 0 && (
-                                                <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-5 h-5 px-1 flex items-center justify-center shrink-0">
-                                                    {unreadCount > 99 ? '99+' : unreadCount}
                                                 </span>
-                                            )}
-                                        </NavLink>
-                                    );
-                                })}
+
+                                                {/* Notification Badge */}
+
+                                                {item.path ===
+                                                    '/notifications' &&
+                                                    unreadCount >
+                                                    0 && (
+                                                        <span
+                                                            className="
+                                                                bg-red-500
+                                                                text-white
+                                                                text-[10px]
+                                                                font-bold
+                                                                rounded-full
+                                                                min-w-5
+                                                                h-5
+                                                                px-1
+                                                                flex
+                                                                items-center
+                                                                justify-center
+                                                                shrink-0
+                                                            "
+                                                        >
+                                                            {unreadCount >
+                                                                99
+                                                                ? '99+'
+                                                                : unreadCount}
+                                                        </span>
+                                                    )}
+                                            </NavLink>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         );
                     })}
                 </nav>
             </aside>
 
-            {/* Ana İçerik */}
+            {/* =====================================================
+                ANA ALAN
+            ====================================================== */}
+
             <div className="flex-1 flex flex-col min-w-0">
-                {/* Responsive Header */}
-                <header className="h-14 surface border-b border-slate-200 dark:border-gray-800 flex items-center justify-between px-3 md:px-6 gap-2 sm:gap-4 shrink-0 relative z-30">
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                        {/* Mobil Hamburger Menü */}
+                {/* =================================================
+                    TOP HEADER
+                ================================================== */}
+
+                <header
+                    className="
+                        h-14
+                        surface
+                        border-b
+                        border-slate-200
+                        dark:border-gray-800
+                        flex
+                        items-center
+                        justify-between
+                        px-3
+                        md:px-5
+                        gap-2
+                        sm:gap-4
+                        shrink-0
+                        relative
+                        z-30
+                    "
+                >
+                    {/* Sol taraf */}
+
+                    <div
+                        className="
+                            flex
+                            items-center
+                            gap-2
+                            sm:gap-3
+                            min-w-0
+                            flex-1
+                        "
+                    >
+                        {/* Mobil hamburger */}
+
                         <button
                             onClick={toggleMobileSidebar}
-                            className="md:hidden text-secondary hover:text-primary shrink-0 p-1.5 rounded-md hover-surface transition"
+                            className="
+                                md:hidden
+                                text-secondary
+                                hover:text-primary
+                                shrink-0
+                                p-1.5
+                                rounded-md
+                                hover-surface
+                                transition
+                            "
                         >
                             <Menu className="w-5 h-5" />
                         </button>
 
-                        {/* Proje Seçici */}
-                        <div className="min-w-0 max-w-[140px] sm:max-w-xs md:max-w-none">
+                       
+
+                        <div className="min-w-0 shrink-0">
                             <ProjectSelector />
                         </div>
 
-                        {/* Responsive Arama Alanı */}
+                        {/* Search */}
+
                         <div className="relative min-w-0">
-                            {/* Masaüstü Arama Input'u */}
-                            <div className="hidden lg:flex items-center gap-2 surface-muted focus-within:surface focus-within:ring-2 focus-within:ring-blue-500/20 border border-slate-200 dark:border-gray-700 rounded-md px-3 py-1.5 w-64 transition">
-                                <Search className="w-4 h-4 shrink-0 text-muted" />
+                            {/* Desktop Search */}
+
+                            <div
+                                className="
+                                    hidden
+                                    lg:flex
+                                    items-center
+                                    gap-2
+                                    surface-muted
+                                    focus-within:surface
+                                    focus-within:ring-2
+                                    focus-within:ring-blue-500/20
+                                    border
+                                    border-slate-200
+                                    dark:border-gray-700
+                                    rounded-md
+                                    px-3
+                                    py-1.5
+                                    w-72
+                                    transition
+                                "
+                            >
+                                <Search
+                                    className="
+                                        w-4
+                                        h-4
+                                        shrink-0
+                                        text-muted
+                                    "
+                                />
+
                                 <input
                                     ref={searchInputRef}
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => {
-                                        setSearchQuery(e.target.value);
-                                        if (!isSearchOpen) setSearchOpen(true);
+                                        setSearchQuery(
+                                            e.target.value
+                                        );
+
+                                        if (!isSearchOpen) {
+                                            setSearchOpen(true);
+                                        }
                                     }}
-                                    onFocus={() => setSearchOpen(true)}
-                                    placeholder="ITMS'de ara..."
-                                    className="text-xs text-primary placeholder:text-muted bg-transparent outline-none w-full"
+                                    onFocus={() =>
+                                        setSearchOpen(true)
+                                    }
+                                    placeholder="Ara"
+                                    className="
+                                        text-xs
+                                        text-primary
+                                        placeholder:text-muted
+                                        bg-transparent
+                                        outline-none
+                                        w-full
+                                    "
                                 />
+
                                 {searchQuery ? (
                                     <button
-                                        onClick={() => setSearchQuery('')}
-                                        className="text-muted hover:text-primary text-xs shrink-0 cursor-pointer"
+                                        onClick={() =>
+                                            setSearchQuery('')
+                                        }
+                                        className="
+                                            text-muted
+                                            hover:text-primary
+                                            shrink-0
+                                            cursor-pointer
+                                        "
                                     >
                                         <X className="w-3.5 h-3.5" />
                                     </button>
                                 ) : (
-                                    <kbd className="text-[10px] bg-gray-100 dark:bg-gray-700 text-secondary px-1.5 py-0.5 rounded shrink-0">
+                                    <kbd
+                                        className="
+                                            text-[10px]
+                                            bg-gray-100
+                                            dark:bg-gray-700
+                                            text-secondary
+                                            px-1.5
+                                            py-0.5
+                                            rounded
+                                            shrink-0
+                                        "
+                                    >
                                         Ctrl K
                                     </kbd>
                                 )}
                             </div>
 
-                            {/* Mobil / Tablet Arama Butonu */}
+                          
+
                             <button
-                                onClick={() => setSearchOpen(true)}
-                                className="lg:hidden p-1.5 rounded-md text-secondary hover:text-primary hover-surface transition shrink-0 cursor-pointer"
+                                onClick={() =>
+                                    setSearchOpen(true)
+                                }
+                                className="
+                                    lg:hidden
+                                    p-1.5
+                                    rounded-md
+                                    text-secondary
+                                    hover:text-primary
+                                    hover-surface
+                                    transition
+                                    shrink-0
+                                    cursor-pointer
+                                "
                                 title="Arama yap"
                             >
                                 <Search className="w-5 h-5" />
                             </button>
 
-                            {/* Sonuç Liste Popover'ı */}
+                       
+
                             <GlobalSearchPopover
                                 isOpen={isSearchOpen}
                                 searchQuery={searchQuery}
-                                onClose={() => setSearchOpen(false)}
+                                onClose={() =>
+                                    setSearchOpen(false)
+                                }
                             />
                         </div>
                     </div>
 
-                    {/* Sağ Taraf Aksiyonları */}
-                    <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+                    
+
+                    <div
+                        className="
+                            flex
+                            items-center
+                            gap-1
+                            sm:gap-2
+                            shrink-0
+                        "
+                    >
+                       
+
                         <RealtimeIndicator />
+
+                       
+
                         <NotificationDropdown />
 
-                        <NavLink
-                            to="/profile"
-                            className="flex items-center gap-2 p-0.5 sm:p-1 rounded-full hover-surface transition"
-                            title={user?.email}
-                        >
-                            <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-800 shadow-2xs shrink-0">
-                                {getUserInitials()}
-                            </div>
-                        </NavLink>
+                        
 
-                        <button
-                            onClick={handleLogout}
-                            className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/50 px-2 py-1.5 sm:px-2.5 rounded-md transition font-medium cursor-pointer"
+                        <div
+                            ref={profileRef}
+                            className="relative"
                         >
-                            <LogOut className="w-4 h-4" />
-                            <span className="hidden sm:inline">Çıkış</span>
-                        </button>
+                            <button
+                                onClick={() => setProfileOpen((prev) => !prev)}
+                                className="
+                                    flex
+                                    items-center
+                                    gap-1.5
+                                    p-1
+                                    rounded-md
+                                    hover:bg-slate-100
+                                    dark:hover:bg-gray-800
+                                    transition
+                                    cursor-pointer
+                                "
+                                title={user?.email}
+                            >
+                                <div
+                                    className="
+                                        w-8
+                                        h-8
+                                        rounded-full
+                                        bg-blue-600
+                                        text-white
+                                        font-semibold
+                                        text-xs
+                                        flex
+                                        items-center
+                                        justify-center
+                                        border
+                                        border-blue-200
+                                        dark:border-blue-800
+                                        shrink-0
+                                    "
+                                >
+                                    {getUserInitials()}
+                                </div>
+
+                                <ChevronDown
+                                    className={`
+                                        hidden
+                                        sm:block
+                                        w-3.5
+                                        h-3.5
+                                        text-muted
+                                        transition-transform
+                                        duration-150
+                                        ${isProfileOpen ? 'rotate-180' : ''}
+                                    `}
+                                />
+                            </button>
+
+                            {isProfileOpen && (
+                                <div
+                                    className="
+                                        absolute
+                                        right-0
+                                        top-[calc(100%+8px)]
+                                        w-64
+                                        surface
+                                        border
+                                        border-slate-200
+                                        dark:border-gray-700
+                                        rounded-lg
+                                        shadow-lg
+                                        py-1.5
+                                        z-50
+                                        overflow-hidden
+                                    "
+                                >
+                                    {/* Kullanıcı Bilgisi */}
+                                    <div
+                                        className="
+                                            px-4
+                                            py-3
+                                            border-b
+                                            border-slate-100
+                                            dark:border-gray-800
+                                        "
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div
+                                                className="
+                                                    w-10
+                                                    h-10
+                                                    rounded-full
+                                                    bg-blue-600
+                                                    text-white
+                                                    font-semibold
+                                                    text-sm
+                                                    flex
+                                                    items-center
+                                                    justify-center
+                                                    shrink-0
+                                                "
+                                            >
+                                                {getUserInitials()}
+                                            </div>
+
+                                            <div className="min-w-0">
+                                                <p
+                                                    className="
+                                                        text-sm
+                                                        font-semibold
+                                                        text-primary
+                                                        truncate
+                                                    "
+                                                >
+                                                    {user?.name || 'Kullanıcı'}
+                                                </p>
+
+                                                <p
+                                                    className="
+                                                        text-xs
+                                                        text-muted
+                                                        truncate
+                                                        mt-0.5
+                                                    "
+                                                >
+                                                    {user?.email}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Menü */}
+                                    <div className="py-1">
+                                        <button
+                                            onClick={() => {
+                                                setProfileOpen(false);
+                                                navigate('/profile');
+                                            }}
+                                            className="
+                                                w-full
+                                                flex
+                                                items-center
+                                                gap-3
+                                                px-4
+                                                py-2.5
+                                                text-sm
+                                                text-secondary
+                                                hover-surface
+                                                hover:text-primary
+                                                transition
+                                                text-left
+                                                cursor-pointer
+                                            "
+                                        >
+                                            <User className="w-4 h-4 shrink-0" />
+                                            <span>Profil</span>
+                                        </button>
+                                    </div>
+
+                                    {/* Çıkış */}
+                                    <div
+                                        className="
+                                            border-t
+                                            border-slate-100
+                                            dark:border-gray-800
+                                            pt-1
+                                        "
+                                    >
+                                        <button
+                                            onClick={() => {
+                                                setProfileOpen(false);
+                                                handleLogout();
+                                            }}
+                                            className="
+                                                w-full
+                                                flex
+                                                items-center
+                                                gap-3
+                                                px-4
+                                                py-2.5
+                                                text-sm
+                                                text-red-600
+                                                dark:text-red-400
+                                                hover:bg-red-50
+                                                dark:hover:bg-red-950/40
+                                                transition
+                                                text-left
+                                                cursor-pointer
+                                            "
+                                        >
+                                            <LogOut className="w-4 h-4 shrink-0" />
+                                            <span>Çıkış yap</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </header>
 
-                {/* Main Content */}
-                <main className="flex-1 px-3 py-4 md:px-8 md:py-6 overflow-auto">
+          
+
+                <main
+                    className="
+                        flex-1
+                        px-4
+                        py-5
+                        md:px-6
+                        md:py-6
+                        overflow-auto
+                    "
+                >
                     <Outlet />
                 </main>
             </div>
+
+           
 
             <CreateTaskModal
                 projectId={selectedProjectId}

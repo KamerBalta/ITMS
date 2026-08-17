@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useProjectStore } from '../../store/projectStore';
 import { useAuthStore } from '../../store/authStore';
@@ -10,6 +10,8 @@ import { useConfirm } from '../../hooks/useConfirm';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { BacklogTaskItem } from '../../api/backlog';
 import { AuthenticatedImage } from '../../components/AuthenticatedImage';
+import { usePagination } from '../../hooks/usePagination';
+import { PaginationBar } from '../../components/PaginationBar';
 import {
     Plus,
     Play,
@@ -53,7 +55,9 @@ export function BacklogPage() {
     const avatarRefreshKey = useAuthStore((state) => state.avatarRefreshKey);
     const isPM = user?.roles.some((r) => r === 'System Admin' || r === 'Project Manager') ?? false;
 
-    const { data: backlogTasks, isLoading } = useBacklog(selectedProjectId);
+    const { page, setPage, pageSize, reset: resetPagination } = usePagination(25);
+
+    const { data: backlogTasks, isLoading } = useBacklog(selectedProjectId, page, pageSize);
     const { activeSprint, sprints } = useActiveSprint(selectedProjectId);
     const moveToSprint = useMoveToSprint(selectedProjectId ?? '');
     const completeSprint = useCompleteSprint(selectedProjectId ?? '');
@@ -65,6 +69,11 @@ export function BacklogPage() {
     const [isArchiveOpen, setIsArchiveOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isDragOverSprint, setDragOverSprint] = useState(false);
+
+    useEffect(() => {
+        resetPagination();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedProjectId]);
 
     if (!selectedProjectId) {
         return <p className="text-secondary text-xs p-5">Devam etmek için üstten bir proje seçin.</p>;
@@ -158,15 +167,15 @@ export function BacklogPage() {
                     onDragLeave={() => setDragOverSprint(false)}
                     onDrop={handleDropOnSprint}
                     className={`surface border rounded-md p-3 shadow-2xs space-y-2 transition-colors ${isDragOverSprint
-                            ? 'ring-2 ring-indigo-400 dark:ring-indigo-600 bg-indigo-50 dark:bg-indigo-950 border-indigo-300 dark:border-indigo-700'
-                            : 'border-gray-300 dark:border-gray-700'
+                        ? 'ring-2 ring-indigo-400 dark:ring-indigo-600 bg-indigo-50 dark:bg-indigo-950 border-indigo-300 dark:border-indigo-700'
+                        : 'border-gray-300 dark:border-gray-700'
                         }`}
                 >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="space-y-1">
                             <div className="flex items-center gap-2">
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                    <Play className="w-3 h-3 fill-emerald-600 text-emerald-600" />
+                                    <Play className="w-3.5 h-3.5 fill-emerald-600 text-emerald-600" />
                                     <span>Active Sprint</span>
                                 </span>
                                 <Link
@@ -231,15 +240,23 @@ export function BacklogPage() {
                         </p>
                     </div>
                 ) : (
-                    <BacklogGroupedList
-                        tasks={backlogTasks}
-                        projectId={selectedProjectId}
-                        isPM={isPM}
-                        hasActiveSprint={!!activeSprint}
-                        onMoveToSprint={handleMoveToSprint}
-                        onDragStart={handleDragStart}
-                        avatarRefreshKey={avatarRefreshKey}
-                    />
+                    <>
+                        <BacklogGroupedList
+                            tasks={backlogTasks}
+                            projectId={selectedProjectId}
+                            isPM={isPM}
+                            hasActiveSprint={!!activeSprint}
+                            onMoveToSprint={handleMoveToSprint}
+                            onDragStart={handleDragStart}
+                            avatarRefreshKey={avatarRefreshKey}
+                        />
+                        <PaginationBar
+                            page={page}
+                            onPageChange={setPage}
+                            hasNextPage={backlogTasks.length === pageSize}
+                            totalOnPage={backlogTasks.length}
+                        />
+                    </>
                 )}
             </div>
 

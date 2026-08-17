@@ -23,12 +23,12 @@ public class GetSuggestionsQueryHandler : IRequestHandler<GetSuggestionsQuery, L
         var pattern = $"{request.Query}%";
         var accessibleProjectIds = await _access.GetAccessibleProjectIdsAsync(ct);
 
-        return await _db.Tasks
-            .Where(t => accessibleProjectIds.Contains(t.ProjectId) && EF.Functions.ILike(t.Title, pattern))
-            .OrderByDescending(t => t.CreatedAt)
-            .Select(t => t.Title)
-            .Distinct()
-            .Take(8)
-            .ToListAsync(ct);
+        return await _db.Tasks.Where(t => accessibleProjectIds.Contains(t.ProjectId) &&
+        EF.Functions.ToTsVector("simple", t.Title).Matches(EF.Functions.ToTsQuery("simple", request.Query.Trim() + ":*")))
+    .OrderByDescending(t => t.CreatedAt)
+    .Select(t => t.Title)
+    .Distinct()
+    .Take(8)
+    .ToListAsync(ct);
     }
 }

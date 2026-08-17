@@ -10,6 +10,7 @@ export function useTeamDetail(teamId: string | null) {
         queryKey: ['teams', teamId],
         queryFn: () => teamsApi.getById(teamId!),
         enabled: !!teamId,
+        retry: false,
     });
 }
 

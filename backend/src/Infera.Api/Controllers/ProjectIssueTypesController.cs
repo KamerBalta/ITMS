@@ -16,8 +16,12 @@ public class ProjectIssueTypesController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll(Guid projectId)
     {
-        var result = await _mediator.Send(new GetProjectIssueTypesQuery(projectId));
-        return Ok(result);
+        try
+        {
+            var result = await _mediator.Send(new GetProjectIssueTypesQuery(projectId));
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
     }
 
     [HttpPost]

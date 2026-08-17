@@ -10,6 +10,6 @@ export const notificationsApi = {
 };
 export const notificationPreferencesApi = {
     getMine: () => apiClient.get<NotificationPreference[]>('/notification-preferences').then((res) => res.data),
-    update: (type: string, inAppEnabled: boolean, emailEnabled: boolean) =>
-        apiClient.put(`/notification-preferences/${type}`, { inAppEnabled, emailEnabled }),
+    update: (type: string, inAppEnabled: boolean, emailEnabled: boolean, emailFrequency: string) =>
+        apiClient.put(`/notification-preferences/${type}`, { inAppEnabled, emailEnabled, emailFrequency }),
 };

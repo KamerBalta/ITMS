@@ -14,6 +14,7 @@ public class UpdateTaskStatusCommandHandler : IRequestHandler<UpdateTaskStatusCo
     private readonly INotificationService _notificationService;
     private readonly IRealtimeNotifier _realtime;
     private readonly IAutomationEngine _automationEngine;
+    private readonly ICacheService _cache;
 
     public UpdateTaskStatusCommandHandler(
         IAppDbContext db,
@@ -21,7 +22,8 @@ public class UpdateTaskStatusCommandHandler : IRequestHandler<UpdateTaskStatusCo
         ITaskStatusTransitionService transitionService,
         INotificationService notificationService,
         IRealtimeNotifier realtime,
-        IAutomationEngine automationEngine)
+        IAutomationEngine automationEngine,
+        ICacheService cache)
     {
         _db = db;
         _currentUser = currentUser;
@@ -29,6 +31,7 @@ public class UpdateTaskStatusCommandHandler : IRequestHandler<UpdateTaskStatusCo
         _notificationService = notificationService;
         _realtime = realtime;
         _automationEngine = automationEngine;
+        _cache = cache;
     }
 
     public async System.Threading.Tasks.Task Handle(UpdateTaskStatusCommand request, CancellationToken ct)
@@ -62,6 +65,7 @@ public class UpdateTaskStatusCommandHandler : IRequestHandler<UpdateTaskStatusCo
         }
 
         await _realtime.NotifyProjectAsync(task.ProjectId, "task", "status-changed", ct);
+        await _cache.RemoveByPrefixAsync($"dashboard:{task.ProjectId}:", ct);
         await _automationEngine.ProcessStatusChangedAsync(task.Id, request.NewStatus.ToString(), ct);
     }
 }

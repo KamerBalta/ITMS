@@ -17,7 +17,7 @@ public class GetTaskByIdQueryHandler : IRequestHandler<GetTaskByIdQuery, TaskDet
 
     public async System.Threading.Tasks.Task<TaskDetailDto> Handle(GetTaskByIdQuery request, CancellationToken ct)
     {
-        var task = await _db.Tasks
+        var task = await _db.Tasks.AsSplitQuery()
             .Where(t => t.Id == request.TaskId)
             .Select(t => new TaskDetailDto(
                 t.Id, t.Title, t.Description,
@@ -35,7 +35,15 @@ public class GetTaskByIdQueryHandler : IRequestHandler<GetTaskByIdQuery, TaskDet
                 t.TaskLabels.Select(tl => tl.Label.Name).ToList(),
                 t.Comments.Count, t.Attachments.Count,
                 t.ChecklistItems.Count, t.ChecklistItems.Count(c => c.IsDone), t.Watchers.Count,
-                t.ReleaseId, t.Release != null ? t.Release.Version : null))
+                t.ReleaseId, t.Release != null ? t.Release.Version : null,
+                _db.TaskComponents.Where(tc => tc.TaskId == t.Id)
+                    .Select(tc => new TaskComponentDto(
+                        tc.ProjectComponentId,
+                        tc.ProjectComponent.Name,
+                        tc.ProjectComponent.LeadUserId,
+                        tc.ProjectComponent.LeadUser != null ? tc.ProjectComponent.LeadUser.Name : null))
+                    .ToList(),
+                t.OriginalEstimateMinutes, t.RemainingEstimateMinutes))
             .FirstOrDefaultAsync(ct);
 
         if (task is null)

@@ -5,11 +5,14 @@ import {
     useChangeMyPassword,
     useUploadAvatar,
     useDeleteAvatar,
+    useRevokeAllSessions,
 } from '../../hooks/useMyProfile';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
+import { useNavigate } from 'react-router-dom';
 import { NotificationPreferencesPanel } from '../../components/NotificationPreferencesPanel';
 import { AuthenticatedImage } from '../../components/AuthenticatedImage';
+import { invalidateAvatarCache } from '../../lib/avatarCache';
 import type { AxiosError } from 'axios';
 import type { ApiErrorResponse } from '../../types/api';
 import { Camera, CheckCircle2, X, Lock, User, Sliders, Trash2 } from 'lucide-react';
@@ -27,7 +30,11 @@ export function ProfilePage() {
     const changePassword = useChangeMyPassword();
     const uploadAvatar = useUploadAvatar();
     const deleteAvatar = useDeleteAvatar();
+    const revokeAllSessions = useRevokeAllSessions();
+
+    const logout = useAuthStore((state) => state.logout);
     const refreshAvatar = useAuthStore((state) => state.refreshAvatar);
+    const navigate = useNavigate();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Profil Form State
@@ -39,6 +46,9 @@ export function ProfilePage() {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+
+    // Oturum Güvenliği State
+    const [revokeConfirming, setRevokeConfirming] = useState(false);
 
     // Tercihler (Preferences) State
     const { theme, setTheme } = useThemeStore();
@@ -103,17 +113,22 @@ export function ProfilePage() {
         }
     };
 
+    // Tüm Cihazlardan Çıkış Yap
+    const handleRevokeAll = async () => {
+        await revokeAllSessions.mutateAsync();
+        logout();
+        navigate('/login');
+    };
+
     // Fotoğraf Seçme
     const handleAvatarSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
         try {
             await uploadAvatar.mutateAsync(file);
-            refreshAvatar();
-            setAvatarVersion((v) => v + 1);
-            showToast('✓ Profil fotoğrafı güncellendi.');
+            if (profile) invalidateAvatarCache(`avatar:${profile.id}`);
         } catch {
-            alert('Avatar yüklenemedi (Yalnızca PNG veya JPG, en fazla 5MB).');
+            alert('Avatar yüklenemedi (yalnızca PNG/JPG, 5MB sınırı).');
         } finally {
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
@@ -339,6 +354,35 @@ export function ProfilePage() {
                     </button>
                 </div>
             </form>
+
+            {/* Oturum Güvenliği / Tüm Cihazlardan Çıkış */}
+            <div className="surface border rounded-xl p-6 shadow-sm space-y-3">
+                <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-3 text-primary font-bold text-base">
+                    <Lock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                    <h2>Oturum Güvenliği</h2>
+                </div>
+                <p className="text-sm text-secondary">
+                    Tüm cihazlardaki oturumlarınızı sonlandırın (bu cihaz dahil). Yeniden giriş yapmanız gerekecek.
+                </p>
+                {!revokeConfirming ? (
+                    <button
+                        onClick={() => setRevokeConfirming(true)}
+                        className="text-sm border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer font-medium"
+                    >
+                        Tüm Cihazlardan Çıkış Yap
+                    </button>
+                ) : (
+                    <div className="flex items-center gap-2 pt-1">
+                        <span className="text-sm text-secondary font-medium">Emin misiniz?</span>
+                        <button onClick={handleRevokeAll} className="text-sm bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 transition cursor-pointer font-medium">
+                            Evet, Çıkış Yap
+                        </button>
+                        <button onClick={() => setRevokeConfirming(false)} className="text-sm border border-gray-300 dark:border-gray-600 px-3 py-1.5 rounded-md text-secondary hover-surface transition cursor-pointer">
+                            Vazgeç
+                        </button>
+                    </div>
+                )}
+            </div>
 
             {/* Notification Preferences Panel (Detaylı Bildirim Yönetimi) */}
             <NotificationPreferencesPanel />

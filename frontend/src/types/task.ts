@@ -66,6 +66,14 @@ export interface TaskDetail {
     watcherCount: number;
     releaseId: string | null;
     releaseVersion: string | null;
+    originalEstimateMinutes: number | null;
+    remainingEstimateMinutes: number | null;
+    components: {
+        id: string;
+        name: string;
+        leadUserId: string | null;
+        leadUserName: string | null;
+    }[];
 }
 
 export interface CreateTaskPayload {
@@ -79,4 +87,6 @@ export interface CreateTaskPayload {
     storyPoint?: number | null;
     assigneeId?: string | null;
     dueDate?: string | null;
+    componentIds?: string[];
+    customFieldValues?: Record<string, string | null>;
 }

@@ -45,10 +45,22 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<TaskCustomFieldValue> TaskCustomFieldValues => Set<TaskCustomFieldValue>();
     public DbSet<AutomationRule> AutomationRules => Set<AutomationRule>();
     public DbSet<ProjectPermissionOverride> ProjectPermissionOverrides => Set<ProjectPermissionOverride>();
+    public DbSet<ProjectComponent> ProjectComponents => Set<ProjectComponent>();
+    public DbSet<TaskComponent> TaskComponents => Set<TaskComponent>();
+    public DbSet<TaskLink> TaskLinks => Set<TaskLink>();
+    public DbSet<PendingDigestEmail> PendingDigestEmails => Set<PendingDigestEmail>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            modelBuilder.Entity<Domain.Entities.Task>()
+                .Property<NpgsqlTypes.NpgsqlTsVector>("SearchVector")
+                .HasColumnType("tsvector")
+                .ValueGeneratedOnAddOrUpdate();
+        }
 
         // BR-015 / DB-003: ISoftDelete uygulayan tum entity'ler icin global query filter --
         // hicbir handler'da ".Where(x => !x.IsDeleted)" yazmamiza gerek kalmiyor, EF Core

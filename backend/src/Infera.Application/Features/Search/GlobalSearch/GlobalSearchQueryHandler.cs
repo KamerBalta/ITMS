@@ -25,7 +25,8 @@ public class GlobalSearchQueryHandler : IRequestHandler<GlobalSearchQuery, Searc
 
         var tasks = await _db.Tasks
             .Where(t => accessibleProjectIds.Contains(t.ProjectId) &&
-                (EF.Functions.ILike(t.Title, pattern) || t.TaskLabels.Any(tl => EF.Functions.ILike(tl.Label.Name, pattern))))
+                (EF.Functions.ToTsVector("simple", t.Title).Matches(EF.Functions.PlainToTsQuery("simple", request.Query))
+                 || t.TaskLabels.Any(tl => EF.Functions.ILike(tl.Label.Name, pattern))))
             .OrderByDescending(t => t.CreatedAt)
             .Take(10)
             .Select(t => new TaskResultDto(t.Id, t.Title, t.Project.Name, t.Status.ToString()))

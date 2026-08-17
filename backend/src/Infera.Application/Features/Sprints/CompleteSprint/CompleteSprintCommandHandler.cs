@@ -14,6 +14,7 @@ public class CompleteSprintCommandHandler : IRequestHandler<CompleteSprintComman
     private readonly IRealtimeNotifier _realtime;
     private readonly ICurrentUserService _currentUser;
     private readonly IProjectPermissionService _permissionService;
+    private readonly ICacheService _cache;
 
     public CompleteSprintCommandHandler(
         IAppDbContext db,
@@ -21,7 +22,8 @@ public class CompleteSprintCommandHandler : IRequestHandler<CompleteSprintComman
         INotificationService notificationService,
         IRealtimeNotifier realtime,
         ICurrentUserService currentUser,
-        IProjectPermissionService permissionService)
+        IProjectPermissionService permissionService,
+        ICacheService cache)
     {
         _db = db;
         _access = access;
@@ -29,6 +31,7 @@ public class CompleteSprintCommandHandler : IRequestHandler<CompleteSprintComman
         _realtime = realtime;
         _currentUser = currentUser;
         _permissionService = permissionService;
+        _cache = cache;
     }
 
     public async System.Threading.Tasks.Task Handle(CompleteSprintCommand request, CancellationToken ct)
@@ -84,5 +87,7 @@ public class CompleteSprintCommandHandler : IRequestHandler<CompleteSprintComman
         }
 
         await _realtime.NotifyProjectAsync(sprint.ProjectId, "sprint", "completed", ct);
+        await _cache.RemoveAsync($"velocity:{sprint.ProjectId}", ct);
+        await _cache.RemoveByPrefixAsync($"dashboard:{sprint.ProjectId}:", ct);
     }
 }

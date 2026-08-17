@@ -81,10 +81,19 @@ public class DeleteAutomationRuleCommandHandler : IRequestHandler<DeleteAutomati
 public class GetAutomationRulesQueryHandler : IRequestHandler<GetAutomationRulesQuery, List<AutomationRuleDto>>
 {
     private readonly IAppDbContext _db;
-    public GetAutomationRulesQueryHandler(IAppDbContext db) => _db = db;
+    private readonly IProjectAccessService _access;
+
+    public GetAutomationRulesQueryHandler(IAppDbContext db, IProjectAccessService access)
+    {
+        _db = db;
+        _access = access;
+    }
 
     public async System.Threading.Tasks.Task<List<AutomationRuleDto>> Handle(GetAutomationRulesQuery request, CancellationToken ct)
     {
+        if (!await _access.HasProjectAccessAsync(request.ProjectId, ct))
+            throw new UnauthorizedAccessException("Bu projeye erişim yetkiniz yok.");
+
         return await _db.AutomationRules
             .Where(r => r.ProjectId == request.ProjectId)
             .Select(r => new AutomationRuleDto(r.Id, r.Name, r.TriggerType, r.TriggerConditionJson, r.ActionType, r.ActionParamsJson, r.IsActive))

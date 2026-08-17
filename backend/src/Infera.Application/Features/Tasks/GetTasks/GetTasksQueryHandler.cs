@@ -1,7 +1,6 @@
 ﻿using Infera.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-
 namespace Infera.Application.Features.Tasks.GetTasks;
 
 public class GetTasksQueryHandler : IRequestHandler<GetTasksQuery, List<TaskDto>>
@@ -50,6 +49,7 @@ public class GetTasksQueryHandler : IRequestHandler<GetTasksQuery, List<TaskDto>
             query = query.Where(t => t.TaskLabels.Any(tl => tl.LabelId == request.LabelId));
 
         return await query
+            .AsSplitQuery()
             .OrderBy(t => t.Rank)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)

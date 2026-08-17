@@ -9,3 +9,4 @@ public record UpdateTaskPriorityCommand(Guid TaskId, Priority Priority) : IReque
 public record UpdateTaskStoryPointCommand(Guid TaskId, int? StoryPoint) : IRequest;
 public record UpdateTaskDueDateCommand(Guid TaskId, DateOnly? DueDate): IRequest;
 public record UpdateTaskReleaseCommand(Guid TaskId, Guid? ReleaseId) : IRequest;
+public record UpdateTaskEstimatesCommand(Guid TaskId, int? OriginalEstimateMinutes, int? RemainingEstimateMinutes) : IRequest;

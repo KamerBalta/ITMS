@@ -63,3 +63,11 @@ export function useReassignTask(projectId: string) {
         },
     });
 }
+export function useUpdateTaskEstimates(taskId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ original, remaining }: { original: number | null; remaining: number | null }) =>
+            tasksApi.updateEstimates(taskId, original, remaining),
+        onSuccess: () => invalidateTask(qc, taskId),
+    });
+}

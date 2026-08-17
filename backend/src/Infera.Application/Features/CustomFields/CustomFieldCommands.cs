@@ -79,10 +79,19 @@ public class DeleteCustomFieldCommandHandler : IRequestHandler<DeleteCustomField
 public class GetCustomFieldsQueryHandler : IRequestHandler<GetCustomFieldsQuery, List<CustomFieldDto>>
 {
     private readonly IAppDbContext _db;
-    public GetCustomFieldsQueryHandler(IAppDbContext db) => _db = db;
+    private readonly IProjectAccessService _access;
+
+    public GetCustomFieldsQueryHandler(IAppDbContext db, IProjectAccessService access)
+    {
+        _db = db;
+        _access = access;
+    }
 
     public async System.Threading.Tasks.Task<List<CustomFieldDto>> Handle(GetCustomFieldsQuery request, CancellationToken ct)
     {
+        if (!await _access.HasProjectAccessAsync(request.ProjectId, ct))
+            throw new UnauthorizedAccessException("Bu projeye erişim yetkiniz yok.");
+
         return await _db.CustomFieldDefinitions
             .Where(f => f.ProjectId == request.ProjectId)
             .OrderBy(f => f.DisplayOrder)

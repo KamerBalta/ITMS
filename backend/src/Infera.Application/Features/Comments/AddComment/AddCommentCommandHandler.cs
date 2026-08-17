@@ -13,17 +13,20 @@ public class AddCommentCommandHandler : IRequestHandler<AddCommentCommand, Guid>
     private readonly IProjectAccessService _access;
     private readonly INotificationService _notificationService;
     private readonly IRealtimeNotifier _realtime;
+    private readonly IAutomationEngine _automationEngine;
 
     public AddCommentCommandHandler(
         IAppDbContext db,
         IProjectAccessService access,
         INotificationService notificationService,
-        IRealtimeNotifier realtime)
+        IRealtimeNotifier realtime,
+        IAutomationEngine automationEngine)
     {
         _db = db;
         _access = access;
         _notificationService = notificationService;
         _realtime = realtime;
+        _automationEngine = automationEngine;
     }
 
     public async System.Threading.Tasks.Task<Guid> Handle(AddCommentCommand request, CancellationToken ct)
@@ -86,6 +89,8 @@ public class AddCommentCommandHandler : IRequestHandler<AddCommentCommand, Guid>
         }
 
         await _realtime.NotifyProjectAsync(task.ProjectId, "comment", "created", ct);
+
+        await _automationEngine.ProcessCommentAddedAsync(request.TaskId, ct);
 
         return comment.Id;
     }

@@ -9,6 +9,7 @@ using Infera.Application.Features.Users.UpdateUserRole;
 using MediatR;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Infera.Application.Features.Users.RevokeAllSessions;
 using Infera.Application.Features.Users.DeleteMyAvatar;
 using Infera.Application.Features.Users.UpdateMyAvatar;
 using Infera.Application.Features.Users.DownloadAvatar;
@@ -79,6 +80,14 @@ public class UsersController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
+    }
+
+    [HttpPost("me/revoke-all-sessions")]
+    public async Task<IActionResult> RevokeAllSessions()
+    {
+        var userId = Guid.Parse(User.FindFirstValue("sub")!);
+        await _mediator.Send(new RevokeAllSessionsCommand(userId));
+        return NoContent();
     }
 
     [HttpGet("{userId}/projects")]

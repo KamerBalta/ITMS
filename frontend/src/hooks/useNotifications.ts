@@ -3,6 +3,7 @@ import {
     notificationsApi,
     notificationPreferencesApi,
 } from '../api/notifications';
+
 export function useNotifications() {
     return useQuery({
         queryKey: ['notifications'],
@@ -36,14 +37,26 @@ export function useDeleteNotification() {
 }
 
 export function useNotificationPreferences() {
-    return useQuery({ queryKey: ['notification-preferences'], queryFn: notificationPreferencesApi.getMine });
+    return useQuery({
+        queryKey: ['notification-preferences'],
+        queryFn: notificationPreferencesApi.getMine
+    });
 }
 
 export function useUpdateNotificationPreference() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ type, inApp, email }: { type: string; inApp: boolean; email: boolean }) =>
-            notificationPreferencesApi.update(type, inApp, email),
+        mutationFn: ({
+            type,
+            inApp,
+            email,
+            frequency
+        }: {
+            type: string;
+            inApp: boolean;
+            email: boolean;
+            frequency: string;
+        }) => notificationPreferencesApi.update(type, inApp, email, frequency),
         onSuccess: () => qc.invalidateQueries({ queryKey: ['notification-preferences'] }),
     });
 }

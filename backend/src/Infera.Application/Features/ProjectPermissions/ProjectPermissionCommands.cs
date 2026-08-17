@@ -18,10 +18,19 @@ public static class KnownPermissionKeys
 public class GetProjectPermissionsQueryHandler : IRequestHandler<GetProjectPermissionsQuery, List<ProjectPermissionDto>>
 {
     private readonly IAppDbContext _db;
-    public GetProjectPermissionsQueryHandler(IAppDbContext db) => _db = db;
+    private readonly IProjectAccessService _access;
+
+    public GetProjectPermissionsQueryHandler(IAppDbContext db, IProjectAccessService access)
+    {
+        _db = db;
+        _access = access;
+    }
 
     public async System.Threading.Tasks.Task<List<ProjectPermissionDto>> Handle(GetProjectPermissionsQuery request, CancellationToken ct)
     {
+        if (!await _access.HasProjectAccessAsync(request.ProjectId, ct))
+            throw new UnauthorizedAccessException("Bu projeye erişim yetkiniz yok.");
+
         var existing = await _db.ProjectPermissionOverrides
             .Where(o => o.ProjectId == request.ProjectId)
             .ToDictionaryAsync(o => o.PermissionKey, ct);

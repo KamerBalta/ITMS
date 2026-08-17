@@ -21,7 +21,7 @@ export function TeamsPage() {
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-primary">Takımlar</h1>
                 {isAdmin && (
-                    <button onClick={() => setCreateOpen(true)} className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700">
+                    <button onClick={() => setCreateOpen(true)} className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 cursor-pointer">
                         + Yeni Takım
                     </button>
                 )}
@@ -39,7 +39,7 @@ export function TeamsPage() {
                             <button
                                 key={team.id}
                                 onClick={() => setSelectedTeamId(team.id)}
-                                className={`surface border rounded-lg p-4 text-left hover:shadow dark:hover:shadow-black/30 relative ${isMyTeam ? 'border-indigo-300 dark:border-indigo-700 ring-1 ring-indigo-100 dark:ring-indigo-900' : ''
+                                className={`surface border rounded-lg p-4 text-left hover:shadow dark:hover:shadow-black/30 relative cursor-pointer ${isMyTeam ? 'border-indigo-300 dark:border-indigo-700 ring-1 ring-indigo-100 dark:ring-indigo-900' : ''
                                     }`}
                             >
                                 {isMyTeam && (
@@ -88,7 +88,7 @@ function CreateTeamModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                 <input type="text" placeholder="Takım adı" value={name} onChange={(e) => setName(e.target.value)} required className="w-full input-base border rounded px-3 py-2 text-sm" />
                 <textarea placeholder="Açıklama (opsiyonel)" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full input-base border rounded px-3 py-2 text-sm" rows={3} />
                 {error && <p className="text-red-500 text-sm">{error}</p>}
-                <button type="submit" disabled={createTeam.isPending} className="w-full bg-indigo-600 text-white py-2 rounded text-sm hover:bg-indigo-700 disabled:opacity-50">
+                <button type="submit" disabled={createTeam.isPending} className="w-full bg-indigo-600 text-white py-2 rounded text-sm hover:bg-indigo-700 disabled:opacity-50 cursor-pointer">
                     {createTeam.isPending ? 'Oluşturuluyor...' : 'Oluştur'}
                 </button>
             </form>
@@ -97,7 +97,7 @@ function CreateTeamModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
 }
 
 function TeamDetailModal({ teamId, isAdmin, onClose }: { teamId: string; isAdmin: boolean; onClose: () => void }) {
-    const { data: team, isLoading } = useTeamDetail(teamId);
+    const { data: team, isLoading, isError } = useTeamDetail(teamId);
     const { data: allUsers } = useAllUsers();
     const [selectedUserId, setSelectedUserId] = useState('');
     const [teamRole, setTeamRole] = useState('');
@@ -161,7 +161,9 @@ function TeamDetailModal({ teamId, isAdmin, onClose }: { teamId: string; isAdmin
     return (
         <>
             <Modal title={isEditing ? 'Takımı Düzenle' : team?.name ?? 'Takım'} isOpen onClose={onClose}>
-                {isLoading || !team ? (
+                {isError ? (
+                    <p className="text-red-500 text-sm">Bu takıma erişim yetkiniz yok.</p>
+                ) : isLoading || !team ? (
                     <p className="text-muted text-sm">Yükleniyor...</p>
                 ) : isEditing ? (
                     <div className="space-y-3">
@@ -169,10 +171,10 @@ function TeamDetailModal({ teamId, isAdmin, onClose }: { teamId: string; isAdmin
                         <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={3} className="w-full input-base border rounded px-3 py-2 text-sm" />
                         {editError && <p className="text-red-500 text-sm">{editError}</p>}
                         <div className="flex gap-2">
-                            <button onClick={handleSaveEdit} disabled={updateTeam.isPending} className="flex-1 bg-indigo-600 text-white py-1.5 rounded text-sm hover:bg-indigo-700 disabled:opacity-50">
+                            <button onClick={handleSaveEdit} disabled={updateTeam.isPending} className="flex-1 bg-indigo-600 text-white py-1.5 rounded text-sm hover:bg-indigo-700 disabled:opacity-50 cursor-pointer">
                                 Kaydet
                             </button>
-                            <button onClick={() => setIsEditing(false)} className="flex-1 border border-gray-300 dark:border-gray-600 py-1.5 rounded text-sm text-secondary">
+                            <button onClick={() => setIsEditing(false)} className="flex-1 border border-gray-300 dark:border-gray-600 py-1.5 rounded text-sm text-secondary cursor-pointer">
                                 İptal
                             </button>
                         </div>
@@ -197,7 +199,7 @@ function TeamDetailModal({ teamId, isAdmin, onClose }: { teamId: string; isAdmin
                         <div className="flex items-center justify-between">
                             {team.description && <p className="text-sm text-secondary">{team.description}</p>}
                             {isAdmin && (
-                                <button onClick={startEditing} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline whitespace-nowrap">
+                                <button onClick={startEditing} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline whitespace-nowrap cursor-pointer">
                                     Düzenle
                                 </button>
                             )}
@@ -215,7 +217,7 @@ function TeamDetailModal({ teamId, isAdmin, onClose }: { teamId: string; isAdmin
                                                 {m.userName} <span className="text-muted">— {m.teamRole}</span>
                                             </span>
                                             {isAdmin && (
-                                                <button onClick={() => handleRemoveMember(m.userId, m.userName)} className="text-red-500 dark:text-red-400 hover:underline text-xs">
+                                                <button onClick={() => handleRemoveMember(m.userId, m.userName)} className="text-red-500 dark:text-red-400 hover:underline text-xs cursor-pointer">
                                                     Çıkar
                                                 </button>
                                             )}
@@ -228,7 +230,7 @@ function TeamDetailModal({ teamId, isAdmin, onClose }: { teamId: string; isAdmin
                         {isAdmin && (
                             <form onSubmit={handleAddMember} className="space-y-2 border-t border-gray-200 dark:border-gray-700 pt-3">
                                 <p className="text-sm font-medium text-secondary">Üye Ekle</p>
-                                <select value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)} required className="w-full input-base border rounded px-3 py-2 text-sm">
+                                <select value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)} required className="w-full input-base border rounded px-3 py-2 text-sm cursor-pointer">
                                     <option value="">Kullanıcı seçin...</option>
                                     {availableUsers.map((u) => (
                                         <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
@@ -236,7 +238,7 @@ function TeamDetailModal({ teamId, isAdmin, onClose }: { teamId: string; isAdmin
                                 </select>
 
                                 <div>
-                                    <select value={teamRole} onChange={(e) => setTeamRole(e.target.value)} className={`w-full input-base border rounded px-3 py-2 text-sm ${roleError ? 'border-red-400' : ''}`}>
+                                    <select value={teamRole} onChange={(e) => setTeamRole(e.target.value)} className={`w-full input-base border rounded px-3 py-2 text-sm cursor-pointer ${roleError ? 'border-red-400' : ''}`}>
                                         <option value="">Takım içi rol seçin...</option>
                                         {TEAM_ROLE_OPTIONS.map((role) => (
                                             <option key={role} value={role}>{role}</option>
@@ -246,7 +248,7 @@ function TeamDetailModal({ teamId, isAdmin, onClose }: { teamId: string; isAdmin
                                 </div>
 
                                 {error && <p className="text-red-500 text-sm">{error}</p>}
-                                <button type="submit" disabled={addMember.isPending} className="w-full bg-indigo-600 text-white py-1.5 rounded text-sm hover:bg-indigo-700 disabled:opacity-50">
+                                <button type="submit" disabled={addMember.isPending} className="w-full bg-indigo-600 text-white py-1.5 rounded text-sm hover:bg-indigo-700 disabled:opacity-50 cursor-pointer">
                                     Ekle
                                 </button>
                             </form>

@@ -89,6 +89,10 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
     public void Configure(EntityTypeBuilder<AuditLog> b)
     {
         b.ToTable("AuditLogs");
+        b.Property(x => x.EntityType).HasMaxLength(100).IsRequired();
+        b.Property(x => x.FieldName).HasMaxLength(60);
+        b.Property(x => x.OldValue).HasMaxLength(500);
+        b.Property(x => x.NewValue).HasMaxLength(500);
         b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
     }
 }
@@ -259,5 +263,49 @@ public class ProjectPermissionOverrideConfiguration : IEntityTypeConfiguration<P
         b.Property(x => x.PermissionKey).HasMaxLength(50).IsRequired();
         b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
         b.HasIndex(x => new { x.ProjectId, x.PermissionKey }).IsUnique();
+    }
+}
+public class ProjectComponentConfiguration : IEntityTypeConfiguration<ProjectComponent>
+{
+    public void Configure(EntityTypeBuilder<ProjectComponent> b)
+    {
+        b.ToTable("ProjectComponents");
+        b.Property(x => x.Name).HasMaxLength(80).IsRequired();
+        b.Property(x => x.Description).HasMaxLength(300);
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasOne(x => x.LeadUser).WithMany().HasForeignKey(x => x.LeadUserId).OnDelete(DeleteBehavior.SetNull);
+        b.HasIndex(x => new { x.ProjectId, x.Name }).IsUnique();
+    }
+}
+
+public class TaskComponentConfiguration : IEntityTypeConfiguration<TaskComponent>
+{
+    public void Configure(EntityTypeBuilder<TaskComponent> b)
+    {
+        b.ToTable("TaskComponents");
+        b.HasOne(x => x.Task).WithMany().HasForeignKey(x => x.TaskId);
+        b.HasOne(x => x.ProjectComponent).WithMany().HasForeignKey(x => x.ProjectComponentId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => new { x.TaskId, x.ProjectComponentId }).IsUnique();
+    }
+}
+public class TaskLinkConfiguration : IEntityTypeConfiguration<TaskLink>
+{
+    public void Configure(EntityTypeBuilder<TaskLink> b)
+    {
+        b.ToTable("TaskLinks");
+        b.Property(x => x.LinkType).HasMaxLength(20).IsRequired();
+        b.HasOne(x => x.SourceTask).WithMany().HasForeignKey(x => x.SourceTaskId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(x => x.TargetTask).WithMany().HasForeignKey(x => x.TargetTaskId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(x => new { x.SourceTaskId, x.TargetTaskId, x.LinkType }).IsUnique();
+    }
+}
+public class PendingDigestEmailConfiguration : IEntityTypeConfiguration<PendingDigestEmail>
+{
+    public void Configure(EntityTypeBuilder<PendingDigestEmail> b)
+    {
+        b.ToTable("PendingDigestEmails");
+        b.Property(x => x.Title).HasMaxLength(200).IsRequired();
+        b.Property(x => x.Message).HasMaxLength(500).IsRequired();
+        b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
     }
 }

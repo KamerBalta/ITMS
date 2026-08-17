@@ -16,8 +16,12 @@ public class CustomFieldsController : ControllerBase
     [HttpGet("projects/{projectId}/custom-fields")]
     public async Task<IActionResult> GetAll(Guid projectId)
     {
-        var result = await _mediator.Send(new GetCustomFieldsQuery(projectId));
-        return Ok(result);
+        try
+        {
+            var result = await _mediator.Send(new GetCustomFieldsQuery(projectId));
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
     }
 
     [HttpPost("projects/{projectId}/custom-fields")]

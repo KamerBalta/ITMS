@@ -23,7 +23,7 @@ import { UserDetailPage } from './pages/admin/UserDetailPage';
 import { SettingsPage } from './pages/admin/SettingsPage';
 import { IssueTypeCatalogPage } from './pages/admin/IssueTypeCatalogPage';
 import { ReleasesPage } from './pages/releases/ReleasesPage';
-import { SearchPage } from './pages/search/SearchPage';
+import { SearchPage } from './pages/teams/search/SearchPage';
 import { RetrospectivePage } from './pages/retrospective/RetrospectivePage';
 import { IssueListPage } from './pages/issues/IssueListPage';
 import { MyWorkPage } from './pages/mywork/MyWorkPage';
@@ -33,6 +33,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { AutomationRulesPage } from './pages/projects/AutomationRulesPage';
 import { RoadmapPage } from './pages/roadmap/RoadmapPage';
 import { ProjectPermissionsPage } from './pages/projects/ProjectPermissionsPage';
+import { ComponentsManagementPage } from './pages/projects/ComponentsManagementPage';
 
 export const router = createBrowserRouter([
     { path: '/login', element: <LoginPage />, errorElement: <RouteErrorPage /> },
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
                     { path: '/projects/:projectId/automation', element: <AutomationRulesPage /> },
                     { path: '/roadmap', element: <RoadmapPage /> },
                     { path: '/projects/:projectId/permissions', element: <ProjectPermissionsPage /> },
+                    { path: '/projects/:projectId/components', element: <ComponentsManagementPage /> },
                     { path: '*', element: <NotFoundPage /> },
                 ],
             },

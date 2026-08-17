@@ -6,4 +6,7 @@
     <Project Path="backend/src/Infera.Domain/Infera.Domain.csproj" />
     <Project Path="backend/src/Infera.Infrastructure/Infera.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/backend/tests/">
+    <Project Path="backend/tests/Infera.Tests/Infera.Tests.csproj" />
+  </Folder>
 </Solution>

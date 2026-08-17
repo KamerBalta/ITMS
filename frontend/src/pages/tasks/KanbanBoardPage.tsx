@@ -40,6 +40,18 @@ export function KanbanBoardPage() {
     const [editingWipFor, setEditingWipFor] = useState<ItemStatus | null>(null);
     const [wipDraft, setWipDraft] = useState('');
 
+    const [expandedColumns, setExpandedColumns] = useState<Set<string>>(new Set());
+    const CARDS_PER_COLUMN_LIMIT = 30;
+
+    const toggleColumnExpanded = (status: string) => {
+        setExpandedColumns((prev) => {
+            const next = new Set(prev);
+            if (next.has(status)) next.delete(status);
+            else next.add(status);
+            return next;
+        });
+    };
+
     const toggleAssignee = (userId: string) => {
         setSelectedAssigneeIds((prev) => {
             const next = new Set(prev);
@@ -50,14 +62,14 @@ export function KanbanBoardPage() {
     };
 
     if (!selectedProjectId) {
-        return <p className="text-gray-500">Devam etmek için üstten bir proje seçin.</p>;
+        return <p className="text-muted p-4">Devam etmek için üstten bir proje seçin.</p>;
     }
 
     if (!activeSprint) {
         return (
             <div className="text-center py-16">
-                <p className="text-gray-500">Bu projede aktif bir sprint yok.</p>
-                <p className="text-sm text-gray-400 mt-1">
+                <p className="text-secondary font-medium">Bu projede aktif bir sprint yok.</p>
+                <p className="text-sm text-muted mt-1">
                     Board'u kullanabilmek için önce Backlog sayfasından bir sprint başlatın.
                 </p>
             </div>
@@ -101,11 +113,10 @@ export function KanbanBoardPage() {
         return true;
     });
 
-    // Normal board görünümünde ana görevleri göster.
-    // Subtask'lar TaskCard içinde gösterilecek.
+    // Normal board görünümünde ana görevleri göster (subtask'lar TaskCard içinde)
     const topLevelTasks = filteredTasks.filter((t) => !t.requiresParent);
 
-    // Subtask'ları parent task altında tut.
+    // Subtask'ları parent task altında tut
     const subtasksByParent = filteredTasks
         .filter((t) => t.requiresParent && t.parentTaskId)
         .reduce<Record<string, TaskListItem[]>>((acc, t) => {
@@ -117,7 +128,6 @@ export function KanbanBoardPage() {
         (columnSettings ?? []).map((s) => [s.status, s.wipLimit])
     );
 
-    // Issue type üzerinden Epic'i belirle.
     const isEpic = (task: TaskListItem) =>
         task.issueType.toLowerCase() === 'epic';
 
@@ -136,70 +146,80 @@ export function KanbanBoardPage() {
     const swimlaneGroups = swimlaneMode
         ? filteredTasks
             .filter((task) => {
-                // Epic'in kendisi
                 if (isEpic(task)) return true;
-
-                // Parent'ı olan görevler
                 if (task.parentTaskId) {
-                    // Subtask'ları swimlane'e ayrıca koyma.
-                    // Bunlar TaskCard içinde gösterilecek.
                     if (task.requiresParent) return false;
-
-                    // Epic'e bağlı Story / Task
                     return true;
                 }
-
-                // Epic'e bağlı olmayan normal görev
                 return !task.requiresParent;
             })
             .reduce<Record<string, TaskListItem[]>>((acc, task) => {
-                // Epic kendisi kendi grubunun anahtarıdır.
                 const key = isEpic(task)
                     ? task.id
                     : task.parentTaskId ?? EPIC_GROUP_KEY;
 
                 (acc[key] ??= []).push(task);
-
                 return acc;
             }, {})
         : { [EPIC_GROUP_KEY]: topLevelTasks };
 
-    const renderColumnCards = (colTasks: TaskListItem[]) => (
-        <div className="space-y-2">
-            {colTasks.map((task) => (
-                <TaskCard
-                    key={task.id}
-                    task={task}
-                    projectId={selectedProjectId}
-                    subtasks={subtasksByParent[task.id]}
-                    draggable
-                    onDragStart={handleDragStart}
-                />
-            ))}
-            {colTasks.length === 0 && <p className="text-xs text-gray-300 text-center py-4">Görev yok</p>}
-        </div>
-    );
+    const renderColumnCards = (colTasks: TaskListItem[], status: string) => {
+        const isExpanded = expandedColumns.has(status);
+        const visibleTasks = isExpanded ? colTasks : colTasks.slice(0, CARDS_PER_COLUMN_LIMIT);
+        const hiddenCount = colTasks.length - visibleTasks.length;
+
+        return (
+            <div className="space-y-2">
+                {visibleTasks.map((task) => (
+                    <TaskCard
+                        key={task.id}
+                        task={task}
+                        projectId={selectedProjectId}
+                        subtasks={subtasksByParent[task.id]}
+                        draggable
+                        onDragStart={handleDragStart}
+                    />
+                ))}
+                {colTasks.length === 0 && <p className="text-xs text-muted text-center py-4">Görev yok</p>}
+                {hiddenCount > 0 && (
+                    <button
+                        onClick={() => toggleColumnExpanded(status)}
+                        className="w-full text-xs text-indigo-600 dark:text-indigo-400 hover:underline py-1 cursor-pointer"
+                    >
+                        + {hiddenCount} görev daha göster
+                    </button>
+                )}
+            </div>
+        );
+    };
 
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
+        <div className="max-w-[1800px] mx-auto space-y-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-primary">Kanban Board</h1>
-                    <p className="text-sm text-muted">{activeSprint.name}</p>
+                    <h1 className="text-2xl font-bold text-primary">
+                        Board
+                    </h1>
+                    <p className="text-sm text-muted mt-0.5">
+                        {activeSprint.name}
+                    </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => setSwimlaneMode((v) => !v)}
-                        className={`text-sm px-3 py-2 rounded border ${swimlaneMode
-                                ? 'bg-indigo-50 dark:bg-indigo-950 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400'
-                                : 'border-gray-200 dark:border-gray-600 text-secondary'
-                            }`}
+                        className={`
+                            inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm font-medium transition cursor-pointer
+                            ${swimlaneMode
+                                ? 'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-950/50 dark:border-indigo-800 dark:text-indigo-300'
+                                : 'border-border text-secondary hover:bg-surface-muted'
+                            }
+                        `}
                     >
                         {swimlaneMode ? '☰ Epic Görünümü Açık' : "☰ Epic'e Göre Grupla"}
                     </button>
                     <button
                         onClick={() => setCreateOpen(true)}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700"
+                        className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 font-medium transition cursor-pointer"
                     >
                         + Görev Oluştur
                     </button>
@@ -226,10 +246,10 @@ export function KanbanBoardPage() {
                 }}
             />
 
-            {statusError && <p className="text-red-500 text-sm">{statusError}</p>}
+            {statusError && <p className="text-red-500 text-sm font-medium">{statusError}</p>}
 
             {isLoading ? (
-                <p className="text-gray-500">Yükleniyor...</p>
+                <p className="text-muted">Yükleniyor...</p>
             ) : (
                 <div className="space-y-6">
                     {Object.entries(swimlaneGroups).map(([groupKey, groupTasks]) => {
@@ -245,14 +265,17 @@ export function KanbanBoardPage() {
                                     </p>
                                 )}
                                 {swimlaneMode && groupKey === EPIC_GROUP_KEY && groupTasks.length > 0 && (
-                                    <p className="text-xs font-semibold text-gray-400 mb-2">Epic'siz Görevler</p>
+                                    <p className="text-xs font-semibold text-muted mb-2">Epic'siz Görevler</p>
                                 )}
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 overflow-x-auto">
                                     {BOARD_COLUMNS.map((col) => {
                                         const colTasks = groupTasks.filter((t) => t.status === col.status);
+
+                                        // WIP limiti kontrolü BOARD GENELİNDEKİ toplam kart sayısına göre yapılır
+                                        const totalInColumnAcrossBoard = topLevelTasks.filter((t) => t.status === col.status).length;
                                         const wipLimit = wipLimitByStatus.get(col.status);
-                                        const isOverLimit = wipLimit != null && colTasks.length > wipLimit;
+                                        const isOverLimit = wipLimit != null && totalInColumnAcrossBoard > wipLimit;
 
                                         return (
                                             <div
@@ -263,16 +286,21 @@ export function KanbanBoardPage() {
                                                 }}
                                                 onDragLeave={() => setDragOverColumn(null)}
                                                 onDrop={(e) => handleDrop(e, col.status)}
-                                                className={`bg-gray-100 dark:bg-gray-900 rounded-lg p-2 min-h-[200px] transition-colors ${dragOverColumn === col.status
+                                                className={`
+                                                    bg-slate-100/70 dark:bg-gray-900/70 rounded-lg p-2.5 min-h-[300px] border border-slate-200/70 dark:border-gray-800 transition-all
+                                                    ${dragOverColumn === col.status
                                                         ? 'bg-indigo-50 dark:bg-indigo-950 ring-2 ring-indigo-300 dark:ring-indigo-700'
                                                         : ''
                                                     } ${isOverLimit
-                                                        ? 'ring-2 ring-red-300 dark:ring-red-700 bg-red-50 dark:bg-red-950'
+                                                        ? 'ring-2 ring-red-300 dark:ring-red-700 bg-red-50 dark:bg-red-950/40'
                                                         : ''
-                                                    }`}
+                                                    }
+                                                `}
                                             >
-                                                <div className="flex items-center justify-between px-1 mb-2">
-                                                    <span className="text-xs font-semibold text-secondary">{col.label}</span>
+                                                <div className="flex items-center justify-between px-1.5 mb-2">
+                                                    <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                                                        {col.label}
+                                                    </span>
 
                                                     {editingWipFor === col.status ? (
                                                         <div className="flex items-center gap-1">
@@ -285,27 +313,37 @@ export function KanbanBoardPage() {
                                                                 autoFocus
                                                                 onBlur={() => saveWipLimit(col.status)}
                                                                 onKeyDown={(e) => e.key === 'Enter' && saveWipLimit(col.status)}
-                                                                className="w-12 text-xs border rounded px-1 py-0.5"
+                                                                className="w-12 text-xs input-base border rounded px-1 py-0.5"
                                                             />
                                                         </div>
                                                     ) : (
                                                         <button
                                                             onClick={() => isPM && startEditingWip(col.status, wipLimit)}
-                                                            className={`text-xs ${isOverLimit ? 'text-red-600 font-bold' : 'text-gray-400'} ${isPM ? 'hover:underline cursor-pointer' : ''
-                                                                }`}
-                                                            title={isPM ? 'WIP limitini düzenle' : undefined}
+                                                            className={`text-xs ${isOverLimit ? 'text-red-600 dark:text-red-400 font-bold' : 'text-muted'} ${isPM ? 'hover:underline cursor-pointer' : ''}`}
+                                                            title={
+                                                                isPM
+                                                                    ? 'WIP limitini düzenle (board genelinde geçerli)'
+                                                                    : swimlaneMode
+                                                                        ? `Bu gruptaki kart: ${colTasks.length} · Board geneli: ${totalInColumnAcrossBoard}/${wipLimit ?? '∞'}`
+                                                                        : undefined
+                                                            }
                                                         >
-                                                            {colTasks.length}
+                                                            {swimlaneMode ? colTasks.length : totalInColumnAcrossBoard}
                                                             {wipLimit != null ? `/${wipLimit}` : ''}
                                                         </button>
                                                     )}
                                                 </div>
 
-                                                {isOverLimit && (
-                                                    <p className="text-[10px] text-red-500 px-1 mb-1">⚠ WIP limiti aşıldı</p>
+                                                {isOverLimit && !swimlaneMode && (
+                                                    <p className="text-[10px] text-red-500 dark:text-red-400 px-1 mb-1 font-medium">⚠ WIP limiti aşıldı</p>
+                                                )}
+                                                {isOverLimit && swimlaneMode && (
+                                                    <p className="text-[10px] text-red-500 dark:text-red-400 px-1 mb-1 font-medium">
+                                                        ⚠ Board genelinde limit aşıldı ({totalInColumnAcrossBoard}/{wipLimit})
+                                                    </p>
                                                 )}
 
-                                                {renderColumnCards(colTasks)}
+                                                {renderColumnCards(colTasks, col.status)}
                                             </div>
                                         );
                                     })}

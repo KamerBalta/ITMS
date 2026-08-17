@@ -4,14 +4,8 @@ using MediatR;
 namespace Infera.Application.Features.Tasks.CreateTask;
 
 public record CreateTaskCommand(
-    Guid ProjectId,
-    Guid? SprintId,
-    Guid? ParentTaskId,
-    Guid IssueTypeId,
-    string Title,
-    string? Description,
-    Priority Priority,
-    int? StoryPoint,
-    Guid? AssigneeId,
-    Guid ReporterId,
-    DateOnly? DueDate) : IRequest<Guid>;
+    Guid ProjectId, Guid? SprintId, Guid? ParentTaskId, Guid IssueTypeId,
+    string Title, string? Description, Priority Priority, int? StoryPoint,
+    Guid? AssigneeId, Guid ReporterId, DateOnly? DueDate,
+    List<Guid>? ComponentIds,
+    Dictionary<Guid, string?>? CustomFieldValues) : IRequest<Guid>;

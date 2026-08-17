@@ -26,10 +26,14 @@ import { ChecklistSection } from './sections/ChecklistSection';
 import { WatchersSection } from './sections/WatchersSection';
 import { WorkLogsSection } from './sections/WorkLogsSection';
 import { LabelsSection } from './sections/LabelsSection';
+import { ComponentsSection } from './sections/ComponentsSection';
+import { TaskLinksSection } from './sections/TaskLinksSection';
 import { SubtasksSection } from './sections/SubtasksSection';
+import { HistorySection } from './sections/HistorySection';
 import { TaskBreadcrumb } from '../../components/TaskBreadcrumb';
 import { RichTextEditor } from '../../components/RichTextEditor';
 import { MarkdownContent } from '../../components/MarkdownContent';
+import { TimeTrackingWidget } from '../../components/TimeTrackingWidget';
 import {
     CheckCircle2,
     Paperclip,
@@ -38,7 +42,6 @@ import {
     ArrowDown,
     Minus,
     AlertOctagon,
-    Plus,
     Link2,
     Share2,
     MoreHorizontal,
@@ -171,6 +174,14 @@ export function TaskDetailPage() {
         }
     };
 
+    const handleCopyLink = async () => {
+        try {
+            await navigator.clipboard.writeText(window.location.href);
+        } catch {
+            // Clipboard desteklenmiyorsa sessizce geç
+        }
+    };
+
     const handleCancel = () => {
         setDraft({
             title: task.title,
@@ -265,69 +276,170 @@ export function TaskDetailPage() {
                     issueKey={task.issueKey}
                 />
                 <div className="flex items-center gap-2">
-                    <button className="p-1.5 hover-surface rounded text-secondary transition cursor-pointer">
+                    <button
+                        onClick={handleCopyLink}
+                        title="Copy link"
+                        className="p-1.5 hover-surface rounded-md text-secondary transition cursor-pointer"
+                    >
                         <Share2 size={16} />
                     </button>
-                    <button className="p-1.5 hover-surface rounded text-secondary transition cursor-pointer">
+                    <button className="p-1.5 hover-surface rounded-md text-secondary transition cursor-pointer">
                         <MoreHorizontal size={16} />
                     </button>
                 </div>
             </div>
 
             {/* Jira 12-Column Grid Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
                 {/* SOL KOLON - İÇERİK (8 Kolon) */}
                 <div className="lg:col-span-8 space-y-6">
                     {/* Başlık Alanı */}
-                    <div>
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2 px-2">
+                            <span className="text-xs font-semibold text-secondary">
+                                {task.issueKey}
+                            </span>
+                            <span className="text-xs text-muted">•</span>
+                            <span className="text-xs text-muted">
+                                Task
+                            </span>
+                        </div>
+
                         {canEditTitle ? (
                             <input
                                 value={draft.title}
                                 onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-                                className="text-2xl font-bold text-primary w-full bg-transparent border border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 rounded input-base px-2 py-1.5 focus:outline-none transition-all"
+                                className="
+                                    text-2xl font-semibold text-primary
+                                    w-full bg-transparent
+                                    border border-transparent
+                                    hover:border-gray-300 dark:hover:border-gray-600
+                                    focus:border-blue-500
+                                    focus:bg-white dark:focus:bg-gray-800
+                                    rounded-md
+                                    px-2 py-1.5
+                                    focus:outline-none
+                                    transition-all
+                                "
                                 placeholder="Görev başlığı"
                             />
                         ) : (
-                            <h1 className="text-2xl font-bold text-primary px-2 py-1.5">{task.title}</h1>
+                            <h1 className="text-2xl font-semibold text-primary px-2 py-1.5">{task.title}</h1>
                         )}
                     </div>
 
+                    {/* Status Dropdown */}
+                    <div className="px-2">
+                        <select
+                            value={draft.status}
+                            onChange={(e) =>
+                                setDraft({
+                                    ...draft,
+                                    status: e.target.value as ItemStatus,
+                                })
+                            }
+                            className={`
+                                appearance-none
+                                border
+                                font-semibold
+                                text-xs
+                                px-3 py-1.5
+                                rounded-md
+                                cursor-pointer
+                                transition
+                                focus:outline-none
+                                ${currentStatusObj.color}
+                            `}
+                        >
+                            {ALL_STATUSES.map((s) => (
+                                <option
+                                    key={s.value}
+                                    value={s.value}
+                                    className="surface text-primary font-normal"
+                                >
+                                    {s.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
                     {/* Jira Aksiyon Barı */}
-                    <div className="flex items-center gap-2 flex-wrap text-xs">
+                    <div className="flex items-center gap-2 flex-wrap text-xs px-2">
                         <button
                             onClick={handleAssignToMe}
                             disabled={!canReassign || draft.assigneeId === currentUser?.userId}
-                            className="flex items-center gap-1.5 surface hover-surface text-secondary font-medium px-2.5 py-1.5 rounded transition cursor-pointer border border-gray-200 dark:border-gray-700 disabled:opacity-50"
+                            className="
+                                inline-flex items-center gap-1.5
+                                surface hover-surface
+                                text-secondary
+                                font-medium
+                                px-2.5 py-1.5
+                                rounded-md
+                                transition
+                                cursor-pointer
+                                border border-gray-200
+                                dark:border-gray-700
+                                disabled:opacity-50
+                            "
                         >
                             <UserCheck size={14} />
                             <span>Bana Ata</span>
                         </button>
                         <button
                             onClick={handleAttachClick}
-                            className="flex items-center gap-1.5 surface hover-surface text-secondary font-medium px-2.5 py-1.5 rounded transition cursor-pointer border border-gray-200 dark:border-gray-700"
+                            className="
+                                inline-flex items-center gap-1.5
+                                surface hover-surface
+                                text-secondary
+                                font-medium
+                                px-2.5 py-1.5
+                                rounded-md
+                                transition
+                                cursor-pointer
+                                border border-gray-200
+                                dark:border-gray-700
+                            "
                         >
                             <Paperclip size={14} />
                             <span>Ekle</span>
                         </button>
-                        <button className="flex items-center gap-1.5 surface hover-surface text-secondary font-medium px-2.5 py-1.5 rounded transition cursor-pointer border border-gray-200 dark:border-gray-700">
-                            <Plus size={14} />
-                            <span>Alt Görev Ekle</span>
-                        </button>
-                        <button className="flex items-center gap-1.5 surface hover-surface text-secondary font-medium px-2.5 py-1.5 rounded transition cursor-pointer border border-gray-200 dark:border-gray-700">
+                        <button className="
+                            inline-flex items-center gap-1.5
+                            surface hover-surface
+                            text-secondary
+                            font-medium
+                            px-2.5 py-1.5
+                            rounded-md
+                            transition
+                            cursor-pointer
+                            border border-gray-200
+                            dark:border-gray-700
+                        ">
                             <Link2 size={14} />
                             <span>İlişkilendir</span>
                         </button>
                         {task.allowsChildren && isPM && task.status !== 'Closed' && (
                             <button
                                 onClick={handleCloseEpic}
-                                className="flex items-center gap-1.5 border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 font-medium px-2.5 py-1.5 rounded transition cursor-pointer"
+                                className="
+                                    inline-flex items-center gap-1.5
+                                    border border-indigo-200 dark:border-indigo-800
+                                    bg-indigo-50 dark:bg-indigo-950
+                                    text-indigo-700 dark:text-indigo-300
+                                    hover:bg-indigo-100 dark:hover:bg-indigo-900
+                                    font-medium
+                                    px-2.5 py-1.5
+                                    rounded-md
+                                    transition
+                                    cursor-pointer
+                                "
                             >
                                 <CheckCircle2 size={14} />
                                 <span>Epic'i Kapat</span>
                             </button>
                         )}
                     </div>
-                    {closeEpicError && <p className="text-red-500 dark:text-red-400 text-xs font-medium">{closeEpicError}</p>}
+                    {closeEpicError && <p className="text-red-500 dark:text-red-400 text-xs font-medium px-2">{closeEpicError}</p>}
 
                     {/* Açıklama Alanı */}
                     <div className="space-y-2">
@@ -350,6 +462,7 @@ export function TaskDetailPage() {
                     </div>
 
                     <CustomFieldsSection taskId={task.id} projectId={task.projectId} />
+                    <TaskLinksSection taskId={task.id} projectId={task.projectId} />
                     <SubtasksSection taskId={task.id} projectId={task.projectId} />
 
                     {/* Checklist */}
@@ -358,32 +471,56 @@ export function TaskDetailPage() {
                     {/* Activity Tabs */}
                     <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                         <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
-                            <h3 className="text-xs font-bold text-muted uppercase tracking-wider">Aktivite</h3>
-                            <div className="flex items-center gap-1 surface-muted p-1 rounded-md text-xs font-medium">
+                            <h3 className="text-sm font-semibold text-primary">Activity</h3>
+                            <div className="flex items-center gap-4">
                                 <button
                                     onClick={() => setActiveActivityTab('comments')}
-                                    className={`px-3 py-1 rounded transition cursor-pointer ${activeActivityTab === 'comments'
-                                        ? 'surface text-primary shadow-2xs font-semibold'
-                                        : 'text-secondary hover:text-primary'
-                                        }`}
+                                    className={`
+                                        px-1 py-2
+                                        text-xs
+                                        font-medium
+                                        border-b-2
+                                        transition
+                                        cursor-pointer
+                                        ${activeActivityTab === 'comments'
+                                            ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                                            : 'border-transparent text-secondary hover:text-primary'
+                                        }
+                                    `}
                                 >
                                     Yorumlar ({task.commentCount ?? 0})
                                 </button>
                                 <button
                                     onClick={() => setActiveActivityTab('worklogs')}
-                                    className={`px-3 py-1 rounded transition cursor-pointer ${activeActivityTab === 'worklogs'
-                                        ? 'surface text-primary shadow-2xs font-semibold'
-                                        : 'text-secondary hover:text-primary'
-                                        }`}
+                                    className={`
+                                        px-1 py-2
+                                        text-xs
+                                        font-medium
+                                        border-b-2
+                                        transition
+                                        cursor-pointer
+                                        ${activeActivityTab === 'worklogs'
+                                            ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                                            : 'border-transparent text-secondary hover:text-primary'
+                                        }
+                                    `}
                                 >
                                     Çalışma Günlükleri
                                 </button>
                                 <button
                                     onClick={() => setActiveActivityTab('attachments')}
-                                    className={`px-3 py-1 rounded transition cursor-pointer ${activeActivityTab === 'attachments'
-                                        ? 'surface text-primary shadow-2xs font-semibold'
-                                        : 'text-secondary hover:text-primary'
-                                        }`}
+                                    className={`
+                                        px-1 py-2
+                                        text-xs
+                                        font-medium
+                                        border-b-2
+                                        transition
+                                        cursor-pointer
+                                        ${activeActivityTab === 'attachments'
+                                            ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                                            : 'border-transparent text-secondary hover:text-primary'
+                                        }
+                                    `}
                                 >
                                     Ekler ({task.attachmentCount ?? 0})
                                 </button>
@@ -392,35 +529,50 @@ export function TaskDetailPage() {
 
                         <div>
                             {activeActivityTab === 'comments' && <CommentsSection taskId={task.id} projectId={task.projectId} />}
-                            {activeActivityTab === 'worklogs' && <WorkLogsSection taskId={task.id} />}
+                            {activeActivityTab === 'worklogs' && (
+                                <div className="space-y-4">
+                                    <TimeTrackingWidget
+                                        taskId={task.id}
+                                        originalEstimateMinutes={task.originalEstimateMinutes}
+                                        remainingEstimateMinutes={task.remainingEstimateMinutes}
+                                        canEdit={isPM || isAssignee}
+                                    />
+                                    <WorkLogsSection taskId={task.id} />
+                                </div>
+                            )}
                             {activeActivityTab === 'attachments' && <AttachmentsSection taskId={task.id} />}
                         </div>
                     </div>
+
+                    {/* History / Audit Log */}
+                    <HistorySection taskId={task.id} />
                 </div>
 
                 {/* SAĞ KOLON - ÖZELLİKLER & ÖZET (4 Kolon) */}
                 <div className="lg:col-span-4 space-y-6">
-                    {/* Status Dropdown */}
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-muted uppercase tracking-wider block">Status</label>
-                        <div className="relative">
-                            <select
-                                value={draft.status}
-                                onChange={(e) => setDraft({ ...draft, status: e.target.value as ItemStatus })}
-                                className={`appearance-none w-full border font-bold text-xs px-3 py-2 rounded-md cursor-pointer transition focus:outline-none ${currentStatusObj.color}`}
-                            >
-                                {ALL_STATUSES.map((s) => (
-                                    <option key={s.value} value={s.value} className="surface text-primary font-normal">
-                                        {s.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
                     {/* Property List (Details) */}
-                    <div className="surface border rounded-lg p-4 divide-y divide-gray-100 dark:divide-gray-800 text-xs">
-                        <div className="p-3 font-bold text-primary uppercase tracking-wider text-[11px] surface-muted rounded-t-lg -mx-4 -mt-4 mb-1">
+                    <div className="
+                        surface
+                        border
+                        border-gray-200
+                        dark:border-gray-700
+                        rounded-md
+                        p-4
+                        divide-y
+                        divide-gray-100
+                        dark:divide-gray-800
+                        text-xs
+                    ">
+                        <div className="
+                            px-3 py-2
+                            -mx-4 -mt-4 mb-1
+                            text-xs
+                            font-semibold
+                            text-primary
+                            border-b
+                            border-gray-200
+                            dark:border-gray-700
+                        ">
                             Details
                         </div>
 
@@ -580,6 +732,14 @@ export function TaskDetailPage() {
                                 <LabelsSection taskId={task.id} currentLabels={task.labels} />
                             </div>
                         </div>
+
+                        {/* Components */}
+                        <div className="py-3 grid grid-cols-12 items-start gap-2">
+                            <span className="col-span-4 text-muted font-medium pt-1">Components</span>
+                            <div className="col-span-8">
+                                <ComponentsSection taskId={task.id} projectId={task.projectId} currentComponents={task.components} />
+                            </div>
+                        </div>
                     </div>
 
                     {/* Metadata Footer */}
@@ -592,23 +752,54 @@ export function TaskDetailPage() {
 
             {/* Jira Unsaved Changes Floating Bar */}
             {isDirty && (
-                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-amber-50 dark:bg-amber-950/90 border border-amber-300 dark:border-amber-700 surface border-t shadow-lg dark:shadow-black/30 rounded-lg px-6 py-3 flex items-center gap-6 z-50 text-xs animate-in slide-in-from-bottom duration-200">
+                <div className="
+                    fixed
+                    bottom-4
+                    left-1/2
+                    -translate-x-1/2
+                    bg-white
+                    dark:bg-gray-900
+                    border
+                    border-gray-300
+                    dark:border-gray-700
+                    shadow-xl
+                    rounded-md
+                    px-5 py-3
+                    flex
+                    items-center
+                    gap-5
+                    z-50
+                    text-xs
+                    animate-in
+                    slide-in-from-bottom
+                    duration-200
+                ">
                     <div className="flex items-center gap-2 text-secondary font-medium">
-                        <AlertCircle size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                        <AlertCircle size={16} className="text-amber-500 shrink-0" />
                         <span>Kaydedilmemiş değişiklikleriniz var.</span>
                     </div>
                     {saveError && <span className="text-red-600 dark:text-red-400 font-semibold">{saveError}</span>}
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handleCancel}
-                            className="px-3 py-1.5 text-secondary hover:text-primary hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded transition font-medium cursor-pointer"
+                            className="px-3 py-1.5 text-secondary hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition font-medium cursor-pointer"
                         >
                             İptal
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded transition shadow-2xs disabled:opacity-50 cursor-pointer"
+                            className="
+                                bg-blue-600
+                                hover:bg-blue-700
+                                text-white
+                                font-semibold
+                                px-4 py-1.5
+                                rounded-md
+                                transition
+                                disabled:opacity-50
+                                cursor-pointer
+                            "
                         >
                             {isSaving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
                         </button>

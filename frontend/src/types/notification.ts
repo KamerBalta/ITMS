@@ -11,4 +11,5 @@ export interface NotificationPreference {
     notificationType: string;
     inAppEnabled: boolean;
     emailEnabled: boolean;
+    emailFrequency: 'Instant' | 'DailyDigest';
 }
