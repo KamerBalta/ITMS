@@ -65,7 +65,7 @@ public class CreateProjectCommandHandler : IRequestHandler<CreateProjectCommand,
         }
 
         await DefaultProjectIssueTypeSeeder.AssignDefaultsAsync(_db, project.Id, ct);
-        DefaultWorkflowSeeder.AssignDefaults(_db, project.Id);
+        await DefaultWorkflowSeeder.AssignDefaultsAsync(_db, project.Id, ct);
 
         await _db.SaveChangesAsync(ct);
 

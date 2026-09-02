@@ -27,7 +27,15 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
             throw new InvalidOperationException("Yeni parola en az 8 karakter olmalıdır.");
 
         user.PasswordHash = _passwordHasher.Hash(request.NewPassword);
+        user.TokenVersion = Guid.NewGuid();
         user.UpdatedAt = DateTime.UtcNow;
+
+        var existingTokens = await _db.RefreshTokens
+            .Where(t => t.UserId == user.Id && t.RevokedAt == null)
+            .ToListAsync(ct);
+
+        foreach (var token in existingTokens)
+            token.RevokedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
     }

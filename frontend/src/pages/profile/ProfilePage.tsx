@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import {
     useMyProfile,
     useUpdateMyProfile,
@@ -7,15 +7,18 @@ import {
     useDeleteAvatar,
     useRevokeAllSessions,
 } from '../../hooks/useMyProfile';
+import { useTourState } from '../../hooks/useTourState';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
 import { useNavigate } from 'react-router-dom';
 import { NotificationPreferencesPanel } from '../../components/NotificationPreferencesPanel';
 import { AuthenticatedImage } from '../../components/AuthenticatedImage';
 import { invalidateAvatarCache } from '../../lib/avatarCache';
+import { apiClient } from '../../api/client';
 import type { AxiosError } from 'axios';
 import type { ApiErrorResponse } from '../../types/api';
-import { Camera, CheckCircle2, X, Lock, User, Sliders, Trash2 } from 'lucide-react';
+import type { UserDetail } from '../../types/user';
+import { Camera, CheckCircle2, X, Lock, User, Sliders, Trash2, Download } from 'lucide-react';
 
 const ROLE_BADGE_COLORS: Record<string, string> = {
     'System Admin': 'bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 border-red-200 dark:border-red-900',
@@ -24,6 +27,88 @@ const ROLE_BADGE_COLORS: Record<string, string> = {
     'QA/Tester': 'bg-yellow-100 dark:bg-yellow-950/60 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-900',
 };
 
+// 1. KİŞİSEL BİLGİLER FORMU (Child Component: Local form state query state'inden bağımsızdır)
+interface ProfileFormProps {
+    profile: UserDetail;
+    updateProfile: ReturnType<typeof useUpdateMyProfile>;
+    onSuccess: () => void;
+}
+
+function ProfileForm({ profile, updateProfile, onSuccess }: ProfileFormProps) {
+    const [name, setName] = useState(profile.name);
+    const [title, setTitle] = useState(profile.title ?? '');
+    const [profileError, setProfileError] = useState<string | null>(null);
+
+    const handleSaveProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setProfileError(null);
+
+        try {
+            await updateProfile.mutateAsync({
+                name,
+                title: title || null,
+            });
+            onSuccess();
+        } catch (err) {
+            const axiosError = err as AxiosError<ApiErrorResponse>;
+            setProfileError(axiosError.response?.data?.message ?? 'Profil güncellenemedi.');
+        }
+    };
+
+    return (
+        <form onSubmit={handleSaveProfile} className="surface border rounded-xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-3 text-primary font-bold text-base">
+                <User className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <h2>Kişisel Bilgiler</h2>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label className="block text-xs font-semibold text-secondary mb-1">Ad Soyad</label>
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                        className="w-full input-base border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 dark:border-gray-600"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-xs font-semibold text-secondary mb-1">Unvan</label>
+                    <input
+                        type="text"
+                        placeholder="Örn: Senior Software Engineer"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        className="w-full input-base border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 dark:border-gray-600"
+                    />
+                </div>
+            </div>
+
+            <div>
+                <label className="block text-xs font-semibold text-secondary mb-1">E-posta</label>
+                <div className="text-sm font-medium text-muted surface-muted border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2">
+                    {profile.email}
+                </div>
+            </div>
+
+            {profileError && <p className="text-red-500 dark:text-red-400 text-xs font-medium">{profileError}</p>}
+
+            <div className="flex justify-end pt-2">
+                <button
+                    type="submit"
+                    disabled={updateProfile.isPending}
+                    className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer"
+                >
+                    {updateProfile.isPending ? 'Kaydediliyor...' : 'Kaydet'}
+                </button>
+            </div>
+        </form>
+    );
+}
+
+// 2. ANA PROFİL SAYFASI
 export function ProfilePage() {
     const { data: profile, isLoading } = useMyProfile();
     const updateProfile = useUpdateMyProfile();
@@ -31,33 +116,32 @@ export function ProfilePage() {
     const uploadAvatar = useUploadAvatar();
     const deleteAvatar = useDeleteAvatar();
     const revokeAllSessions = useRevokeAllSessions();
+    const { resetTour } = useTourState();
 
     const logout = useAuthStore((state) => state.logout);
     const refreshAvatar = useAuthStore((state) => state.refreshAvatar);
     const navigate = useNavigate();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Profil Form State
-    const [name, setName] = useState('');
-    const [title, setTitle] = useState('');
     const [avatarVersion, setAvatarVersion] = useState(0);
+    const [isExporting, setIsExporting] = useState(false);
 
     // Parola Form State
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwordError, setPasswordError] = useState<string | null>(null);
+    const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 
     // Oturum Güvenliği State
     const [revokeConfirming, setRevokeConfirming] = useState(false);
 
-    // Tercihler (Preferences) State
+    // Tercihler State
     const { theme, setTheme } = useThemeStore();
     const [language, setLanguage] = useState('tr');
     const [timezone, setTimeZone] = useState('Europe/Istanbul');
 
-    // Hata & Toast State'leri
-    const [profileError, setProfileError] = useState<string | null>(null);
-    const [passwordError, setPasswordError] = useState<string | null>(null);
+    // Toast State
     const [toastMessage, setToastMessage] = useState<string | null>(null);
 
     const showToast = (msg: string) => {
@@ -65,32 +149,33 @@ export function ProfilePage() {
         setTimeout(() => setToastMessage(null), 3500);
     };
 
-    useEffect(() => {
-        if (profile) {
-            setName(profile.name);
-            setTitle(profile.title ?? '');
-        }
-    }, [profile]);
-
     if (isLoading || !profile) return <p className="text-secondary text-sm p-4">Yükleniyor...</p>;
 
-    // Profil Güncelleme
-    const handleSaveProfile = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setProfileError(null);
+    // Veri İndirme (JSON Export)
+    const handleExportData = async () => {
         try {
-            await updateProfile.mutateAsync({ name, title: title || null });
-            showToast('✓ Profil bilgileri başarıyla güncellendi.');
-        } catch (err) {
-            const axiosError = err as AxiosError<ApiErrorResponse>;
-            setProfileError(axiosError.response?.data?.message ?? 'Profil güncellenemedi.');
+            setIsExporting(true);
+            const res = await apiClient.get('/users/me/export-data');
+            const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `verilerim-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('✓ Verileriniz başarıyla indirildi.');
+        } catch {
+            alert('Veriler indirilirken bir hata oluştu.');
+        } finally {
+            setIsExporting(false);
         }
     };
 
-    // Şifre Değiştirme
+    // Parola Değiştirme
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
         setPasswordError(null);
+        setPasswordSuccess(null);
 
         if (newPassword !== confirmPassword) {
             setPasswordError('Yeni parolalar birbiriyle uyuşmuyor.');
@@ -99,6 +184,7 @@ export function ProfilePage() {
 
         try {
             await changePassword.mutateAsync({ currentPassword, newPassword });
+            setPasswordSuccess('Parolanız değiştirildi. Güvenlik amacıyla diğer tüm cihazlarınızdaki oturumlar sonlandırıldı.');
             showToast('✓ Parolanız başarıyla değiştirildi.');
             setCurrentPassword('');
             setNewPassword('');
@@ -120,13 +206,17 @@ export function ProfilePage() {
         navigate('/login');
     };
 
-    // Fotoğraf Seçme
+    // Fotoğraf Seçme & Yükleme
     const handleAvatarSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+
         try {
             await uploadAvatar.mutateAsync(file);
-            if (profile) invalidateAvatarCache(`avatar:${profile.id}`);
+            await invalidateAvatarCache(`avatar:${profile.id}`);
+            refreshAvatar();
+            setAvatarVersion((v) => v + 1);
+            showToast('✓ Profil fotoğrafı başarıyla güncellendi.');
         } catch {
             alert('Avatar yüklenemedi (yalnızca PNG/JPG, 5MB sınırı).');
         } finally {
@@ -140,6 +230,7 @@ export function ProfilePage() {
 
         try {
             await deleteAvatar.mutateAsync();
+            await invalidateAvatarCache(`avatar:${profile.id}`);
             refreshAvatar();
             setAvatarVersion((v) => v + 1);
             showToast('✓ Profil fotoğrafı kaldırıldı.');
@@ -167,7 +258,7 @@ export function ProfilePage() {
                 <p className="text-sm text-secondary">Kişisel bilgilerinizi, güvenlik ayarlarınızı ve tercihlerinizi yönetin.</p>
             </div>
 
-            {/* 1. ÜST HEADER / PROFIL KARTI */}
+            {/* Üst Profil Kartı */}
             <div className="surface border rounded-xl p-6 shadow-sm flex flex-col sm:flex-row items-center sm:items-start gap-6">
                 <div className="relative group shrink-0">
                     <div className="w-24 h-24 rounded-full bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center overflow-hidden border-2 border-indigo-200 dark:border-indigo-800 shadow-inner">
@@ -175,6 +266,7 @@ export function ProfilePage() {
                             <AuthenticatedImage
                                 src={`/users/${profile.id}/avatar`}
                                 refreshKey={avatarVersion}
+                                cacheKey={`avatar:${profile.id}`}
                                 alt="Avatar"
                                 className="w-full h-full object-cover"
                                 fallback={
@@ -234,8 +326,7 @@ export function ProfilePage() {
                         {(profile.systemRoles ?? []).map((r) => (
                             <span
                                 key={r}
-                                className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${ROLE_BADGE_COLORS[r] ?? 'surface-muted text-secondary border-gray-200 dark:border-gray-700'
-                                    }`}
+                                className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${ROLE_BADGE_COLORS[r] ?? 'surface-muted text-secondary border-gray-200 dark:border-gray-700'}`}
                             >
                                 {r}
                             </span>
@@ -244,58 +335,15 @@ export function ProfilePage() {
                 </div>
             </div>
 
-            {/* 2. KİŞİSEL BİLGİLER FORMU */}
-            <form onSubmit={handleSaveProfile} className="surface border rounded-xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-3 text-primary font-bold text-base">
-                    <User className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                    <h2>Kişisel Bilgiler</h2>
-                </div>
+            {/* Kişisel Bilgiler Formu (Form reset ve izolasyon için key ile çağrılır) */}
+            <ProfileForm
+                key={profile.id}
+                profile={profile}
+                updateProfile={updateProfile}
+                onSuccess={() => showToast('✓ Profil bilgileri başarıyla güncellendi.')}
+            />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-xs font-semibold text-secondary mb-1">Ad Soyad</label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                            className="w-full input-base border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 dark:border-gray-600"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-semibold text-secondary mb-1">Unvan</label>
-                        <input
-                            type="text"
-                            placeholder="Örn: Senior Software Engineer"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full input-base border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 dark:border-gray-600"
-                        />
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-xs font-semibold text-secondary mb-1">E-posta</label>
-                    <div className="text-sm font-medium text-muted surface-muted border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2">
-                        {profile.email}
-                    </div>
-                </div>
-
-                {profileError && <p className="text-red-500 dark:text-red-400 text-xs font-medium">{profileError}</p>}
-
-                <div className="flex justify-end pt-2">
-                    <button
-                        type="submit"
-                        disabled={updateProfile.isPending}
-                        className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer"
-                    >
-                        {updateProfile.isPending ? 'Kaydediliyor...' : 'Kaydet'}
-                    </button>
-                </div>
-            </form>
-
-            {/* 3. GÜVENLİK VE PAROLA DEĞİŞTİRME FORMU */}
+            {/* Güvenlik ve Parola Değiştirme */}
             <form onSubmit={handleChangePassword} className="surface border rounded-xl p-6 shadow-sm space-y-4">
                 <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-3 text-primary font-bold text-base">
                     <Lock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -343,6 +391,11 @@ export function ProfilePage() {
                 </div>
 
                 {passwordError && <p className="text-red-500 dark:text-red-400 text-xs font-medium">{passwordError}</p>}
+                {passwordSuccess && (
+                    <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg text-emerald-700 dark:text-emerald-300 text-xs font-medium">
+                        {passwordSuccess}
+                    </div>
+                )}
 
                 <div className="flex justify-end pt-2">
                     <button
@@ -355,7 +408,40 @@ export function ProfilePage() {
                 </div>
             </form>
 
-            {/* Oturum Güvenliği / Tüm Cihazlardan Çıkış */}
+            {/* Verilerim */}
+            <div className="surface border rounded-xl p-6 shadow-sm space-y-3">
+                <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-3 text-primary font-bold text-base">
+                    <Download className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                    <h2>Verilerim</h2>
+                </div>
+                <p className="text-sm text-secondary">
+                    Sistemde size ait kayıtlı verilerin (görevler, yorumlar vb.) bir kopyasını indirin.
+                </p>
+                <button
+                    onClick={handleExportData}
+                    disabled={isExporting}
+                    className="inline-flex items-center gap-2 text-sm border border-gray-300 dark:border-gray-600 text-secondary px-4 py-2 rounded-lg hover-surface transition font-medium cursor-pointer disabled:opacity-50"
+                >
+                    <Download className="w-4 h-4 text-muted" />
+                    {isExporting ? 'İndiriliyor...' : 'Verilerimi İndir (JSON)'}
+                </button>
+            </div>
+
+            {/* Yardım */}
+            <div className="surface border rounded-lg p-4 space-y-2">
+                <h2 className="font-semibold text-primary">Yardım</h2>
+                <button
+                    onClick={() => {
+                        resetTour();
+                        window.location.href = '/dashboard';
+                    }}
+                    className="text-sm border border-gray-300 dark:border-gray-600 text-secondary px-4 py-2 rounded hover-surface"
+                >
+                    Uygulama Turunu Tekrar Başlat
+                </button>
+            </div>
+
+            {/* Oturum Güvenliği */}
             <div className="surface border rounded-xl p-6 shadow-sm space-y-3">
                 <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-3 text-primary font-bold text-base">
                     <Lock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -384,10 +470,10 @@ export function ProfilePage() {
                 )}
             </div>
 
-            {/* Notification Preferences Panel (Detaylı Bildirim Yönetimi) */}
+            {/* Bildirim Tercihleri */}
             <NotificationPreferencesPanel />
 
-            {/* 4. SİSTEM TERCİHLERİ */}
+            {/* Sistem Tercihleri */}
             <div className="surface border rounded-xl p-6 shadow-sm space-y-4">
                 <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-3 text-primary font-bold text-base">
                     <Sliders className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -395,14 +481,12 @@ export function ProfilePage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                    {/* Tema Seçimi */}
+                    {/* Tema */}
                     <div>
                         <label className="block text-xs font-semibold text-secondary mb-1.5">Tema</label>
                         <select
                             value={theme}
-                            onChange={(e) =>
-                                setTheme(e.target.value as 'light' | 'dark')
-                            }
+                            onChange={(e) => setTheme(e.target.value as 'light' | 'dark')}
                             className="w-full input-base border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 cursor-pointer"
                         >
                             <option value="light">Açık Tema (Light)</option>
@@ -410,7 +494,7 @@ export function ProfilePage() {
                         </select>
                     </div>
 
-                    {/* Dil Seçimi */}
+                    {/* Dil */}
                     <div>
                         <label className="block text-xs font-semibold text-secondary mb-1.5">Dil</label>
                         <select

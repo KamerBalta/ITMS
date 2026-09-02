@@ -1,11 +1,12 @@
 ﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { customFieldsApi } from '../api/customFields';
-
+import { REFERENCE_STALE_TIME } from '../lib/queryClient';
 export function useCustomFields(projectId: string | null) {
     return useQuery({
         queryKey: ['custom-fields', projectId],
         queryFn: () => customFieldsApi.getAll(projectId!),
         enabled: !!projectId,
+        staleTime: REFERENCE_STALE_TIME,
     });
 }
 

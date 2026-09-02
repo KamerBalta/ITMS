@@ -67,9 +67,12 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, Guid>
         if (issueType.RequiresParent && request.ParentTaskId is null)
             throw new InvalidOperationException($"'{issueType.Name}' tipi mutlaka bir üst göreve bağlanmalıdır.");
 
+        // #2: Teslim tarihi, mevcut duzenleme kuralinin (yalnizca PM/Admin) olusturma anindaki aynasi.
+        if (request.DueDate is not null && !(_currentUser.IsAdmin || _currentUser.Roles.Contains("Project Manager")))
+            throw new UnauthorizedAccessException("Teslim tarihi belirleme yetkiniz yok. Yalnızca Project Manager/Admin belirleyebilir.");
+
         // #Kritik-2: proje icin tanimli TUM zorunlu custom field'lar doldurulmus olmali,
-        // yoksa gorev olusturma engellenir. Bu kontrol daha once yalniz tekil alan
-        // guncellemesinde vardi, gorev olusturma akisinda hic yoktu.
+        // yoksa gorev olusturma engellenir.
         var requiredFields = await _db.CustomFieldDefinitions
             .Where(f => f.ProjectId == request.ProjectId && f.IsRequired)
             .ToListAsync(ct);
@@ -92,11 +95,28 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, Guid>
 
         if (request.ParentTaskId is not null)
         {
-            var parent = await _db.Tasks.FirstOrDefaultAsync(t => t.Id == request.ParentTaskId, ct);
+            var parent = await _db.Tasks
+                .Include(t => t.IssueType)
+                .FirstOrDefaultAsync(t => t.Id == request.ParentTaskId, ct);
+
             if (parent is null)
                 throw new InvalidOperationException("Belirtilen üst görev bulunamadı.");
+
             if (parent.ProjectId != request.ProjectId)
                 throw new InvalidOperationException("Üst görev farklı bir projeye ait olamaz.");
+
+            if (parent.IssueType is null)
+                throw new InvalidOperationException("Üst görevin issue type bilgisi bulunamadı.");
+
+            // Parent child kabul etmiyorsa altında görev oluşturulamaz.
+            if (!parent.IssueType.AllowsChildren)
+                throw new InvalidOperationException(
+                    $"'{parent.IssueType.Name}' tipi alt görev kabul etmiyor.");
+
+            // Sub-task başka bir Sub-task'ın altında olamaz.
+            if (issueType.RequiresParent && parent.IssueType.RequiresParent)
+                throw new InvalidOperationException(
+                    "Bir Sub-task, başka bir Sub-task'ın altına eklenemez.");
         }
 
         if (request.SprintId is not null)
@@ -112,7 +132,7 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, Guid>
                 throw new UnauthorizedAccessException("Aktif sprint kapsamına yalnızca Project Manager yeni görev ekleyebilir.");
         }
 
-        // #Breadcrumb: proje bazli atomik artan Issue Key numarasi (orn. ITMS-125)
+        // #Breadcrumb: Proje bazli atomik artan Issue Key numarasi
         var taskNumber = project.NextTaskNumber;
         project.NextTaskNumber++;
 
@@ -131,7 +151,7 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, Guid>
             Description = request.Description,
             Priority = request.Priority,
             StoryPoint = request.StoryPoint,
-            Status = ItemStatus.ToDo,
+            StatusId = (await _db.ProjectWorkflowStatuses.FirstAsync(s => s.ProjectId == request.ProjectId && s.IsInitial, ct)).Id,
             AssigneeId = request.AssigneeId,
             ReporterId = request.ReporterId,
             DueDate = request.DueDate,
@@ -150,14 +170,18 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, Guid>
                 $"\"{task.Title}\" adlı görev size atandı ({project.Name}).",
                 NotificationType.Task,
                 $"/tasks/{task.Id}",
-                ct);
+                ct: ct);
         }
+
         foreach (var userId in MentionParser.ExtractMentionedUserIds(request.Description).Where(id => id != request.ReporterId))
         {
             await _notificationService.NotifyAsync(
-                userId, "Görev açıklamasında bahsedildiniz",
+                userId,
+                "Görev açıklamasında bahsedildiniz",
                 $"\"{task.Title}\" görevinin açıklamasında sizden bahsedildi.",
-                NotificationType.Mention, $"/tasks/{task.Id}", ct);
+                NotificationType.Mention,
+                $"/tasks/{task.Id}",
+                ct: ct);
         }
 
         await _realtime.NotifyProjectAsync(task.ProjectId, "task", "created", ct);
@@ -174,6 +198,20 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, Guid>
                 _db.TaskComponents.Add(new Domain.Entities.TaskComponent { TaskId = task.Id, ProjectComponentId = componentId });
 
             if (validComponentIds.Count > 0)
+                await _db.SaveChangesAsync(ct);
+        }
+
+        if (request.LabelIds is { Count: > 0 })
+        {
+            var validLabelIds = await _db.Labels
+                .Where(l => request.LabelIds.Contains(l.Id))
+                .Select(l => l.Id)
+                .ToListAsync(ct);
+
+            foreach (var labelId in validLabelIds)
+                _db.TaskLabels.Add(new Domain.Entities.TaskLabel { TaskId = task.Id, LabelId = labelId });
+
+            if (validLabelIds.Count > 0)
                 await _db.SaveChangesAsync(ct);
         }
 

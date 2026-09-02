@@ -23,8 +23,19 @@ public class CreateSubtaskCommandHandler : IRequestHandler<CreateSubtaskCommand,
         var parent = await _db.Tasks
             .Include(t => t.Sprint)
             .Include(t => t.Project)
+            .Include(t => t.IssueType)
             .FirstOrDefaultAsync(t => t.Id == request.ParentTaskId, ct)
             ?? throw new KeyNotFoundException("Üst görev bulunamadı.");
+
+        // Hiyerarşi & Tip Doğrulaması
+        if (parent.IssueType is null)
+            throw new InvalidOperationException("Üst görevin issue type bilgisi bulunamadı.");
+
+        if (!parent.IssueType.AllowsChildren)
+            throw new InvalidOperationException($"'{parent.IssueType.Name}' tipi alt görev kabul etmiyor.");
+
+        if (parent.IssueType.RequiresParent)
+            throw new InvalidOperationException("Bir Sub-task, başka bir Sub-task'ın altına eklenemez.");
 
         if (!await _access.HasProjectAccessAsync(parent.ProjectId, ct))
             throw new UnauthorizedAccessException("Bu projede alt görev oluşturma yetkiniz yok.");
@@ -67,7 +78,7 @@ public class CreateSubtaskCommandHandler : IRequestHandler<CreateSubtaskCommand,
             IssueTypeId = subtaskType.Id,
             Title = request.Title,
             Priority = parent.Priority,
-            Status = ItemStatus.ToDo,
+            StatusId = (await _db.ProjectWorkflowStatuses.FirstAsync(s => s.ProjectId == parent.ProjectId && s.IsInitial, ct)).Id,
             AssigneeId = request.AssigneeId,
             ReporterId = request.ReporterId,
             Rank = maxRank + 1000,

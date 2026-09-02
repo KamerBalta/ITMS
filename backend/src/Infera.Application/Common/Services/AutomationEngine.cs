@@ -133,9 +133,13 @@ public class AutomationEngine : IAutomationEngine
                     if (root.TryGetProperty("userId", out var notifyUserIdProp) && Guid.TryParse(notifyUserIdProp.GetString(), out var notifyUserId))
                     {
                         await _notificationService.NotifyAsync(
-                            notifyUserId, $"Otomasyon: {rule.Name}",
+                            notifyUserId,
+                            $"Otomasyon: {rule.Name}",
                             $"\"{task.Title}\" görevi için '{rule.Name}' kuralı tetiklendi.",
-                            NotificationType.Task, $"/tasks/{task.Id}", ct);
+                            NotificationType.Task,
+                            $"/tasks/{task.Id}",
+                            isImportant: false,
+                            ct: ct);
                     }
                     break;
 

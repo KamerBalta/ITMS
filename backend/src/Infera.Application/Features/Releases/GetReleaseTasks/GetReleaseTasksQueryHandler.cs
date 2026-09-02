@@ -25,7 +25,11 @@ public class GetReleaseTasksQueryHandler : IRequestHandler<GetReleaseTasksQuery,
 
         return await _db.Tasks
             .Where(t => t.ReleaseId == request.ReleaseId)
-            .Select(t => new ReleaseTaskDto(t.Id, t.Title, t.Status.ToString()))
+          .Select(t => new ReleaseTaskDto(
+    t.Id,
+    t.Title,
+    t.WorkflowStatus.Name,
+    t.StatusId))
             .ToListAsync(ct);
     }
 }

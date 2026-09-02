@@ -1,6 +1,6 @@
 ﻿import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useAuthStore } from '../../store/authStore';
+import { useCanManageProject } from '../../hooks/useCanManageProject';
 import { useIssueTypes } from '../../hooks/useIssueTypes';
 import {
     useProjectIssueTypes,
@@ -20,10 +20,7 @@ import {
 
 export function IssueTypesManagementPage() {
     const { projectId } = useParams<{ projectId: string }>();
-    const user = useAuthStore((state) => state.user);
-    const isAdmin = user?.roles.includes('System Admin') ?? false;
-    const isProjectManager = user?.roles.includes('Project Manager') ?? false;
-    const canManage = isAdmin || isProjectManager;
+    const canManage = useCanManageProject(projectId ?? null);
 
     const { data: assigned, isLoading, isError } = useProjectIssueTypes(projectId ?? null);
     const { data: catalog } = useIssueTypes(true); // Yalnızca aktif global tipler seçilebilir

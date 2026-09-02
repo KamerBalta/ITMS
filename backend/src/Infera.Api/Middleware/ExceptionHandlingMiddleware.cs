@@ -1,4 +1,5 @@
 ﻿using FluentValidation;
+using Infera.Application.Common.Exceptions;
 using System.Text.Json;
 
 namespace Infera.Api.Middleware;
@@ -27,6 +28,26 @@ public class ExceptionHandlingMiddleware
 
             var errors = ex.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage });
             await context.Response.WriteAsync(JsonSerializer.Serialize(new { errors }));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            await context.Response.WriteAsJsonAsync(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            await context.Response.WriteAsJsonAsync(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await context.Response.WriteAsJsonAsync(new { message = ex.Message });
+        }
+        catch (ConcurrencyConflictException ex)
+        {
+            context.Response.StatusCode = StatusCodes.Status409Conflict;
+            await context.Response.WriteAsJsonAsync(new { message = ex.Message });
         }
         catch (Exception ex)
         {

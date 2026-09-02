@@ -10,31 +10,24 @@ public record DeleteCustomFieldCommand(Guid Id) : IRequest;
 public record GetCustomFieldsQuery(Guid ProjectId) : IRequest<List<CustomFieldDto>>;
 public record SetTaskCustomFieldValueCommand(Guid TaskId, Guid FieldId, string? Value) : IRequest;
 public record GetTaskCustomFieldValuesQuery(Guid TaskId) : IRequest<List<TaskCustomFieldValueDto>>;
-
 public record CustomFieldDto(Guid Id, string Name, string FieldType, string? OptionsJson, bool IsRequired, int DisplayOrder);
 public record TaskCustomFieldValueDto(Guid FieldId, string Name, string FieldType, string? Value);
-
-file static class CustomFieldAuthorization
-{
-    public static async System.Threading.Tasks.Task EnsureCanManageAsync(IAppDbContext db, ICurrentUserService currentUser, Guid projectId, CancellationToken ct)
-    {
-        if (currentUser.IsAdmin) return;
-        var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == projectId, ct) ?? throw new KeyNotFoundException("Proje bulunamadı.");
-        if (project.OwnerId != currentUser.UserId)
-            throw new UnauthorizedAccessException("Bu projede özel alan yönetimi yapma yetkiniz yok.");
-    }
-}
 
 public class CreateCustomFieldCommandHandler : IRequestHandler<CreateCustomFieldCommand, Guid>
 {
     private static readonly HashSet<string> ValidTypes = new() { "text", "number", "select", "user" };
     private readonly IAppDbContext _db;
-    private readonly ICurrentUserService _currentUser;
-    public CreateCustomFieldCommandHandler(IAppDbContext db, ICurrentUserService currentUser) { _db = db; _currentUser = currentUser; }
+    private readonly IProjectManagementAuthService _projectAuth;
+
+    public CreateCustomFieldCommandHandler(IAppDbContext db, IProjectManagementAuthService projectAuth)
+    {
+        _db = db;
+        _projectAuth = projectAuth;
+    }
 
     public async System.Threading.Tasks.Task<Guid> Handle(CreateCustomFieldCommand request, CancellationToken ct)
     {
-        await CustomFieldAuthorization.EnsureCanManageAsync(_db, _currentUser, request.ProjectId, ct);
+        await _projectAuth.EnsureProjectManagerOrAdminAsync(request.ProjectId, ct);
 
         if (!ValidTypes.Contains(request.FieldType))
             throw new InvalidOperationException("Geçersiz alan tipi.");
@@ -62,14 +55,19 @@ public class CreateCustomFieldCommandHandler : IRequestHandler<CreateCustomField
 public class DeleteCustomFieldCommandHandler : IRequestHandler<DeleteCustomFieldCommand>
 {
     private readonly IAppDbContext _db;
-    private readonly ICurrentUserService _currentUser;
-    public DeleteCustomFieldCommandHandler(IAppDbContext db, ICurrentUserService currentUser) { _db = db; _currentUser = currentUser; }
+    private readonly IProjectManagementAuthService _projectAuth;
+
+    public DeleteCustomFieldCommandHandler(IAppDbContext db, IProjectManagementAuthService projectAuth)
+    {
+        _db = db;
+        _projectAuth = projectAuth;
+    }
 
     public async System.Threading.Tasks.Task Handle(DeleteCustomFieldCommand request, CancellationToken ct)
     {
         var entity = await _db.CustomFieldDefinitions.FirstOrDefaultAsync(f => f.Id == request.Id, ct)
             ?? throw new KeyNotFoundException("Özel alan bulunamadı.");
-        await CustomFieldAuthorization.EnsureCanManageAsync(_db, _currentUser, entity.ProjectId, ct);
+        await _projectAuth.EnsureProjectManagerOrAdminAsync(entity.ProjectId, ct);
 
         _db.CustomFieldDefinitions.Remove(entity); // TaskCustomFieldValues cascade ile silinir
         await _db.SaveChangesAsync(ct);
@@ -104,7 +102,12 @@ public class SetTaskCustomFieldValueCommandHandler : IRequestHandler<SetTaskCust
 {
     private readonly IAppDbContext _db;
     private readonly IProjectAccessService _access;
-    public SetTaskCustomFieldValueCommandHandler(IAppDbContext db, IProjectAccessService access) { _db = db; _access = access; }
+
+    public SetTaskCustomFieldValueCommandHandler(IAppDbContext db, IProjectAccessService access)
+    {
+        _db = db;
+        _access = access;
+    }
 
     public async System.Threading.Tasks.Task Handle(SetTaskCustomFieldValueCommand request, CancellationToken ct)
     {
@@ -142,7 +145,12 @@ public class GetTaskCustomFieldValuesQueryHandler : IRequestHandler<GetTaskCusto
 {
     private readonly IAppDbContext _db;
     private readonly IProjectAccessService _access;
-    public GetTaskCustomFieldValuesQueryHandler(IAppDbContext db, IProjectAccessService access) { _db = db; _access = access; }
+
+    public GetTaskCustomFieldValuesQueryHandler(IAppDbContext db, IProjectAccessService access)
+    {
+        _db = db;
+        _access = access;
+    }
 
     public async System.Threading.Tasks.Task<List<TaskCustomFieldValueDto>> Handle(GetTaskCustomFieldValuesQuery request, CancellationToken ct)
     {

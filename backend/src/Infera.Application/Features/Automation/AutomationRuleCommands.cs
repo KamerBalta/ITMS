@@ -9,29 +9,22 @@ public record CreateAutomationRuleCommand(Guid ProjectId, string Name, string Tr
 public record ToggleAutomationRuleCommand(Guid Id) : IRequest;
 public record DeleteAutomationRuleCommand(Guid Id) : IRequest;
 public record GetAutomationRulesQuery(Guid ProjectId) : IRequest<List<AutomationRuleDto>>;
-
 public record AutomationRuleDto(Guid Id, string Name, string TriggerType, string? TriggerConditionJson, string ActionType, string ActionParamsJson, bool IsActive);
-
-file static class AutomationAuthorization
-{
-    public static async System.Threading.Tasks.Task EnsureCanManageAsync(IAppDbContext db, ICurrentUserService currentUser, Guid projectId, CancellationToken ct)
-    {
-        if (currentUser.IsAdmin) return;
-        var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == projectId, ct) ?? throw new KeyNotFoundException("Proje bulunamadı.");
-        if (project.OwnerId != currentUser.UserId)
-            throw new UnauthorizedAccessException("Bu projede otomasyon kuralı yönetimi yapma yetkiniz yok.");
-    }
-}
 
 public class CreateAutomationRuleCommandHandler : IRequestHandler<CreateAutomationRuleCommand, Guid>
 {
     private readonly IAppDbContext _db;
-    private readonly ICurrentUserService _currentUser;
-    public CreateAutomationRuleCommandHandler(IAppDbContext db, ICurrentUserService currentUser) { _db = db; _currentUser = currentUser; }
+    private readonly IProjectManagementAuthService _projectAuth;
+
+    public CreateAutomationRuleCommandHandler(IAppDbContext db, IProjectManagementAuthService projectAuth)
+    {
+        _db = db;
+        _projectAuth = projectAuth;
+    }
 
     public async System.Threading.Tasks.Task<Guid> Handle(CreateAutomationRuleCommand request, CancellationToken ct)
     {
-        await AutomationAuthorization.EnsureCanManageAsync(_db, _currentUser, request.ProjectId, ct);
+        await _projectAuth.EnsureProjectManagerOrAdminAsync(request.ProjectId, ct);
 
         var entity = new AutomationRule
         {
@@ -51,13 +44,18 @@ public class CreateAutomationRuleCommandHandler : IRequestHandler<CreateAutomati
 public class ToggleAutomationRuleCommandHandler : IRequestHandler<ToggleAutomationRuleCommand>
 {
     private readonly IAppDbContext _db;
-    private readonly ICurrentUserService _currentUser;
-    public ToggleAutomationRuleCommandHandler(IAppDbContext db, ICurrentUserService currentUser) { _db = db; _currentUser = currentUser; }
+    private readonly IProjectManagementAuthService _projectAuth;
+
+    public ToggleAutomationRuleCommandHandler(IAppDbContext db, IProjectManagementAuthService projectAuth)
+    {
+        _db = db;
+        _projectAuth = projectAuth;
+    }
 
     public async System.Threading.Tasks.Task Handle(ToggleAutomationRuleCommand request, CancellationToken ct)
     {
         var entity = await _db.AutomationRules.FirstOrDefaultAsync(r => r.Id == request.Id, ct) ?? throw new KeyNotFoundException("Kural bulunamadı.");
-        await AutomationAuthorization.EnsureCanManageAsync(_db, _currentUser, entity.ProjectId, ct);
+        await _projectAuth.EnsureProjectManagerOrAdminAsync(entity.ProjectId, ct);
         entity.IsActive = !entity.IsActive;
         await _db.SaveChangesAsync(ct);
     }
@@ -66,13 +64,18 @@ public class ToggleAutomationRuleCommandHandler : IRequestHandler<ToggleAutomati
 public class DeleteAutomationRuleCommandHandler : IRequestHandler<DeleteAutomationRuleCommand>
 {
     private readonly IAppDbContext _db;
-    private readonly ICurrentUserService _currentUser;
-    public DeleteAutomationRuleCommandHandler(IAppDbContext db, ICurrentUserService currentUser) { _db = db; _currentUser = currentUser; }
+    private readonly IProjectManagementAuthService _projectAuth;
+
+    public DeleteAutomationRuleCommandHandler(IAppDbContext db, IProjectManagementAuthService projectAuth)
+    {
+        _db = db;
+        _projectAuth = projectAuth;
+    }
 
     public async System.Threading.Tasks.Task Handle(DeleteAutomationRuleCommand request, CancellationToken ct)
     {
         var entity = await _db.AutomationRules.FirstOrDefaultAsync(r => r.Id == request.Id, ct) ?? throw new KeyNotFoundException("Kural bulunamadı.");
-        await AutomationAuthorization.EnsureCanManageAsync(_db, _currentUser, entity.ProjectId, ct);
+        await _projectAuth.EnsureProjectManagerOrAdminAsync(entity.ProjectId, ct);
         _db.AutomationRules.Remove(entity);
         await _db.SaveChangesAsync(ct);
     }

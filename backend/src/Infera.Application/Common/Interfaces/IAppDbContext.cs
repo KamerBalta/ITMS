@@ -44,6 +44,14 @@ public interface IAppDbContext
     DbSet<TaskComponent> TaskComponents { get; }
     DbSet<TaskLink> TaskLinks { get; }
     DbSet<PendingDigestEmail> PendingDigestEmails { get; }
+    DbSet<BoardColumn> BoardColumns { get; }
+    DbSet<ProjectWorkflowStatus> ProjectWorkflowStatuses { get; }
+    DbSet<IssueTemplate> IssueTemplates { get; }
+    DbSet<ChangelogEntry> ChangelogEntries { get; }
+    DbSet<UserChangelogSeen> UserChangelogSeen { get; }
+    DbSet<DashboardWidget> DashboardWidgets { get; }
+    DbSet<ProjectGitIntegration> ProjectGitIntegrations { get; }
+    DbSet<GitCommitLink> GitCommitLinks { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

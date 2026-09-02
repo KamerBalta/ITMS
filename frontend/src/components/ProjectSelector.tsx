@@ -57,7 +57,7 @@ export function ProjectSelector() {
     }
 
     return (
-        <div className="relative">
+        <div data-tour="project-selector" className="relative">
             <select
                 value={selectedProjectId ?? ''}
                 onChange={(e) =>

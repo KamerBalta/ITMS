@@ -11,26 +11,20 @@ public record DeleteComponentCommand(Guid Id) : IRequest;
 public record GetComponentsQuery(Guid ProjectId) : IRequest<List<ComponentDto>>;
 public record ComponentDto(Guid Id, string Name, string? Description, Guid? LeadUserId, string? LeadUserName, int TaskCount);
 
-file static class ComponentAuthorization
-{
-    public static async System.Threading.Tasks.Task EnsureCanManageAsync(IAppDbContext db, ICurrentUserService currentUser, Guid projectId, CancellationToken ct)
-    {
-        if (currentUser.IsAdmin) return;
-        var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == projectId, ct) ?? throw new KeyNotFoundException("Proje bulunamadı.");
-        if (project.OwnerId != currentUser.UserId)
-            throw new UnauthorizedAccessException("Bu projede component yönetimi yapma yetkiniz yok.");
-    }
-}
-
 public class CreateComponentCommandHandler : IRequestHandler<CreateComponentCommand, Guid>
 {
     private readonly IAppDbContext _db;
-    private readonly ICurrentUserService _currentUser;
-    public CreateComponentCommandHandler(IAppDbContext db, ICurrentUserService currentUser) { _db = db; _currentUser = currentUser; }
+    private readonly IProjectManagementAuthService _projectAuth;
+
+    public CreateComponentCommandHandler(IAppDbContext db, IProjectManagementAuthService projectAuth)
+    {
+        _db = db;
+        _projectAuth = projectAuth;
+    }
 
     public async System.Threading.Tasks.Task<Guid> Handle(CreateComponentCommand request, CancellationToken ct)
     {
-        await ComponentAuthorization.EnsureCanManageAsync(_db, _currentUser, request.ProjectId, ct);
+        await _projectAuth.EnsureProjectManagerOrAdminAsync(request.ProjectId, ct);
 
         var exists = await _db.ProjectComponents.AnyAsync(c => c.ProjectId == request.ProjectId && c.Name == request.Name, ct);
         if (exists) throw new InvalidOperationException("Bu isimde bir component zaten var.");
@@ -41,7 +35,14 @@ public class CreateComponentCommandHandler : IRequestHandler<CreateComponentComm
             if (!isMember) throw new InvalidOperationException("Sorumlu kişi bu projenin üyesi değil.");
         }
 
-        var entity = new ProjectComponent { ProjectId = request.ProjectId, Name = request.Name, Description = request.Description, LeadUserId = request.LeadUserId };
+        var entity = new ProjectComponent
+        {
+            ProjectId = request.ProjectId,
+            Name = request.Name,
+            Description = request.Description,
+            LeadUserId = request.LeadUserId
+        };
+
         _db.ProjectComponents.Add(entity);
         await _db.SaveChangesAsync(ct);
         return entity.Id;
@@ -51,13 +52,18 @@ public class CreateComponentCommandHandler : IRequestHandler<CreateComponentComm
 public class UpdateComponentCommandHandler : IRequestHandler<UpdateComponentCommand>
 {
     private readonly IAppDbContext _db;
-    private readonly ICurrentUserService _currentUser;
-    public UpdateComponentCommandHandler(IAppDbContext db, ICurrentUserService currentUser) { _db = db; _currentUser = currentUser; }
+    private readonly IProjectManagementAuthService _projectAuth;
+
+    public UpdateComponentCommandHandler(IAppDbContext db, IProjectManagementAuthService projectAuth)
+    {
+        _db = db;
+        _projectAuth = projectAuth;
+    }
 
     public async System.Threading.Tasks.Task Handle(UpdateComponentCommand request, CancellationToken ct)
     {
         var entity = await _db.ProjectComponents.FirstOrDefaultAsync(c => c.Id == request.Id, ct) ?? throw new KeyNotFoundException("Component bulunamadı.");
-        await ComponentAuthorization.EnsureCanManageAsync(_db, _currentUser, entity.ProjectId, ct);
+        await _projectAuth.EnsureProjectManagerOrAdminAsync(entity.ProjectId, ct);
 
         if (request.LeadUserId is not null)
         {
@@ -75,13 +81,18 @@ public class UpdateComponentCommandHandler : IRequestHandler<UpdateComponentComm
 public class DeleteComponentCommandHandler : IRequestHandler<DeleteComponentCommand>
 {
     private readonly IAppDbContext _db;
-    private readonly ICurrentUserService _currentUser;
-    public DeleteComponentCommandHandler(IAppDbContext db, ICurrentUserService currentUser) { _db = db; _currentUser = currentUser; }
+    private readonly IProjectManagementAuthService _projectAuth;
+
+    public DeleteComponentCommandHandler(IAppDbContext db, IProjectManagementAuthService projectAuth)
+    {
+        _db = db;
+        _projectAuth = projectAuth;
+    }
 
     public async System.Threading.Tasks.Task Handle(DeleteComponentCommand request, CancellationToken ct)
     {
         var entity = await _db.ProjectComponents.FirstOrDefaultAsync(c => c.Id == request.Id, ct) ?? throw new KeyNotFoundException("Component bulunamadı.");
-        await ComponentAuthorization.EnsureCanManageAsync(_db, _currentUser, entity.ProjectId, ct);
+        await _projectAuth.EnsureProjectManagerOrAdminAsync(entity.ProjectId, ct);
 
         var inUse = await _db.TaskComponents.AnyAsync(tc => tc.ProjectComponentId == request.Id, ct);
         if (inUse) throw new InvalidOperationException("Bu component en az bir görev tarafından kullanılıyor, önce görevlerden kaldırın.");
@@ -111,7 +122,10 @@ public class GetComponentsQueryHandler : IRequestHandler<GetComponentsQuery, Lis
             .Where(c => c.ProjectId == request.ProjectId)
             .OrderBy(c => c.Name)
             .Select(c => new ComponentDto(
-                c.Id, c.Name, c.Description, c.LeadUserId,
+                c.Id,
+                c.Name,
+                c.Description,
+                c.LeadUserId,
                 c.LeadUser != null ? c.LeadUser.Name : null,
                 _db.TaskComponents.Count(tc => tc.ProjectComponentId == c.Id)))
             .ToListAsync(ct);

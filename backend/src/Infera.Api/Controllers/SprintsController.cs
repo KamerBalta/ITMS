@@ -100,5 +100,5 @@ public class SprintsController : ControllerBase
     }
 }
 
-public record CreateSprintRequest(Guid ProjectId, string Name, string? Goal, DateTime StartDate, DateTime EndDate);
-public record UpdateSprintRequest(string Name, string? Goal, DateTime StartDate, DateTime EndDate);
+public record CreateSprintRequest(Guid ProjectId, string Name, string? Goal, DateOnly StartDate, DateOnly EndDate);
+public record UpdateSprintRequest(string Name, string? Goal, DateOnly StartDate, DateOnly EndDate);

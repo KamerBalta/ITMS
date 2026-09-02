@@ -9,26 +9,9 @@ public record AssignIssueTypeToProjectCommand(Guid ProjectId, Guid IssueTypeId) 
 public record RemoveIssueTypeFromProjectCommand(Guid ProjectId, Guid IssueTypeId) : IRequest;
 public record ReorderProjectIssueTypesCommand(Guid ProjectId, List<Guid> OrderedIssueTypeIds) : IRequest;
 public record GetProjectIssueTypesQuery(Guid ProjectId) : IRequest<List<ProjectIssueTypeDto>>;
-
 public record ProjectIssueTypeDto(
     Guid IssueTypeId, string Name, string? Description, string? Icon, string? Color,
     int CreatorTier, bool AllowsChildren, bool RequiresParent, bool IsSystemDefault, bool IsActive, int DisplayOrder);
-
-file static class ProjectIssueTypeAuthorization
-{
-    // Admin her projede, PM yalnizca kendi (Owner oldugu) projesinde yonetebilir.
-    public static async System.Threading.Tasks.Task EnsureCanManageAsync(
-        IAppDbContext db, ICurrentUserService currentUser, Guid projectId, CancellationToken ct)
-    {
-        if (currentUser.IsAdmin) return;
-
-        var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == projectId, ct)
-            ?? throw new KeyNotFoundException("Proje bulunamadı.");
-
-        if (project.OwnerId != currentUser.UserId)
-            throw new UnauthorizedAccessException("Bu projede Issue Type yönetimi yapma yetkiniz yok.");
-    }
-}
 
 public static class DefaultProjectIssueTypeSeeder
 {
@@ -51,12 +34,17 @@ public static class DefaultProjectIssueTypeSeeder
 public class AssignIssueTypeToProjectCommandHandler : IRequestHandler<AssignIssueTypeToProjectCommand, Guid>
 {
     private readonly IAppDbContext _db;
-    private readonly ICurrentUserService _currentUser;
-    public AssignIssueTypeToProjectCommandHandler(IAppDbContext db, ICurrentUserService currentUser) { _db = db; _currentUser = currentUser; }
+    private readonly IProjectManagementAuthService _projectAuth;
+
+    public AssignIssueTypeToProjectCommandHandler(IAppDbContext db, IProjectManagementAuthService projectAuth)
+    {
+        _db = db;
+        _projectAuth = projectAuth;
+    }
 
     public async System.Threading.Tasks.Task<Guid> Handle(AssignIssueTypeToProjectCommand request, CancellationToken ct)
     {
-        await ProjectIssueTypeAuthorization.EnsureCanManageAsync(_db, _currentUser, request.ProjectId, ct);
+        await _projectAuth.EnsureProjectManagerOrAdminAsync(request.ProjectId, ct);
 
         var issueType = await _db.IssueTypes.FirstOrDefaultAsync(t => t.Id == request.IssueTypeId, ct)
             ?? throw new KeyNotFoundException("Issue type bulunamadı.");
@@ -89,12 +77,17 @@ public class AssignIssueTypeToProjectCommandHandler : IRequestHandler<AssignIssu
 public class RemoveIssueTypeFromProjectCommandHandler : IRequestHandler<RemoveIssueTypeFromProjectCommand>
 {
     private readonly IAppDbContext _db;
-    private readonly ICurrentUserService _currentUser;
-    public RemoveIssueTypeFromProjectCommandHandler(IAppDbContext db, ICurrentUserService currentUser) { _db = db; _currentUser = currentUser; }
+    private readonly IProjectManagementAuthService _projectAuth;
+
+    public RemoveIssueTypeFromProjectCommandHandler(IAppDbContext db, IProjectManagementAuthService projectAuth)
+    {
+        _db = db;
+        _projectAuth = projectAuth;
+    }
 
     public async System.Threading.Tasks.Task Handle(RemoveIssueTypeFromProjectCommand request, CancellationToken ct)
     {
-        await ProjectIssueTypeAuthorization.EnsureCanManageAsync(_db, _currentUser, request.ProjectId, ct);
+        await _projectAuth.EnsureProjectManagerOrAdminAsync(request.ProjectId, ct);
 
         var assignment = await _db.ProjectIssueTypeAssignments
             .Include(a => a.IssueType)
@@ -117,12 +110,17 @@ public class RemoveIssueTypeFromProjectCommandHandler : IRequestHandler<RemoveIs
 public class ReorderProjectIssueTypesCommandHandler : IRequestHandler<ReorderProjectIssueTypesCommand>
 {
     private readonly IAppDbContext _db;
-    private readonly ICurrentUserService _currentUser;
-    public ReorderProjectIssueTypesCommandHandler(IAppDbContext db, ICurrentUserService currentUser) { _db = db; _currentUser = currentUser; }
+    private readonly IProjectManagementAuthService _projectAuth;
+
+    public ReorderProjectIssueTypesCommandHandler(IAppDbContext db, IProjectManagementAuthService projectAuth)
+    {
+        _db = db;
+        _projectAuth = projectAuth;
+    }
 
     public async System.Threading.Tasks.Task Handle(ReorderProjectIssueTypesCommand request, CancellationToken ct)
     {
-        await ProjectIssueTypeAuthorization.EnsureCanManageAsync(_db, _currentUser, request.ProjectId, ct);
+        await _projectAuth.EnsureProjectManagerOrAdminAsync(request.ProjectId, ct);
 
         var assignments = await _db.ProjectIssueTypeAssignments
             .Where(a => a.ProjectId == request.ProjectId)

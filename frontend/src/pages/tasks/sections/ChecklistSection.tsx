@@ -5,9 +5,10 @@ import {
     useToggleChecklistItem,
     useDeleteChecklistItem,
 } from '../../../hooks/useTaskDetail';
+import { SkeletonBlock } from '../../../components/Skeleton';
 
 export function ChecklistSection({ taskId }: { taskId: string }) {
-    const { data } = useChecklist(taskId);
+    const { data, isLoading: checklistLoading } = useChecklist(taskId);
     const addItem = useAddChecklistItem(taskId);
     const toggleItem = useToggleChecklistItem(taskId);
     const deleteItem = useDeleteChecklistItem(taskId);
@@ -33,31 +34,45 @@ export function ChecklistSection({ taskId }: { taskId: string }) {
                 )}
             </div>
 
-            {data && data.totalCount > 0 && (
-                <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 mb-3">
-                    <div className="bg-indigo-600 dark:bg-indigo-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
-                </div>
-            )}
+            {checklistLoading ? (
+                <SkeletonBlock className="h-16 w-full mb-3" />
+            ) : (
+                <>
+                    {data && data.totalCount > 0 && (
+                        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 mb-3">
+                            <div
+                                className="bg-indigo-600 dark:bg-indigo-500 h-1.5 rounded-full transition-all duration-300"
+                                style={{ width: `${progress}%` }}
+                            />
+                        </div>
+                    )}
 
-            <ul className="space-y-1 mb-3">
-                {data?.items.map((item) => (
-                    <li key={item.id} className="flex items-center gap-2 text-sm text-secondary">
-                        <input
-                            type="checkbox"
-                            checked={item.isDone}
-                            onChange={() => toggleItem.mutate(item.id)}
-                            className="rounded cursor-pointer"
-                        />
-                        <span className={item.isDone ? 'line-through text-muted' : ''}>{item.itemText}</span>
-                        <button
-                            onClick={() => deleteItem.mutate(item.id)}
-                            className="ml-auto text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300 cursor-pointer"
-                        >
-                            ✕
-                        </button>
-                    </li>
-                ))}
-            </ul>
+                    <ul className="space-y-1 mb-3">
+                        {data?.items.map((item) => (
+                            <li key={item.id} className="flex items-center gap-2 text-sm text-secondary">
+                                <input
+                                    type="checkbox"
+                                    checked={item.isDone}
+                                    onChange={() => toggleItem.mutate(item.id)}
+                                    className="rounded cursor-pointer"
+                                />
+                                <span className={item.isDone ? 'line-through text-muted' : ''}>
+                                    {item.itemText}
+                                </span>
+                                <button
+                                    onClick={() => deleteItem.mutate(item.id)}
+                                    className="ml-auto text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300 cursor-pointer"
+                                >
+                                    ✕
+                                </button>
+                            </li>
+                        ))}
+                        {(!data || data.items.length === 0) && (
+                            <p className="text-sm text-muted">Henüz madde eklenmedi.</p>
+                        )}
+                    </ul>
+                </>
+            )}
 
             <form onSubmit={handleAdd} className="flex gap-2">
                 <input
@@ -67,7 +82,10 @@ export function ChecklistSection({ taskId }: { taskId: string }) {
                     onChange={(e) => setNewItemText(e.target.value)}
                     className="flex-1 input-base border rounded px-3 py-1.5 text-sm"
                 />
-                <button type="submit" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline whitespace-nowrap cursor-pointer">
+                <button
+                    type="submit"
+                    className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline whitespace-nowrap cursor-pointer"
+                >
                     Ekle
                 </button>
             </form>

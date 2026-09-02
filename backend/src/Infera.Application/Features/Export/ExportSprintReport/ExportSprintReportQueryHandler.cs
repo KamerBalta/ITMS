@@ -30,7 +30,7 @@ public class ExportSprintReportQueryHandler : IRequestHandler<ExportSprintReport
             {
                 t.Title,
                 IssueType = t.IssueType != null ? t.IssueType.Name : "-",
-                Status = t.Status.ToString(),
+                Status = t.WorkflowStatus.Name,
                 Priority = t.Priority.ToString(),
                 t.StoryPoint,
                 AssigneeName = t.Assignee != null ? t.Assignee.Name : "-"
@@ -52,6 +52,7 @@ public class ExportSprintReportQueryHandler : IRequestHandler<ExportSprintReport
         {
             var row = i + 2;
             var t = tasks[i];
+
             sheet.Cell(row, 1).Value = t.Title;
             sheet.Cell(row, 2).Value = t.IssueType;
             sheet.Cell(row, 3).Value = t.Status;

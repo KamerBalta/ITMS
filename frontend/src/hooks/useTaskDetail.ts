@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tasksApi } from '../api/tasks';
+import { REFERENCE_STALE_TIME } from '../lib/queryClient';
 import {
     commentsApi,
     attachmentsApi,
@@ -8,13 +9,19 @@ import {
     workLogsApi,
     labelsApi,
 } from '../api/taskDetail';
+import type { Priority } from '../types/task';
+
+export interface ConcurrencyError {
+    isConcurrencyConflict: true;
+    message: string;
+}
 
 export function useTaskDetail(taskId: string | null) {
     return useQuery({
         queryKey: ['task', taskId],
         queryFn: () => tasksApi.getById(taskId!),
         enabled: !!taskId,
-        retry: false, // 403/404'te tekrar denemesin -- hemen hata durumuna geçsin
+        retry: false,
     });
 }
 
@@ -37,7 +44,7 @@ export function useUpdateTaskDescription(taskId: string) {
 export function useUpdateTaskPriority(taskId: string) {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (priority: number) => tasksApi.updatePriority(taskId, priority),
+        mutationFn: (priority: Priority) => tasksApi.updatePriority(taskId, priority),
         onSuccess: () => invalidateTask(qc, taskId),
     });
 }
@@ -57,6 +64,7 @@ export function useUpdateTaskDueDate(taskId: string) {
         onSuccess: () => invalidateTask(qc, taskId),
     });
 }
+
 export function useUpdateTaskRelease(taskId: string) {
     const qc = useQueryClient();
     return useMutation({
@@ -74,7 +82,7 @@ export function useUpdateTaskStatus(projectId: string) {
             status,
         }: {
             taskId: string;
-            status: number;
+            status: string;
         }) => tasksApi.updateStatus(taskId, status),
 
         onSuccess: (_, variables) => {
@@ -86,6 +94,10 @@ export function useUpdateTaskStatus(projectId: string) {
 
             qc.invalidateQueries({
                 queryKey: ['board', projectId],
+            });
+
+            qc.invalidateQueries({
+                queryKey: ['tasks', projectId],
             });
         },
     });
@@ -287,7 +299,11 @@ export function useDeleteWorkLog(taskId: string) {
 
 // --- Labels ---
 export function useAllLabels() {
-    return useQuery({ queryKey: ['labels'], queryFn: labelsApi.getAll });
+    return useQuery({
+        queryKey: ['labels'],
+        queryFn: labelsApi.getAll,
+        staleTime: REFERENCE_STALE_TIME,
+    });
 }
 
 export function useAddLabelToTask(taskId: string) {
@@ -305,16 +321,22 @@ export function useRemoveLabelFromTask(taskId: string) {
         onSuccess: () => invalidateTask(qc, taskId),
     });
 }
+
 export function useCreateSubtask(parentTaskId: string, projectId: string) {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: { title: string; assigneeId?: string | null }) => tasksApi.createSubtask(parentTaskId, data),
+        mutationFn: (data: { title: string; assigneeId?: string | null }) =>
+            tasksApi.createSubtask(parentTaskId, data).catch((err) => {
+                const message = err?.response?.data?.message ?? 'Alt görev oluşturulamadı.';
+                throw new Error(message);
+            }),
         onSuccess: () => {
-            invalidateTask(qc, parentTaskId);
             qc.invalidateQueries({ queryKey: ['tasks', projectId] });
+            qc.invalidateQueries({ queryKey: ['task', parentTaskId] });
         },
     });
 }
+
 export function useUpdateTaskEstimates(taskId: string) {
     const qc = useQueryClient();
 

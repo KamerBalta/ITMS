@@ -10,8 +10,8 @@ public class Sprint : BaseEntity
 
     public string Name { get; set; } = default!;
     public string? Goal { get; set; }
-    public DateTime StartDate { get; set; }
-    public DateTime EndDate { get; set; }
+    public DateOnly StartDate { get; set; }
+    public DateOnly EndDate { get; set; }
     public SprintStatus Status { get; set; } = SprintStatus.Active;
     public int? CommittedStoryPoints { get; set; } 
     public ICollection<Domain.Entities.Task> Tasks { get; set; } = new List<Domain.Entities.Task>();

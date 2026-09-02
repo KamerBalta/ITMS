@@ -1,0 +1,4 @@
+tempkey,issuetypename,title,description,priority,assigneeemail,parenttempkey,storypoint
+1,Epic,Ödeme Altyapısı Yenileme,Ödeme akışlarının modernize edilmesi,High,,,
+2,Story,Kredi Kartı Entegrasyonu,3D Secure entegrasyonu,Medium,,1,5
+3,Task,Banka API Dokümantasyonu,Parametrelerin incelenmesi,Low,,2,2

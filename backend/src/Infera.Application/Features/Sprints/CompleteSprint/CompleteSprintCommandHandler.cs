@@ -53,14 +53,18 @@ public class CompleteSprintCommandHandler : IRequestHandler<CompleteSprintComman
         if (sprint.Status == SprintStatus.Completed)
             throw new InvalidOperationException("Sprint zaten tamamlanmış.");
 
-        var allTasks = await _db.Tasks.Where(t => t.SprintId == sprint.Id).ToListAsync(ct);
+        var allTasks = await _db.Tasks
+            .Include(t => t.WorkflowStatus)
+            .Where(t => t.SprintId == sprint.Id)
+            .ToListAsync(ct);
 
-        // #4 fix: "taahhut edilen" puan, gorevler backlog'a tasinmadan ONCE, sprint'teki TUM
-        // gorevlerin (Done olsun olmasin) toplami olarak donduruluyor -- Velocity grafiginin
-        // dogru calismasi icin bu ana veri.
-        sprint.CommittedStoryPoints = allTasks.Sum(t => t.StoryPoint ?? 0);
+        sprint.CommittedStoryPoints =
+            allTasks.Sum(t => t.StoryPoint ?? 0);
 
-        var incompleteTasks = allTasks.Where(t => t.Status != ItemStatus.Done).ToList();
+        var incompleteTasks = allTasks
+            .Where(t => t.WorkflowStatus.Category != "Done")
+            .ToList();
+
         foreach (var task in incompleteTasks)
         {
             task.SprintId = null;
@@ -79,11 +83,14 @@ public class CompleteSprintCommandHandler : IRequestHandler<CompleteSprintComman
         foreach (var userId in memberIds)
         {
             await _notificationService.NotifyAsync(
-                userId, "Sprint tamamlandı",
+                userId,
+                "Sprint tamamlandı",
                 $"\"{sprint.Name}\" sprinti tamamlandı." + (incompleteTasks.Count > 0
                     ? $" {incompleteTasks.Count} tamamlanmamış görev Backlog'a geri alındı."
                     : ""),
-                NotificationType.Sprint, $"/sprints/{sprint.Id}", ct);
+                NotificationType.Sprint,
+                $"/sprints/{sprint.Id}",
+                ct: ct);
         }
 
         await _realtime.NotifyProjectAsync(sprint.ProjectId, "sprint", "completed", ct);

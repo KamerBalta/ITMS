@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useWorkLogs, useAddWorkLog, useDeleteWorkLog } from '../../../hooks/useTaskDetail';
 import { useAuthStore } from '../../../store/authStore';
+import { SkeletonBlock } from '../../../components/Skeleton';
 
 function formatMinutes(minutes: number) {
     const h = Math.floor(minutes / 60);
@@ -10,7 +11,7 @@ function formatMinutes(minutes: number) {
 
 export function WorkLogsSection({ taskId }: { taskId: string }) {
     const currentUser = useAuthStore((state) => state.user);
-    const { data } = useWorkLogs(taskId);
+    const { data, isLoading: workLogsLoading } = useWorkLogs(taskId);
     const addWorkLog = useAddWorkLog(taskId);
     const deleteWorkLog = useDeleteWorkLog(taskId);
 
@@ -35,22 +36,31 @@ export function WorkLogsSection({ taskId }: { taskId: string }) {
                 )}
             </div>
 
-            <ul className="space-y-1 mb-3">
-                {data?.items.map((log) => (
-                    <li key={log.id} className="flex items-center justify-between text-sm text-secondary">
-                        <span>
-                            <strong className="text-primary">{formatMinutes(log.timeSpentMinutes)}</strong> — {log.userName}
-                            {log.description && <span className="text-muted"> · {log.description}</span>}
-                        </span>
-                        {log.userName === currentUser?.email && (
-                            <button onClick={() => deleteWorkLog.mutate(log.id)} className="text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300 cursor-pointer">
-                                ✕
-                            </button>
-                        )}
-                    </li>
-                ))}
-                {(!data || data.items.length === 0) && <p className="text-sm text-muted">Henüz zaman kaydı yok.</p>}
-            </ul>
+            {workLogsLoading ? (
+                <SkeletonBlock className="h-16 w-full mb-3" />
+            ) : (
+                <ul className="space-y-1 mb-3">
+                    {data?.items.map((log) => (
+                        <li key={log.id} className="flex items-center justify-between text-sm text-secondary">
+                            <span>
+                                <strong className="text-primary">{formatMinutes(log.timeSpentMinutes)}</strong> — {log.userName}
+                                {log.description && <span className="text-muted"> · {log.description}</span>}
+                            </span>
+                            {log.userName === currentUser?.email && (
+                                <button
+                                    onClick={() => deleteWorkLog.mutate(log.id)}
+                                    className="text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300 cursor-pointer"
+                                >
+                                    ✕
+                                </button>
+                            )}
+                        </li>
+                    ))}
+                    {(!data || data.items.length === 0) && (
+                        <p className="text-sm text-muted">Henüz zaman kaydı yok.</p>
+                    )}
+                </ul>
+            )}
 
             <form onSubmit={handleAdd} className="flex gap-2">
                 <input
@@ -68,7 +78,10 @@ export function WorkLogsSection({ taskId }: { taskId: string }) {
                     onChange={(e) => setDescription(e.target.value)}
                     className="flex-1 input-base border rounded px-3 py-1.5 text-sm"
                 />
-                <button type="submit" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline whitespace-nowrap cursor-pointer">
+                <button
+                    type="submit"
+                    className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline whitespace-nowrap cursor-pointer"
+                >
                     Ekle
                 </button>
             </form>

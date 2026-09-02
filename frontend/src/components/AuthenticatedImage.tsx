@@ -3,11 +3,11 @@ import { apiClient } from '../api/client';
 import { getCachedAvatarBlobUrl } from '../lib/avatarCache';
 
 interface AuthenticatedImageProps {
-    src: string; // apiClient baseURL'e göre relatif path, örn. "/users/{id}/avatar"
+    src: string;
     alt: string;
     className?: string;
     fallback?: React.ReactNode;
-    cacheKey?: string; // Verilirse paylaşılan cache kullanılır (avatar gibi tekrar eden görseller için)
+    cacheKey?: string;
     refreshKey?: number;
 }
 
@@ -19,18 +19,26 @@ export function AuthenticatedImage({
     cacheKey,
     refreshKey,
 }: AuthenticatedImageProps) {
-    const [objectUrl, setObjectUrl] = useState<string | null>(null);
-    const [failed, setFailed] = useState(false);
+    const [image, setImage] = useState<{
+        key: string;
+        url: string | null;
+        failed: boolean;
+    }>({
+        key: '',
+        url: null,
+        failed: false,
+    });
+
+    const imageKey = `${src}:${cacheKey ?? ''}:${refreshKey ?? 0}`;
 
     useEffect(() => {
-        let currentUrl: string | null = null;
         let cancelled = false;
-
-        setFailed(false);
-        setObjectUrl(null);
+        let currentUrl: string | null = null;
 
         const fetchBlob = () =>
-            apiClient.get(src, { responseType: 'blob' }).then((res) => res.data as Blob);
+            apiClient
+                .get(src, { responseType: 'blob' })
+                .then((res) => res.data as Blob);
 
         const resultPromise = cacheKey
             ? getCachedAvatarBlobUrl(fetchBlob, cacheKey)
@@ -43,23 +51,32 @@ export function AuthenticatedImage({
 
         resultPromise.then((url) => {
             if (cancelled) return;
-            if (url) {
-                setObjectUrl(url);
-            } else {
-                setFailed(true);
-            }
+
+            setImage({
+                key: imageKey,
+                url,
+                failed: !url,
+            });
         });
 
         return () => {
             cancelled = true;
-            // cacheKey kullanılmadığında (tek seferlik URL oluşturulduğunda) belleği temizle
+
             if (!cacheKey && currentUrl) {
                 URL.revokeObjectURL(currentUrl);
             }
         };
-    }, [src, cacheKey, refreshKey]);
+    }, [src, cacheKey, refreshKey, imageKey]);
 
-    if (failed || !objectUrl) return <>{fallback ?? null}</>;
+    if (image.key !== imageKey || image.failed || !image.url) {
+        return <>{fallback ?? null}</>;
+    }
 
-    return <img src={objectUrl} alt={alt} className={className} />;
+    return (
+        <img
+            src={image.url}
+            alt={alt}
+            className={className}
+        />
+    );
 }

@@ -6,14 +6,29 @@ using Microsoft.EntityFrameworkCore;
 namespace Infera.Application.Features.NotificationPreferences;
 
 public record GetMyNotificationPreferencesQuery(Guid UserId) : IRequest<List<NotificationPreferenceDto>>;
-public record UpdateNotificationPreferenceCommand(Guid UserId, string NotificationType, bool InAppEnabled, bool EmailEnabled, string EmailFrequency) : IRequest;
 
-public record NotificationPreferenceDto(string NotificationType, bool InAppEnabled, bool EmailEnabled, string EmailFrequency);
+public record UpdateNotificationPreferenceCommand(
+    Guid UserId,
+    string NotificationType,
+    bool InAppEnabled,
+    bool EmailEnabled,
+    string EmailFrequency,
+    bool OnlyImportantChanges
+) : IRequest;
+
+public record NotificationPreferenceDto(
+    string NotificationType,
+    bool InAppEnabled,
+    bool EmailEnabled,
+    string EmailFrequency,
+    bool OnlyImportantChanges
+);
 
 public class GetMyNotificationPreferencesQueryHandler : IRequestHandler<GetMyNotificationPreferencesQuery, List<NotificationPreferenceDto>>
 {
     private static readonly string[] AllTypes = { "Task", "Sprint", "Mention", "Release" };
     private readonly IAppDbContext _db;
+
     public GetMyNotificationPreferencesQueryHandler(IAppDbContext db) => _db = db;
 
     public async System.Threading.Tasks.Task<List<NotificationPreferenceDto>> Handle(GetMyNotificationPreferencesQuery request, CancellationToken ct)
@@ -24,8 +39,8 @@ public class GetMyNotificationPreferencesQueryHandler : IRequestHandler<GetMyNot
 
         return AllTypes
             .Select(t => existing.TryGetValue(t, out var pref)
-                ? new NotificationPreferenceDto(t, pref.InAppEnabled, pref.EmailEnabled, pref.EmailFrequency)
-                : new NotificationPreferenceDto(t, true, true, "Instant"))
+                ? new NotificationPreferenceDto(t, pref.InAppEnabled, pref.EmailEnabled, pref.EmailFrequency, pref.OnlyImportantChanges)
+                : new NotificationPreferenceDto(t, true, true, "Instant", false))
             .ToList();
     }
 }
@@ -33,6 +48,7 @@ public class GetMyNotificationPreferencesQueryHandler : IRequestHandler<GetMyNot
 public class UpdateNotificationPreferenceCommandHandler : IRequestHandler<UpdateNotificationPreferenceCommand>
 {
     private readonly IAppDbContext _db;
+
     public UpdateNotificationPreferenceCommandHandler(IAppDbContext db) => _db = db;
 
     public async System.Threading.Tasks.Task Handle(UpdateNotificationPreferenceCommand request, CancellationToken ct)
@@ -49,6 +65,7 @@ public class UpdateNotificationPreferenceCommandHandler : IRequestHandler<Update
                 InAppEnabled = request.InAppEnabled,
                 EmailEnabled = request.EmailEnabled,
                 EmailFrequency = request.EmailFrequency,
+                OnlyImportantChanges = request.OnlyImportantChanges,
             });
         }
         else
@@ -56,6 +73,7 @@ public class UpdateNotificationPreferenceCommandHandler : IRequestHandler<Update
             pref.InAppEnabled = request.InAppEnabled;
             pref.EmailEnabled = request.EmailEnabled;
             pref.EmailFrequency = request.EmailFrequency;
+            pref.OnlyImportantChanges = request.OnlyImportantChanges;
         }
 
         await _db.SaveChangesAsync(ct);

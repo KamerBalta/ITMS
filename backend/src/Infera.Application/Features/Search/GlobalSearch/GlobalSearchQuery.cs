@@ -7,6 +7,6 @@ public record GlobalSearchQuery(string Query) : IRequest<SearchResultsDto>;
 public record SearchResultsDto(
     List<TaskResultDto> Tasks, List<ProjectResultDto> Projects, List<UserResultDto> Users);
 
-public record TaskResultDto(Guid Id, string Title, string ProjectName, string Status);
+public record TaskResultDto(Guid Id, string Title, string IssueKey, string ProjectName, string Status, Guid StatusId);
 public record ProjectResultDto(Guid Id, string Name, string Key);
 public record UserResultDto(Guid Id, string Name, string Email);

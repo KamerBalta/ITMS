@@ -5,29 +5,45 @@ namespace Infera.Application.Features.Workflow;
 
 public static class DefaultWorkflowSeeder
 {
-    // Mevcut BR-004/016/017 kurallarinin birebir veri karsiligi -- proje olusturulunca
-    // otomatik atanir, boylece davranis hic degismeden veri odakli hale geliyor.
-    public static void AssignDefaults(IAppDbContext db, Guid projectId)
+    public static async System.Threading.Tasks.Task AssignDefaultsAsync(IAppDbContext db, Guid projectId, CancellationToken ct)
     {
+        var toDo = new ProjectWorkflowStatus { ProjectId = projectId, Name = "To Do", Category = "ToDo", DisplayOrder = 0, IsInitial = true };
+        var inProgress = new ProjectWorkflowStatus { ProjectId = projectId, Name = "In Progress", Category = "InProgress", DisplayOrder = 1 };
+        var readyForReview = new ProjectWorkflowStatus { ProjectId = projectId, Name = "Ready for Review", Category = "InProgress", DisplayOrder = 2 };
+        var readyForQA = new ProjectWorkflowStatus { ProjectId = projectId, Name = "Ready for QA", Category = "InProgress", DisplayOrder = 3 };
+        var done = new ProjectWorkflowStatus { ProjectId = projectId, Name = "Done", Category = "Done", DisplayOrder = 4, IsEpicCloseTarget = true };
+        var closed = new ProjectWorkflowStatus { ProjectId = projectId, Name = "Closed", Category = "Done", DisplayOrder = 5 };
+
+        db.ProjectWorkflowStatuses.AddRange(toDo, inProgress, readyForReview, readyForQA, done, closed);
+
+        // #4: Column'lar Status'lardan BAGIMSIZ ayri bir kavram -- varsayilan olarak mevcut
+        // gorunumu koruyacak sekilde 5 kolon olusturup 1:1 (Closed haric, o "Done" kolonuna paylasir) esliyoruz.
+        var colToDo = new BoardColumn { ProjectId = projectId, Name = "To Do", DisplayOrder = 0 };
+        var colInProgress = new BoardColumn { ProjectId = projectId, Name = "In Progress", DisplayOrder = 1 };
+        var colReview = new BoardColumn { ProjectId = projectId, Name = "Ready for Review", DisplayOrder = 2 };
+        var colQA = new BoardColumn { ProjectId = projectId, Name = "Ready for QA", DisplayOrder = 3 };
+        var colDone = new BoardColumn { ProjectId = projectId, Name = "Done", DisplayOrder = 4 };
+
+        db.BoardColumns.AddRange(colToDo, colInProgress, colReview, colQA, colDone);
+        await db.SaveChangesAsync(ct); // Id'lerin uretilmesi icin once kaydet
+
+        toDo.BoardColumnId = colToDo.Id;
+        inProgress.BoardColumnId = colInProgress.Id;
+        readyForReview.BoardColumnId = colReview.Id;
+        readyForQA.BoardColumnId = colQA.Id;
+        done.BoardColumnId = colDone.Id;
+        closed.BoardColumnId = colDone.Id; // Closed, Done kolonunu paylasir
+
         const string pmAndAdmin = "Project Manager,System Admin";
         const string qaPmAdmin = "QA/Tester,Project Manager,System Admin";
 
-        var transitions = new[]
-        {
-            // Developer: ToDo -> InProgress -> ReadyForReview (BR-004)
-            new WorkflowTransition { ProjectId = projectId, FromStatus = "ToDo", ToStatus = "InProgress", AllowedRoles = "Developer," + pmAndAdmin, RequireAssigneeSelf = true },
-            new WorkflowTransition { ProjectId = projectId, FromStatus = "InProgress", ToStatus = "ReadyForReview", AllowedRoles = "Developer," + pmAndAdmin, RequireAssigneeSelf = true },
+        db.WorkflowTransitions.AddRange(
+            new WorkflowTransition { ProjectId = projectId, FromStatusId = toDo.Id, ToStatusId = inProgress.Id, AllowedRoles = "Developer," + pmAndAdmin, RequireAssigneeSelf = true },
+            new WorkflowTransition { ProjectId = projectId, FromStatusId = inProgress.Id, ToStatusId = readyForReview.Id, AllowedRoles = "Developer," + pmAndAdmin, RequireAssigneeSelf = true },
+            new WorkflowTransition { ProjectId = projectId, FromStatusId = readyForReview.Id, ToStatusId = readyForQA.Id, AllowedRoles = pmAndAdmin, RequireAssigneeSelf = false },
+            new WorkflowTransition { ProjectId = projectId, FromStatusId = readyForQA.Id, ToStatusId = done.Id, AllowedRoles = qaPmAdmin, RequireAssigneeSelf = false },
+            new WorkflowTransition { ProjectId = projectId, FromStatusId = readyForQA.Id, ToStatusId = inProgress.Id, AllowedRoles = qaPmAdmin, RequireAssigneeSelf = false });
 
-            // BR-016: ReadyForReview -> ReadyForQA yalnizca PM/Admin
-            new WorkflowTransition { ProjectId = projectId, FromStatus = "ReadyForReview", ToStatus = "ReadyForQA", AllowedRoles = pmAndAdmin, RequireAssigneeSelf = false },
-
-            // BR-004: ReadyForQA -> Done yalnizca QA/PM/Admin
-            new WorkflowTransition { ProjectId = projectId, FromStatus = "ReadyForQA", ToStatus = "Done", AllowedRoles = qaPmAdmin, RequireAssigneeSelf = false },
-
-            // BR-017: QA red -> geri InProgress'e, yalnizca QA/PM/Admin
-            new WorkflowTransition { ProjectId = projectId, FromStatus = "ReadyForQA", ToStatus = "InProgress", AllowedRoles = qaPmAdmin, RequireAssigneeSelf = false },
-        };
-
-        db.WorkflowTransitions.AddRange(transitions);
+        await db.SaveChangesAsync(ct);
     }
 }

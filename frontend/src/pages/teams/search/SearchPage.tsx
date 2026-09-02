@@ -171,6 +171,9 @@ export function SearchPage() {
                                             to={`/tasks/${t.id}`}
                                             className="block surface border rounded-lg p-5 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-xs transition"
                                         >
+                                            {t.issueKey && (
+                                                <p className="text-xs text-muted font-mono mb-1">{t.issueKey}</p>
+                                            )}
                                             <p className="font-semibold text-indigo-600 dark:text-indigo-400 text-base">{t.title}</p>
                                             <div className="flex items-center gap-3 mt-2 text-xs text-muted">
                                                 <span className="flex items-center gap-1">📁 {t.projectName}</span>

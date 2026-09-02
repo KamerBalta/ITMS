@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useSearchResults, useSearchSuggestions } from '../hooks/useSearch';
 import { getRecentSearches, addRecentSearch, clearRecentSearches } from '../lib/recentSearches';
-import { Search, Clock, CheckSquare, FolderKanban, User } from 'lucide-react';
+import { Search, Clock, CheckSquare, FolderKanban } from 'lucide-react';
+import { Avatar } from '../components/Avatar';
 
 type TabKey = 'tasks' | 'projects' | 'users';
 
@@ -181,13 +182,22 @@ export function GlobalSearchPopover({ isOpen, onClose, searchQuery }: GlobalSear
                             <p className="text-xs text-slate-400 p-2">Kullanıcı bulunamadı.</p>
                         ) : (
                             results?.users.map((u) => (
-                                <div key={u.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-50 transition">
-                                    <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold flex items-center justify-center shrink-0">
-                                        <User className="w-3 h-3" />
-                                    </div>
+                                <div
+                                    key={u.id}
+                                    className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-50 transition"
+                                >
+                                    <Avatar
+                                        userId={u.id}
+                                        name={u.name}
+                                        size="sm"
+                                    />
                                     <div className="min-w-0">
-                                        <p className="text-xs font-semibold text-slate-800 truncate">{u.name}</p>
-                                        <p className="text-[10px] text-slate-400 truncate">{u.email}</p>
+                                        <p className="text-xs font-semibold text-slate-800 truncate">
+                                            {u.name}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400 truncate">
+                                            {u.email}
+                                        </p>
                                     </div>
                                 </div>
                             ))

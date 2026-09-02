@@ -1,4 +1,5 @@
-﻿using Infera.Application.Common.Interfaces;
+﻿using Infera.Application.Common.Extensions;
+using Infera.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Infera.Application.Common.Services;
@@ -98,9 +99,12 @@ public class UpdateTaskDescriptionCommandHandler : IRequestHandler<UpdateTaskDes
         foreach (var userId in newMentions)
         {
             await _notificationService.NotifyAsync(
-                userId, "Görev açıklamasında bahsedildiniz",
+                userId,
+                "Görev açıklamasında bahsedildiniz",
                 $"\"{task.Title}\" görevinin açıklamasında sizden bahsedildi.",
-                NotificationType.Mention, $"/tasks/{task.Id}", ct);
+                NotificationType.Mention,
+                $"/tasks/{task.Id}",
+                ct: ct);
         }
     }
 }

@@ -1,9 +1,23 @@
-﻿// Ayni kullanicinin avatari birden fazla yerde (Board kartlari, Comments, Watchers vb.)
-// gorunebiliyor -- her mount'ta ayri fetch atmak yerine, blob URL'lerini bellekte
-// paylasilan bir Map'te tutuyoruz. Sekme kapaninca dogal olarak temizlenir.
-const cache = new Map<string, Promise<string | null>>();
+﻿const cache = new Map<string, Promise<string | null>>();
 
-export function getCachedAvatarBlobUrl(fetchFn: () => Promise<Blob>, cacheKey: string): Promise<string | null> {
+const listeners = new Set<() => void>();
+
+export function subscribeAvatarCache(listener: () => void) {
+    listeners.add(listener);
+
+    return () => {
+        listeners.delete(listener);
+    };
+}
+
+function notifyAvatarCacheChanged() {
+    listeners.forEach((listener) => listener());
+}
+
+export function getCachedAvatarBlobUrl(
+    fetchFn: () => Promise<Blob>,
+    cacheKey: string
+): Promise<string | null> {
     if (cache.has(cacheKey)) {
         return cache.get(cacheKey)!;
     }
@@ -13,9 +27,11 @@ export function getCachedAvatarBlobUrl(fetchFn: () => Promise<Blob>, cacheKey: s
         .catch(() => null);
 
     cache.set(cacheKey, promise);
+
     return promise;
 }
 
 export function invalidateAvatarCache(cacheKey: string) {
     cache.delete(cacheKey);
+    notifyAvatarCacheChanged();
 }

@@ -7,6 +7,7 @@ export interface TaskFilters {
     teamId: string;
     priority: string;
     labelId: string;
+    componentId: string;
 }
 
 export function useTaskFilters() {
@@ -16,6 +17,7 @@ export function useTaskFilters() {
     const [teamId, setTeamId] = useState('');
     const [priority, setPriority] = useState('');
     const [labelId, setLabelId] = useState('');
+    const [componentId, setComponentId] = useState('');
 
     const reset = () => {
         setSearch('');
@@ -23,11 +25,12 @@ export function useTaskFilters() {
         setTeamId('');
         setPriority('');
         setLabelId('');
+        setComponentId('');
     };
 
     return {
         search, setSearch, onlyMine, setOnlyMine, teamId, setTeamId,
-        priority, setPriority, labelId, setLabelId, reset,
+        priority, setPriority, labelId, setLabelId, componentId, setComponentId, reset,
         currentUserId: currentUser?.userId,
     };
 }

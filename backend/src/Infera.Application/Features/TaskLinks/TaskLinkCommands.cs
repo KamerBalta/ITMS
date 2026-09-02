@@ -118,15 +118,27 @@ public class GetTaskLinksQueryHandler : IRequestHandler<GetTaskLinksQuery, List<
             throw new UnauthorizedAccessException("Bu göreve erişim yetkiniz yok.");
 
         var outgoing = await _db.TaskLinks
-            .Where(l => l.SourceTaskId == request.TaskId)
-            .Select(l => new TaskLinkDto(l.Id, l.LinkType, "outgoing", l.TargetTaskId, l.TargetTask.Title,
-                l.TargetTask.Project.Key + "-" + l.TargetTask.TaskNumber, l.TargetTask.Status.ToString()))
-            .ToListAsync(ct);
+      .Where(l => l.SourceTaskId == request.TaskId)
+      .Select(l => new TaskLinkDto(
+          l.Id,
+          l.LinkType,
+          "outgoing",
+          l.TargetTaskId,
+          l.TargetTask.Title,
+          l.TargetTask.Project.Key + "-" + l.TargetTask.TaskNumber,
+          l.TargetTask.WorkflowStatus.Name))
+      .ToListAsync(ct);
 
         var incoming = await _db.TaskLinks
             .Where(l => l.TargetTaskId == request.TaskId)
-            .Select(l => new TaskLinkDto(l.Id, l.LinkType, "incoming", l.SourceTaskId, l.SourceTask.Title,
-                l.SourceTask.Project.Key + "-" + l.SourceTask.TaskNumber, l.SourceTask.Status.ToString()))
+            .Select(l => new TaskLinkDto(
+                l.Id,
+                l.LinkType,
+                "incoming",
+                l.SourceTaskId,
+                l.SourceTask.Title,
+                l.SourceTask.Project.Key + "-" + l.SourceTask.TaskNumber,
+                l.SourceTask.WorkflowStatus.Name))
             .ToListAsync(ct);
 
         return outgoing.Concat(incoming).ToList();

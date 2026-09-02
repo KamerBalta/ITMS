@@ -56,8 +56,8 @@ public class CreateSprintCommandHandler : IRequestHandler<CreateSprintCommand, G
             ProjectId = request.ProjectId,
             Name = request.Name,
             Goal = request.Goal,
-            StartDate = DateTime.SpecifyKind(request.StartDate, DateTimeKind.Utc),
-            EndDate = DateTime.SpecifyKind(request.EndDate, DateTimeKind.Utc),
+            StartDate = request.StartDate,
+            EndDate = request.EndDate,
             Status = SprintStatus.Active
         };
 
@@ -79,7 +79,7 @@ public class CreateSprintCommandHandler : IRequestHandler<CreateSprintCommand, G
                 $"\"{sprint.Name}\" sprinti {project.Name} projesinde başladı.",
                 NotificationType.Sprint,
                 $"/sprints/{sprint.Id}",
-                ct);
+                ct: ct);
         }
 
         await _realtime.NotifyProjectAsync(request.ProjectId, "sprint", "created", ct);

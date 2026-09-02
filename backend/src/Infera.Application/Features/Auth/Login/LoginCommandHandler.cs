@@ -41,7 +41,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
             user.TokenVersion);
 
         var (refreshToken, refreshTokenHash) = _jwtService.GenerateRefreshToken();
-
+        user.LastLoginAt = DateTime.UtcNow;
         _db.RefreshTokens.Add(new RefreshToken
         {
             UserId = user.Id,

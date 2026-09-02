@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Bell,
@@ -10,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '../hooks/useNotifications';
 
-const TYPE_ICONS: Record<string, JSX.Element> = {
+const TYPE_ICONS: Record<string, ReactNode> = {
     Task: <ClipboardList className="w-4 h-4 text-blue-600 dark:text-blue-400" />,
     Sprint: <Bug className="w-4 h-4 text-green-600 dark:text-green-400" />,
     Mention: <MessageSquare className="w-4 h-4 text-purple-600 dark:text-purple-400" />,
@@ -58,6 +59,7 @@ export function NotificationDropdown() {
     return (
         <div ref={wrapperRef} className="relative">
             <button
+                data-tour="header-notifications"
                 onClick={() => setIsOpen((v) => !v)}
                 className="relative text-secondary hover:text-primary text-lg flex items-center justify-center p-1 cursor-pointer transition-colors"
                 aria-label="Bildirimler"

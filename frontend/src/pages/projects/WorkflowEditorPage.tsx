@@ -1,868 +1,335 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+﻿import { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { useCanManageProject } from '../../hooks/useCanManageProject';
 import {
-    ReactFlow,
-    Background,
-    Controls,
-    MiniMap,
-    Handle,
-    Position,
-    MarkerType,
-    useEdgesState,
-    useNodesState,
-    type Connection,
-    type Edge,
-    type Node,
-    type NodeProps,
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-
-import { useAuthStore } from '../../store/authStore';
-import { useProjectDetail } from '../../hooks/useProjects';
-import {
+    useWorkflowStatuses,
     useWorkflowTransitions,
+    useHasUnpublishedChanges,
+    useCreateStatus,
+    useUpdateStatus,
+    useDeleteStatus,
+    useReorderStatuses,
+    useSetInitialStatus,
+    useSetEpicCloseTarget,
     useCreateTransition,
-    useUpdateTransition,
     useDeleteTransition,
+    usePublishWorkflow,
 } from '../../hooks/useWorkflow';
-import { useConfirm } from '../../hooks/useConfirm';
-import { ConfirmDialog } from '../../components/ConfirmDialog';
-
-import type { WorkflowTransition } from '../../types/workflow';
+import type { WorkflowStatus, WorkflowTransition } from '../../types/workflow';
 import type { AxiosError } from 'axios';
 import type { ApiErrorResponse } from '../../types/api';
 
-const ALL_STATUSES = [
-    'ToDo',
-    'InProgress',
-    'ReadyForReview',
-    'ReadyForQA',
-    'Done',
-    'Closed',
-];
-
-const ALL_ROLES = [
-    'Developer',
-    'QA/Tester',
-    'Project Manager',
-    'System Admin',
-];
-
-const STATUS_LABELS: Record<string, string> = {
-    ToDo: 'TO DO',
-    InProgress: 'IN PROGRESS',
-    ReadyForReview: 'IN REVIEW',
-    ReadyForQA: 'IN QA',
-    Done: 'DONE',
-    Closed: 'CLOSED',
-};
-
-const STATUS_COLORS: Record<
-    string,
-    {
-        bg: string;
-        border: string;
-        text: string;
-        dot: string;
-    }
-> = {
-    ToDo: {
-        bg: 'bg-slate-100 dark:bg-slate-800',
-        border: 'border-slate-300 dark:border-slate-600',
-        text: 'text-slate-700 dark:text-slate-200',
-        dot: '#64748b',
-    },
-    InProgress: {
-        bg: 'bg-blue-50 dark:bg-blue-950/60',
-        border: 'border-blue-300 dark:border-blue-700',
-        text: 'text-blue-700 dark:text-blue-300',
-        dot: '#3b82f6',
-    },
-    ReadyForReview: {
-        bg: 'bg-amber-50 dark:bg-amber-950/60',
-        border: 'border-amber-300 dark:border-amber-700',
-        text: 'text-amber-800 dark:text-amber-300',
-        dot: '#f59e0b',
-    },
-    ReadyForQA: {
-        bg: 'bg-purple-50 dark:bg-purple-950/60',
-        border: 'border-purple-300 dark:border-purple-700',
-        text: 'text-purple-700 dark:text-purple-300',
-        dot: '#a855f7',
-    },
-    Done: {
-        bg: 'bg-emerald-50 dark:bg-emerald-950/60',
-        border: 'border-emerald-300 dark:border-emerald-700',
-        text: 'text-emerald-700 dark:text-emerald-300',
-        dot: '#10b981',
-    },
-    Closed: {
-        bg: 'bg-gray-100 dark:bg-gray-800',
-        border: 'border-gray-300 dark:border-gray-600',
-        text: 'text-gray-700 dark:text-gray-200',
-        dot: '#6b7280',
-    },
-};
-
-type WorkflowNodeData = {
-    status: string;
-    transitionCount: number;
-};
-
-type WorkflowNode = Node<WorkflowNodeData, 'workflowStatus'>;
-
-function WorkflowStatusNode({ data }: NodeProps<WorkflowNode>) {
-    const colors = STATUS_COLORS[data.status] ?? STATUS_COLORS.ToDo;
-
-    return (
-        <div
-            className={`
-                relative w-[210px]
-                overflow-hidden
-                rounded-lg
-                border
-                bg-white
-                shadow-sm
-                transition
-                hover:shadow-md
-                dark:bg-gray-900
-                ${colors.border}
-            `}
-        >
-            <Handle
-                type="target"
-                position={Position.Left}
-                className="!h-3 !w-3 !border-2 !border-white dark:!border-gray-900"
-                style={{ background: colors.dot }}
-            />
-
-            <div className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                    <span
-                        className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: colors.dot }}
-                    />
-
-                    <span className="text-sm font-semibold text-primary">
-                        {STATUS_LABELS[data.status] ?? data.status}
-                    </span>
-                </div>
-            </div>
-
-            <div className="border-t border-border px-4 py-2.5">
-                <div className="flex items-center justify-between">
-                    <span className="text-xs text-secondary">
-                        {data.transitionCount} geçiş
-                    </span>
-
-                    <span className="text-[10px] font-medium uppercase text-muted">
-                        Status
-                    </span>
-                </div>
-            </div>
-
-            <Handle
-                type="source"
-                position={Position.Right}
-                className="!h-3 !w-3 !border-2 !border-white dark:!border-gray-900"
-                style={{ background: colors.dot }}
-            />
-        </div>
-    );
-}
-
-const nodeTypes = {
-    workflowStatus: WorkflowStatusNode,
+const ALL_ROLES = ['Developer', 'QA/Tester', 'Project Manager', 'System Admin'];
+const CATEGORY_LABELS: Record<string, string> = { ToDo: 'Yapılacak', InProgress: 'Devam Ediyor', Done: 'Tamamlandı' };
+const CATEGORY_COLORS: Record<string, string> = {
+    ToDo: 'bg-gray-100 dark:bg-gray-700 text-secondary border-gray-300 dark:border-gray-600',
+    InProgress: 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700',
+    Done: 'bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700',
 };
 
 export function WorkflowEditorPage() {
     const { projectId } = useParams<{ projectId: string }>();
+    const canManage = useCanManageProject(projectId ?? null);
+    const { data: statuses, isLoading } = useWorkflowStatuses(projectId ?? null, true);
+    const { data: transitions } = useWorkflowTransitions(projectId ?? null, true);
+    const { data: hasUnpublished } = useHasUnpublishedChanges(projectId ?? null);
 
-    const user = useAuthStore((state) => state.user);
-    const isAdmin = user?.roles.includes('System Admin') ?? false;
-
-    // Proje detayını çekiyoruz
-    const { data: project } = useProjectDetail(projectId ?? null);
-
-    const canManage =
-        isAdmin ||
-        (user?.roles.includes('Project Manager') &&
-            project?.ownerName === user?.email);
-
-    const { data: transitions, isLoading, isError } = useWorkflowTransitions(
-        projectId ?? null
-    );
-
+    const createStatus = useCreateStatus(projectId!);
+    const updateStatus = useUpdateStatus(projectId!);
+    const deleteStatus = useDeleteStatus(projectId!);
+    const reorderStatuses = useReorderStatuses(projectId!);
+    const setInitialStatus = useSetInitialStatus(projectId!);
+    const setEpicCloseTarget = useSetEpicCloseTarget(projectId!);
     const createTransition = useCreateTransition(projectId!);
-    const updateTransition = useUpdateTransition(projectId!);
     const deleteTransition = useDeleteTransition(projectId!);
+    const publishWorkflow = usePublishWorkflow(projectId!);
 
-    const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
+    const [error, setError] = useState<string | null>(null);
+    const [isAddStatusOpen, setAddStatusOpen] = useState(false);
+    const [newStatusName, setNewStatusName] = useState('');
+    const [newStatusCategory, setNewStatusCategory] = useState('ToDo');
+    const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
+    const [editStatusName, setEditStatusName] = useState('');
+    const [editStatusCategory, setEditStatusCategory] = useState('ToDo');
 
-    const [viewMode, setViewMode] = useState<'canvas' | 'list'>('canvas');
-    const [selectedTransition, setSelectedTransition] =
-        useState<WorkflowTransition | null>(null);
-
-    const [isAddOpen, setIsAddOpen] = useState(false);
-    const [newFrom, setNewFrom] = useState('ToDo');
-    const [newTo, setNewTo] = useState('InProgress');
+    const [isAddTransitionOpen, setAddTransitionOpen] = useState(false);
+    const [newFromId, setNewFromId] = useState('');
+    const [newToId, setNewToId] = useState('');
     const [newRoles, setNewRoles] = useState<string[]>([]);
     const [newRequireSelf, setNewRequireSelf] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    const initialNodes = useMemo<WorkflowNode[]>(() => {
-        const positions: Record<string, { x: number; y: number }> = {
-            ToDo: { x: 50, y: 100 },
-            InProgress: { x: 350, y: 100 },
-            ReadyForReview: { x: 650, y: 100 },
-            ReadyForQA: { x: 950, y: 100 },
-            Done: { x: 1250, y: 50 },
-            Closed: { x: 1250, y: 220 },
-        };
-
-        return ALL_STATUSES.map((status) => ({
-            id: status,
-            type: 'workflowStatus',
-            position: positions[status],
-            data: {
-                status,
-                transitionCount:
-                    transitions?.filter((t) => t.fromStatus === status)
-                        .length ?? 0,
-            },
-        }));
-    }, [transitions]);
-
-    const initialEdges = useMemo<Edge[]>(() => {
-        return (transitions ?? []).map((transition) => {
-            const isSelected = selectedTransition?.id === transition.id;
-            return {
-                id: transition.id,
-                source: transition.fromStatus,
-                target: transition.toStatus,
-                type: 'smoothstep',
-                label: '',
-                markerEnd: {
-                    type: MarkerType.ArrowClosed,
-                    width: 18,
-                    height: 18,
-                    color: isSelected ? '#4f46e5' : '#64748b',
-                },
-                style: {
-                    strokeWidth: isSelected ? 3 : 2,
-                    stroke: isSelected ? '#4f46e5' : '#64748b',
-                },
-                data: {
-                    transitionId: transition.id,
-                    allowedRoles: transition.allowedRoles,
-                    requireAssigneeSelf: transition.requireAssigneeSelf,
-                },
-            };
-        });
-    }, [transitions, selectedTransition]);
-
-    const [nodes, setNodes, onNodesChange] =
-        useNodesState<WorkflowNode>(initialNodes);
-    const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-    useEffect(() => {
-        setNodes(initialNodes);
-    }, [initialNodes, setNodes]);
-
-    useEffect(() => {
-        setEdges(initialEdges);
-    }, [initialEdges, setEdges]);
-
-    const onConnect = useCallback(
-        (connection: Connection) => {
-            if (!canManage) return;
-
-            if (!connection.source || !connection.target) return;
-
-            if (connection.source === connection.target) {
-                setError('Bir durum kendisine geçiş yapamaz.');
-                return;
-            }
-
-            const exists = transitions?.some(
-                (t) =>
-                    t.fromStatus === connection.source &&
-                    t.toStatus === connection.target
-            );
-
-            if (exists) {
-                setError('Bu geçiş zaten tanımlanmış.');
-                return;
-            }
-
-            setError(null);
-            setNewFrom(connection.source);
-            setNewTo(connection.target);
-            setNewRoles([]);
-            setNewRequireSelf(false);
-            setIsAddOpen(true);
-        },
-        [canManage, transitions]
-    );
-
-    const handleEdgeClick = (_event: React.MouseEvent, edge: Edge) => {
-        const transitionId = edge.data?.transitionId;
-        if (!transitionId) return;
-
-        const transition = transitions?.find((t) => t.id === transitionId);
-        if (transition) {
-            setSelectedTransition(transition);
-        }
-    };
-
-    const handleDelete = async (transition: WorkflowTransition) => {
-        const fromName = STATUS_LABELS[transition.fromStatus] ?? transition.fromStatus;
-        const toName = STATUS_LABELS[transition.toStatus] ?? transition.toStatus;
-
-        const ok = await confirm(
-            'Geçişi Sil',
-            `"${fromName} → ${toName}" geçişini silmek istediğinize emin misiniz?`,
-            true
-        );
-        if (!ok) return;
-
-        try {
-            await deleteTransition.mutateAsync(transition.id);
-            setSelectedTransition(null);
-        } catch (err) {
-            const axiosError = err as AxiosError<ApiErrorResponse>;
-            setError(
-                axiosError.response?.data?.message ?? 'Geçiş silinemedi.'
-            );
-        }
-    };
-
-    const handleCreate = async () => {
-        if (newFrom === newTo) {
-            setError('Başlangıç ve hedef durumu aynı olamaz.');
-            return;
-        }
-
-        if (newRoles.length === 0) {
-            setError('En az bir rol seçmelisiniz.');
-            return;
-        }
-
-        setError(null);
-
-        try {
-            await createTransition.mutateAsync({
-                fromStatus: newFrom,
-                toStatus: newTo,
-                allowedRoles: newRoles,
-                requireAssigneeSelf: newRequireSelf,
-            });
-
-            setIsAddOpen(false);
-            setNewRoles([]);
-            setNewRequireSelf(false);
-        } catch (err) {
-            const axiosError = err as AxiosError<ApiErrorResponse>;
-            setError(
-                axiosError.response?.data?.message ??
-                'Geçiş oluşturulamadı.'
-            );
-        }
-    };
-
-    const groupedByFrom = useMemo(() => {
-        return (transitions ?? []).reduce<Record<string, WorkflowTransition[]>>(
-            (acc, t) => {
-                (acc[t.fromStatus] ??= []).push(t);
-                return acc;
-            },
-            {}
-        );
-    }, [transitions]);
 
     if (!projectId) return null;
 
+    const sortedStatuses = [...(statuses ?? [])].sort((a, b) => a.displayOrder - b.displayOrder);
+
+    const handleMoveStatus = (index: number, direction: -1 | 1) => {
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= sortedStatuses.length) return;
+        const newOrder = [...sortedStatuses];
+        [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
+        reorderStatuses.mutate(newOrder.map((s) => s.id));
+    };
+
+    const handleCreateStatus = async () => {
+        if (!newStatusName.trim()) return;
+        setError(null);
+        try {
+            await createStatus.mutateAsync({ name: newStatusName, category: newStatusCategory });
+            setNewStatusName('');
+            setAddStatusOpen(false);
+        } catch (err) {
+            const axiosError = err as AxiosError<ApiErrorResponse>;
+            setError(axiosError.response?.data?.message ?? 'Oluşturulamadı.');
+        }
+    };
+
+    const startEditingStatus = (s: WorkflowStatus) => {
+        setEditingStatusId(s.id);
+        setEditStatusName(s.name);
+        setEditStatusCategory(s.category);
+    };
+
+    const handleSaveStatus = async () => {
+        if (!editingStatusId) return;
+        setError(null);
+        try {
+            await updateStatus.mutateAsync({ id: editingStatusId, data: { name: editStatusName, category: editStatusCategory } });
+            setEditingStatusId(null);
+        } catch (err) {
+            const axiosError = err as AxiosError<ApiErrorResponse>;
+            setError(axiosError.response?.data?.message ?? 'Güncellenemedi.');
+        }
+    };
+
+    const handleDeleteStatus = async (s: WorkflowStatus) => {
+        setError(null);
+        if (!confirm(`"${s.name}" durumunu silmek istediğinize emin misiniz?`)) return;
+        try {
+            await deleteStatus.mutateAsync(s.id);
+        } catch (err) {
+            const axiosError = err as AxiosError<ApiErrorResponse>;
+            setError(axiosError.response?.data?.message ?? 'Silinemedi.');
+        }
+    };
+
+    const toggleRole = (role: string) => {
+        setNewRoles((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]));
+    };
+
+    const handleCreateTransition = async () => {
+        if (!newFromId || !newToId || newRoles.length === 0) {
+            setError('Başlangıç durumu, hedef durum ve en az bir rol seçmelisiniz.');
+            return;
+        }
+        setError(null);
+        try {
+            await createTransition.mutateAsync({ fromStatusId: newFromId, toStatusId: newToId, allowedRoles: newRoles, requireAssigneeSelf: newRequireSelf });
+            setNewFromId('');
+            setNewToId('');
+            setNewRoles([]);
+            setNewRequireSelf(false);
+            setAddTransitionOpen(false);
+        } catch (err) {
+            const axiosError = err as AxiosError<ApiErrorResponse>;
+            setError(axiosError.response?.data?.message ?? 'Oluşturulamadı.');
+        }
+    };
+
+    const handlePublish = async () => {
+        if (!confirm('Tüm taslak değişiklikler yayınlanacak ve gerçek görevleri etkilemeye başlayacak. Devam edilsin mi?')) return;
+        setError(null);
+        try {
+            await publishWorkflow.mutateAsync();
+        } catch (err) {
+            const axiosError = err as AxiosError<ApiErrorResponse>;
+            setError(axiosError.response?.data?.message ?? 'Yayınlanamadı.');
+        }
+    };
+
+    const groupedTransitions = (transitions ?? []).reduce<Record<string, WorkflowTransition[]>>((acc, t) => {
+        (acc[t.fromStatusId] ??= []).push(t);
+        return acc;
+    }, {});
+
     return (
-        <div className="h-[calc(100vh-120px)] flex flex-col p-6">
-            {/* Header */}
-            <div className="shrink-0 border-b border-border pb-4 mb-4">
-                <div className="flex items-center justify-between gap-4">
-                    <div>
-                        <Link
-                            to={`/projects/${projectId}`}
-                            className="inline-flex items-center gap-1.5 text-xs text-secondary hover:text-primary"
-                        >
-                            ← {project?.name ?? 'Proje'} / Proje Ayarları
-                        </Link>
+        <div className="max-w-3xl space-y-4">
+            <Link to={`/projects/${projectId}`} className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
+                ← Proje Detayına Dön
+            </Link>
 
-                        <div className="mt-3">
-                            <h1 className="text-xl font-semibold text-primary">
-                                Workflow
-                            </h1>
-
-                            <p className="mt-1 text-sm text-secondary">
-                                Durumlar arasındaki geçişleri ve geçiş yetkilerini yönetin.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center rounded-lg border border-border bg-surface-muted p-1">
-                            <button
-                                type="button"
-                                onClick={() => setViewMode('canvas')}
-                                className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${viewMode === 'canvas'
-                                    ? 'bg-white text-primary shadow-sm dark:bg-gray-800'
-                                    : 'text-secondary hover:text-primary'
-                                    }`}
-                            >
-                                Canvas
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setViewMode('list')}
-                                className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${viewMode === 'list'
-                                    ? 'bg-white text-primary shadow-sm dark:bg-gray-800'
-                                    : 'text-secondary hover:text-primary'
-                                    }`}
-                            >
-                                Liste
-                            </button>
-                        </div>
-
-                        {canManage && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setError(null);
-                                    setIsAddOpen(true);
-                                }}
-                                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 cursor-pointer"
-                            >
-                                + Geçiş ekle
-                            </button>
-                        )}
-                    </div>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-primary">Workflow Editörü</h1>
+                    <p className="text-sm text-muted">Durumları ve aralarındaki geçiş kurallarını yönetin.</p>
                 </div>
+                {canManage && hasUnpublished && (
+                    <button onClick={handlePublish} className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 whitespace-nowrap">
+                        🚀 Yayınla
+                    </button>
+                )}
             </div>
 
-            {/* Error Display */}
-            {error && (
-                <div className="mb-3 px-4 py-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-lg text-sm text-red-600 dark:text-red-400 flex items-center justify-between">
-                    <span>{error}</span>
-                    <button
-                        onClick={() => setError(null)}
-                        className="font-bold text-red-400 hover:text-red-700 dark:hover:text-red-300 cursor-pointer"
-                    >
-                        ✕
-                    </button>
-                </div>
+            {!canManage && (
+                <p className="text-sm text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-900 rounded px-3 py-2">
+                    Bu sayfayı yalnızca görüntüleyebilirsiniz. Düzenleme yalnızca System Admin ve bu projenin sahibi olan Project Manager tarafından yapılabilir.
+                </p>
             )}
 
-            {/* İçerik Koşulu: isError -> isLoading -> normal görünüm */}
-            {isError ? (
-                <div className="flex items-center justify-center h-[400px]">
-                    <p className="text-red-500 text-sm">Bu sayfayı görüntüleme yetkiniz yok.</p>
+            {canManage && hasUnpublished && (
+                <p className="text-sm text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900 rounded px-3 py-2">
+                    ⚠ Yayınlanmamış değişiklikleriniz var. Taslak durum/geçişler gerçek görevleri henüz etkilemiyor — yukarıdaki
+                    "Yayınla" butonuna basana kadar aktif olmayacaklar.
+                </p>
+            )}
+
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+
+            {/* Durumlar */}
+            <div className="surface border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                    <h2 className="font-semibold text-primary">Durumlar</h2>
+                    {canManage && (
+                        <button onClick={() => setAddStatusOpen((v) => !v)} className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
+                            {isAddStatusOpen ? 'Vazgeç' : '+ Yeni Durum'}
+                        </button>
+                    )}
                 </div>
-            ) : isLoading ? (
-                <div className="flex items-center justify-center h-[400px]">
-                    <p className="text-sm text-secondary">Workflow yükleniyor...</p>
+
+                {isLoading ? (
+                    <p className="text-muted text-sm">Yükleniyor...</p>
+                ) : (
+                    <div className="space-y-2">
+                        {sortedStatuses.map((s, index) => (
+                            <div key={s.id} className={`flex items-center gap-2 p-2 rounded border ${CATEGORY_COLORS[s.category]} ${s.isDraft ? 'opacity-70' : ''}`}>
+                                {canManage && (
+                                    <div className="flex flex-col shrink-0">
+                                        <button onClick={() => handleMoveStatus(index, -1)} disabled={index === 0} className="text-xs leading-none disabled:opacity-20">▲</button>
+                                        <button onClick={() => handleMoveStatus(index, 1)} disabled={index === sortedStatuses.length - 1} className="text-xs leading-none disabled:opacity-20">▼</button>
+                                    </div>
+                                )}
+
+                                {editingStatusId === s.id ? (
+                                    <div className="flex-1 flex items-center gap-2">
+                                        <input value={editStatusName} onChange={(e) => setEditStatusName(e.target.value)} className="input-base border rounded px-2 py-1 text-sm flex-1" />
+                                        <select value={editStatusCategory} onChange={(e) => setEditStatusCategory(e.target.value)} className="input-base border rounded px-2 py-1 text-sm">
+                                            <option value="ToDo">Yapılacak</option>
+                                            <option value="InProgress">Devam Ediyor</option>
+                                            <option value="Done">Tamamlandı</option>
+                                        </select>
+                                        <button onClick={handleSaveStatus} className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Kaydet</button>
+                                        <button onClick={() => setEditingStatusId(null)} className="text-xs text-muted">İptal</button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <span className="flex-1 text-sm font-medium">
+                                            {s.name}
+                                            {s.isInitial && <span className="text-[10px] ml-1 bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded-full">Başlangıç</span>}
+                                            {s.isEpicCloseTarget && <span className="text-[10px] ml-1 bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded-full">Epic Kapatma</span>}
+                                            {s.isDraft && <span className="text-[10px] ml-1 bg-orange-200 dark:bg-orange-900 px-1.5 py-0.5 rounded-full">Taslak</span>}
+                                        </span>
+                                        <span className="text-xs opacity-70">{CATEGORY_LABELS[s.category]}</span>
+                                        {canManage && (
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {!s.isInitial && (
+                                                    <button onClick={() => setInitialStatus.mutate(s.id)} className="text-xs hover:underline">Başlangıç Yap</button>
+                                                )}
+                                                {s.category === 'Done' && !s.isEpicCloseTarget && (
+                                                    <button onClick={() => setEpicCloseTarget.mutate(s.id)} className="text-xs hover:underline">Epic Hedefi Yap</button>
+                                                )}
+                                                <button onClick={() => startEditingStatus(s)} className="text-xs hover:underline">Düzenle</button>
+                                                <button onClick={() => handleDeleteStatus(s)} className="text-xs text-red-600 dark:text-red-400 hover:underline">Sil</button>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {isAddStatusOpen && canManage && (
+                    <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3 space-y-2">
+                        <input type="text" placeholder="Durum adı (örn. Code Review)" value={newStatusName} onChange={(e) => setNewStatusName(e.target.value)} className="w-full input-base border rounded px-3 py-2 text-sm" />
+                        <select value={newStatusCategory} onChange={(e) => setNewStatusCategory(e.target.value)} className="w-full input-base border rounded px-3 py-2 text-sm">
+                            <option value="ToDo">Yapılacak</option>
+                            <option value="InProgress">Devam Ediyor</option>
+                            <option value="Done">Tamamlandı</option>
+                        </select>
+                        <button onClick={handleCreateStatus} className="w-full bg-indigo-600 text-white py-2 rounded text-sm hover:bg-indigo-700">
+                            Ekle (taslak olarak)
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Gecisler */}
+            <div className="surface border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                    <h2 className="font-semibold text-primary">Geçişler</h2>
+                    {canManage && (
+                        <button onClick={() => setAddTransitionOpen((v) => !v)} className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
+                            {isAddTransitionOpen ? 'Vazgeç' : '+ Yeni Geçiş'}
+                        </button>
+                    )}
                 </div>
-            ) : viewMode === 'canvas' ? (
-                /* View Mode 1: Canvas (React Flow) */
-                <div className="relative flex-1 min-h-0 overflow-hidden rounded-lg border border-border bg-surface">
-                    <ReactFlow
-                        nodes={nodes}
-                        edges={edges}
-                        onNodesChange={onNodesChange}
-                        onEdgesChange={onEdgesChange}
-                        onConnect={onConnect}
-                        onEdgeClick={handleEdgeClick}
-                        nodeTypes={nodeTypes}
-                        fitView
-                        fitViewOptions={{ padding: 0.25 }}
-                        nodesConnectable={canManage}
-                        nodesDraggable={canManage}
-                        elementsSelectable
-                        attributionPosition="bottom-left"
-                    >
-                        <Background
-                            gap={24}
-                            size={1}
-                        />
-                        <Controls />
-                        <MiniMap
-                            pannable
-                            zoomable
-                            nodeColor={(node) => {
-                                const status = (node.data as WorkflowNodeData)
-                                    ?.status;
-                                return STATUS_COLORS[status]?.dot ?? '#94a3b8';
-                            }}
-                        />
-                    </ReactFlow>
-                </div>
-            ) : (
-                /* View Mode 2: Liste Görünümü (Fallback) */
-                <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-                    {ALL_STATUSES.map((status) => {
-                        const outgoing = groupedByFrom[status] ?? [];
+
+                <div className="space-y-4">
+                    {sortedStatuses.map((status) => {
+                        const outgoing = groupedTransitions[status.id] ?? [];
                         if (outgoing.length === 0) return null;
 
-                        const colors = STATUS_COLORS[status] ?? STATUS_COLORS.ToDo;
-
                         return (
-                            <div
-                                key={status}
-                                className="surface border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm"
-                            >
-                                <span
-                                    className={`inline-block text-xs px-2.5 py-1 rounded-full border font-bold mb-3 ${colors.bg} ${colors.border} ${colors.text}`}
-                                >
-                                    {STATUS_LABELS[status] ?? status}
+                            <div key={status.id}>
+                                <span className={`inline-block text-xs px-2 py-1 rounded-full border font-medium mb-2 ${CATEGORY_COLORS[status.category]}`}>
+                                    {status.name}
                                 </span>
-
-                                <div className="space-y-2 pl-3 border-l-2 border-gray-100 dark:border-gray-800">
-                                    {outgoing.map((t) => {
-                                        const targetColors = STATUS_COLORS[t.toStatus] ?? STATUS_COLORS.ToDo;
-                                        return (
-                                            <div
-                                                key={t.id}
-                                                className="flex items-center justify-between text-sm p-2 rounded-lg surface-muted hover-surface transition"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-muted">→</span>
-                                                    <span
-                                                        className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${targetColors.bg} ${targetColors.border} ${targetColors.text}`}
-                                                    >
-                                                        {STATUS_LABELS[t.toStatus] ?? t.toStatus}
-                                                    </span>
-                                                    <span className="text-xs text-secondary ml-2">
-                                                        [{t.allowedRoles.join(', ')}]
-                                                    </span>
-                                                    {t.requireAssigneeSelf && (
-                                                        <span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-1.5 py-0.5 rounded font-medium">
-                                                            Yalnızca Atanan
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                {canManage && (
-                                                    <div className="flex items-center gap-3">
-                                                        <button
-                                                            onClick={() => setSelectedTransition(t)}
-                                                            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium cursor-pointer"
-                                                        >
-                                                            Düzenle
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelete(t)}
-                                                            className="text-xs text-red-500 dark:text-red-400 hover:underline font-medium cursor-pointer"
-                                                        >
-                                                            Sil
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                <div className="space-y-1 pl-4 border-l-2 border-gray-100 dark:border-gray-800">
+                                    {outgoing.map((t) => (
+                                        <div key={t.id} className="flex items-center gap-2 text-sm">
+                                            <span className="text-muted">→</span>
+                                            <span className="font-medium text-secondary">{t.toStatusName}</span>
+                                            <span className="text-xs text-muted">{t.allowedRoles.join(', ')}</span>
+                                            {t.requireAssigneeSelf && <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-muted px-1.5 rounded">yalnızca atanan</span>}
+                                            {t.isDraft && <span className="text-[10px] bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-300 px-1.5 rounded">Taslak</span>}
+                                            {canManage && (
+                                                <button onClick={() => deleteTransition.mutate(t.id)} className="text-xs text-red-500 dark:text-red-400 hover:underline ml-auto">Sil</button>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         );
                     })}
-
-                    {(transitions ?? []).length === 0 && (
-                        <div className="text-center py-12 surface border border-gray-200 dark:border-gray-700 rounded-xl">
-                            <p className="text-sm text-muted">
-                                Bu proje için henüz geçiş tanımlanmamış.
-                            </p>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Selected Transition Panel (Drawer) */}
-            {selectedTransition && (
-                <TransitionPanel
-                    transition={selectedTransition}
-                    canManage={canManage}
-                    onClose={() => setSelectedTransition(null)}
-                    onUpdate={async (roles, requireSelf) => {
-                        try {
-                            await updateTransition.mutateAsync({
-                                id: selectedTransition.id,
-                                data: {
-                                    allowedRoles: roles,
-                                    requireAssigneeSelf: requireSelf,
-                                },
-                            });
-                            setSelectedTransition(null);
-                        } catch (err) {
-                            const axiosError = err as AxiosError<ApiErrorResponse>;
-                            setError(
-                                axiosError.response?.data?.message ??
-                                'Geçiş güncellenemedi.'
-                            );
-                        }
-                    }}
-                    onDelete={() => handleDelete(selectedTransition)}
-                />
-            )}
-
-            {/* Add Transition Modal */}
-            {isAddOpen && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50">
-                    <div className="surface border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-full max-w-md p-6 bg-white dark:bg-gray-900">
-                        <h2 className="text-lg font-semibold text-primary">
-                            Yeni Workflow Geçişi
-                        </h2>
-
-                        <p className="text-xs text-muted mt-1 mb-5">
-                            Hangi durumdan hangi duruma geçilebileceğini tanımlayın.
-                        </p>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-xs font-medium text-secondary mb-1">
-                                    Başlangıç
-                                </label>
-                                <select
-                                    value={newFrom}
-                                    onChange={(e) => setNewFrom(e.target.value)}
-                                    className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm cursor-pointer"
-                                >
-                                    {ALL_STATUSES.map((status) => (
-                                        <option key={status} value={status}>
-                                            {STATUS_LABELS[status] ?? status}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-medium text-secondary mb-1">
-                                    Hedef
-                                </label>
-                                <select
-                                    value={newTo}
-                                    onChange={(e) => setNewTo(e.target.value)}
-                                    className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm cursor-pointer"
-                                >
-                                    {ALL_STATUSES.map((status) => (
-                                        <option key={status} value={status}>
-                                            {STATUS_LABELS[status] ?? status}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="mt-5">
-                            <p className="text-xs font-medium text-secondary mb-2">
-                                İzin verilen roller
-                            </p>
-                            <div className="space-y-2">
-                                {ALL_ROLES.map((role) => {
-                                    const checked = newRoles.includes(role);
-                                    return (
-                                        <label
-                                            key={role}
-                                            className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2.5 transition ${checked
-                                                ? 'border-indigo-300 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950/40'
-                                                : 'border-border hover:bg-surface-muted'
-                                                }`}
-                                        >
-                                            <span className="text-sm text-primary">{role}</span>
-                                            <input
-                                                type="checkbox"
-                                                checked={checked}
-                                                onChange={() =>
-                                                    setNewRoles((prev) =>
-                                                        prev.includes(role)
-                                                            ? prev.filter((r) => r !== role)
-                                                            : [...prev, role]
-                                                    )
-                                                }
-                                                className="h-4 w-4 rounded"
-                                            />
-                                        </label>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        <div className="mt-5 rounded-lg border border-border p-4">
-                            <label className="flex items-start gap-3 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={newRequireSelf}
-                                    onChange={(e) => setNewRequireSelf(e.target.checked)}
-                                    className="mt-0.5 h-4 w-4 rounded"
-                                />
-                                <div>
-                                    <p className="text-sm font-medium text-primary">
-                                        Yalnızca atanan kişi
-                                    </p>
-                                    <p className="mt-1 text-xs leading-5 text-secondary">
-                                        Bu geçiş yalnızca görevin atanmış kullanıcısı tarafından gerçekleştirilebilir.
-                                    </p>
-                                </div>
-                            </label>
-                        </div>
-
-                        <div className="flex gap-2 mt-6">
-                            <button
-                                onClick={() => setIsAddOpen(false)}
-                                className="flex-1 border border-gray-300 dark:border-gray-600 py-2 rounded-lg text-sm hover-surface text-secondary transition cursor-pointer"
-                            >
-                                İptal
-                            </button>
-                            <button
-                                onClick={handleCreate}
-                                disabled={createTransition.isPending}
-                                className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-50 cursor-pointer"
-                            >
-                                {createTransition.isPending
-                                    ? 'Oluşturuluyor...'
-                                    : 'Geçiş oluştur'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <ConfirmDialog
-                isOpen={confirmState.isOpen}
-                title={confirmState.title}
-                message={confirmState.message}
-                danger={confirmState.danger}
-                confirmLabel="Sil"
-                onConfirm={handleConfirm}
-                onCancel={handleCancel}
-            />
-        </div>
-    );
-}
-
-function TransitionPanel({
-    transition,
-    canManage,
-    onClose,
-    onUpdate,
-    onDelete,
-}: {
-    transition: WorkflowTransition;
-    canManage: boolean;
-    onClose: () => void;
-    onUpdate: (roles: string[], requireSelf: boolean) => Promise<void>;
-    onDelete: () => void;
-}) {
-    const [roles, setRoles] = useState<string[]>(transition.allowedRoles);
-    const [requireSelf, setRequireSelf] = useState<boolean>(
-        transition.requireAssigneeSelf
-    );
-
-    return (
-        <div className="fixed inset-y-0 right-0 z-[100] flex h-full w-[380px] flex-col border-l border-border bg-white dark:bg-gray-900 shadow-2xl isolate animate-in fade-in slide-in-from-right-2 duration-150">
-            <div className="flex items-start justify-between border-b border-border px-5 py-4 bg-white dark:bg-gray-900">
-                <div>
-                    <p className="text-sm font-semibold text-primary">
-                        Geçiş ayrıntıları
-                    </p>
-
-                    <div className="mt-2 flex items-center gap-2">
-                        <span className="rounded bg-surface-muted px-2 py-1 text-xs font-medium text-secondary">
-                            {STATUS_LABELS[transition.fromStatus] ?? transition.fromStatus}
-                        </span>
-
-                        <span className="text-muted">→</span>
-
-                        <span className="rounded bg-surface-muted px-2 py-1 text-xs font-medium text-secondary">
-                            {STATUS_LABELS[transition.toStatus] ?? transition.toStatus}
-                        </span>
-                    </div>
+                    {(transitions ?? []).length === 0 && <p className="text-sm text-muted">Henüz hiçbir geçiş tanımlanmamış.</p>}
                 </div>
 
-                <button
-                    onClick={onClose}
-                    className="rounded p-1.5 text-secondary hover:bg-surface-muted hover:text-primary cursor-pointer"
-                >
-                    ✕
-                </button>
-            </div>
-
-            <div className="p-5 space-y-5 flex-1 overflow-y-auto bg-white dark:bg-gray-900">
-                <div>
-                    <p className="mb-2 text-xs font-semibold text-primary">
-                        İzin verilen roller
-                    </p>
-                    <div className="space-y-2">
-                        {ALL_ROLES.map((role) => {
-                            const checked = roles.includes(role);
-                            return (
-                                <label
-                                    key={role}
-                                    className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2.5 transition ${checked
-                                        ? 'border-indigo-300 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950/40'
-                                        : 'border-border hover:bg-surface-muted'
-                                        }`}
-                                >
-                                    <span className="text-sm text-primary">{role}</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={checked}
-                                        disabled={!canManage}
-                                        onChange={() =>
-                                            setRoles((prev) =>
-                                                prev.includes(role)
-                                                    ? prev.filter((r) => r !== role)
-                                                    : [...prev, role]
-                                            )
-                                        }
-                                        className="h-4 w-4 rounded"
-                                    />
-                                </label>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                <div className="rounded-lg border border-border p-4 bg-white dark:bg-gray-900">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            checked={requireSelf}
-                            disabled={!canManage}
-                            onChange={(e) => setRequireSelf(e.target.checked)}
-                            className="mt-0.5 h-4 w-4 rounded"
-                        />
+                {isAddTransitionOpen && canManage && (
+                    <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3 space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                            <select value={newFromId} onChange={(e) => setNewFromId(e.target.value)} className="input-base border rounded px-2 py-2 text-sm">
+                                <option value="">Başlangıç durumu</option>
+                                {sortedStatuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                            <select value={newToId} onChange={(e) => setNewToId(e.target.value)} className="input-base border rounded px-2 py-2 text-sm">
+                                <option value="">Hedef durum</option>
+                                {sortedStatuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                        </div>
                         <div>
-                            <p className="text-sm font-medium text-primary">
-                                Yalnızca atanan kişi
-                            </p>
-                            <p className="mt-1 text-xs leading-5 text-secondary">
-                                Bu geçiş yalnızca görevin atanmış kullanıcısı tarafından gerçekleştirilebilir.
-                            </p>
+                            <p className="text-xs text-muted mb-1">İzin verilen roller</p>
+                            {ALL_ROLES.map((role) => (
+                                <label key={role} className="flex items-center gap-2 text-sm py-0.5 text-secondary">
+                                    <input type="checkbox" checked={newRoles.includes(role)} onChange={() => toggleRole(role)} />
+                                    {role}
+                                </label>
+                            ))}
                         </div>
-                    </label>
-                </div>
-            </div>
-
-            <div className="mt-auto border-t border-border p-4 bg-white dark:bg-gray-900">
-                {canManage && (
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => onUpdate(roles, requireSelf)}
-                            className="flex-1 rounded-lg bg-indigo-600 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 transition cursor-pointer"
-                        >
-                            Kaydet
-                        </button>
-                        <button
-                            onClick={onDelete}
-                            className="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950 transition cursor-pointer"
-                        >
-                            Sil
+                        <label className="flex items-center gap-2 text-sm text-secondary">
+                            <input type="checkbox" checked={newRequireSelf} onChange={(e) => setNewRequireSelf(e.target.checked)} />
+                            Yalnızca görevin atandığı kişi yapabilsin
+                        </label>
+                        <button onClick={handleCreateTransition} className="w-full bg-indigo-600 text-white py-2 rounded text-sm hover:bg-indigo-700">
+                            Ekle (taslak olarak)
                         </button>
                     </div>
                 )}

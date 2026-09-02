@@ -8,13 +8,14 @@ import {
     useUnarchiveProject,
     useAddTeamToProject,
     useRemoveTeamFromProject,
+    useDeleteProject,
+    useRequestProjectAccess,
 } from '../../hooks/useProjects';
 import { useTeams, useTeamDetail } from '../../hooks/useTeams';
 import {
     useProjectMembers,
     useAddProjectMember,
     useRemoveProjectMember,
-    useUpdateProjectMember,
 } from '../../hooks/useProjectMembers';
 import { useConfirm } from '../../hooks/useConfirm';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -26,10 +27,14 @@ import {
     Archive,
     Check,
     ChevronRight,
+    FileText,
+    GitBranch,
     MoreHorizontal,
     Pencil,
     Plus,
     Settings2,
+    Trash2,
+    UploadCloud,
     X,
 } from 'lucide-react';
 
@@ -44,10 +49,17 @@ export function ProjectDetailPage() {
     const updateProject = useUpdateProject(projectId!);
     const archiveProject = useArchiveProject();
     const unarchiveProject = useUnarchiveProject();
+    const deleteProject = useDeleteProject();
     const addTeam = useAddTeamToProject(projectId!);
     const removeTeam = useRemoveTeamFromProject(projectId!);
 
     const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
+
+    // Silme yetki ve durum state'leri
+    const isAdmin = user?.roles.includes('System Admin') ?? false;
+    const canDelete = isAdmin || project?.ownerId === user?.userId;
+    const [isDeleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
 
     // Proje üyeleriyle ilgili Hook'lar ve State'ler
     const { data: projectMembers } = useProjectMembers(projectId ?? null);
@@ -69,14 +81,7 @@ export function ProjectDetailPage() {
     const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
 
     if (isError) {
-        return (
-            <div className="text-center py-16">
-                <p className="text-muted">Bu proje bulunamadı veya erişim yetkiniz yok.</p>
-                <Link to="/projects" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
-                    ← Projelere dön
-                </Link>
-            </div>
-        );
+        return <AccessDeniedProjectView projectId={projectId!} />;
     }
 
     if (isLoading || !project) return <p className="text-muted">Yükleniyor...</p>;
@@ -125,6 +130,18 @@ export function ProjectDetailPage() {
         } catch (err) {
             const axiosError = err as AxiosError<ApiErrorResponse>;
             setError(axiosError.response?.data?.message ?? 'Arşivden çıkarılamadı.');
+        }
+    };
+
+    const handleDeleteProject = async () => {
+        setDeleteError(null);
+        try {
+            await deleteProject.mutateAsync(projectId!);
+            navigate('/projects');
+        } catch (err) {
+            const axiosError = err as AxiosError<ApiErrorResponse>;
+            setDeleteError(axiosError.response?.data?.message ?? 'Proje silinemedi.');
+            setDeleteConfirmOpen(false);
         }
     };
 
@@ -181,10 +198,10 @@ export function ProjectDetailPage() {
     return (
         <div className="mx-auto max-w-[1400px] space-y-6 p-6">
             {/* Hata Bildirimi */}
-            {error && (
+            {(error || deleteError) && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between text-sm">
-                    <span>❌ {error}</span>
-                    <button onClick={() => setError(null)} className="text-red-500 font-bold hover:text-red-700">
+                    <span>❌ {error || deleteError}</span>
+                    <button onClick={() => { setError(null); setDeleteError(null); }} className="text-red-500 font-bold hover:text-red-700">
                         ✕
                     </button>
                 </div>
@@ -257,41 +274,43 @@ export function ProjectDetailPage() {
                         </div>
                     </div>
 
-                    {canManage && (
-                        <div className="flex shrink-0 items-center gap-2">
-                            {isEditing ? (
-                                <>
-                                    <button
-                                        onClick={handleSave}
-                                        disabled={updateProject.isPending}
-                                        className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-                                    >
-                                        <Check className="h-4 w-4" />
-                                        Kaydet
-                                    </button>
+                    <div className="flex shrink-0 items-center gap-2">
+                        {isEditing ? (
+                            <>
+                                <button
+                                    onClick={handleSave}
+                                    disabled={updateProject.isPending}
+                                    className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
+                                >
+                                    <Check className="h-4 w-4" />
+                                    Kaydet
+                                </button>
 
-                                    <button
-                                        onClick={() => setIsEditing(false)}
-                                        className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-secondary hover:bg-surface-muted"
-                                    >
-                                        <X className="h-4 w-4" />
-                                        İptal
-                                    </button>
-                                </>
-                            ) : (
-                                <>
+                                <button
+                                    onClick={() => setIsEditing(false)}
+                                    className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-secondary hover:bg-surface-muted cursor-pointer"
+                                >
+                                    <X className="h-4 w-4" />
+                                    İptal
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                {canManage && (
                                     <button
                                         onClick={startEditing}
-                                        className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-secondary hover:bg-surface-muted"
+                                        className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-secondary hover:bg-surface-muted cursor-pointer"
                                     >
                                         <Pencil className="h-4 w-4" />
                                         Düzenle
                                     </button>
+                                )}
 
-                                    {project.status !== 'Archived' ? (
+                                {canManage && (
+                                    project.status !== 'Archived' ? (
                                         <button
                                             onClick={handleArchive}
-                                            className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+                                            className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950 cursor-pointer"
                                         >
                                             <Archive className="h-4 w-4" />
                                             Arşivle
@@ -299,24 +318,34 @@ export function ProjectDetailPage() {
                                     ) : (
                                         <button
                                             onClick={handleUnarchive}
-                                            className="inline-flex items-center gap-2 rounded-md border border-green-200 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50 dark:border-green-900 dark:text-green-400 dark:hover:bg-green-950"
+                                            className="inline-flex items-center gap-2 rounded-md border border-green-200 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50 dark:border-green-900 dark:text-green-400 dark:hover:bg-green-950 cursor-pointer"
                                         >
                                             <Archive className="h-4 w-4" />
                                             Arşivden Çıkar
                                         </button>
-                                    )}
+                                    )
+                                )}
 
+                                {canDelete && (
                                     <button
-                                        type="button"
-                                        className="rounded-md border border-border p-2 text-secondary hover:bg-surface-muted"
-                                        title="Diğer seçenekler"
+                                        onClick={() => setDeleteConfirmOpen(true)}
+                                        className="inline-flex items-center gap-2 rounded-md border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-4 py-2 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-950 cursor-pointer"
                                     >
-                                        <MoreHorizontal className="h-5 w-5" />
+                                        <Trash2 className="h-4 w-4" />
+                                        Projeyi Sil
                                     </button>
-                                </>
-                            )}
-                        </div>
-                    )}
+                                )}
+
+                                <button
+                                    type="button"
+                                    className="rounded-md border border-border p-2 text-secondary hover:bg-surface-muted"
+                                    title="Diğer seçenekler"
+                                >
+                                    <MoreHorizontal className="h-5 w-5" />
+                                </button>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -344,13 +373,49 @@ export function ProjectDetailPage() {
 
             {/* Proje Ayarları Listesi */}
             {canManage && (
-                <section>
-                    <div className="mb-3">
-                        <h2 className="text-lg font-semibold text-primary">Proje ayarları</h2>
-                        <p className="mt-1 text-sm text-secondary">Projenizin işleyişini ve yapılandırmasını yönetin.</p>
+                <section className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-lg font-semibold text-primary">Proje ayarları</h2>
+                            <p className="mt-1 text-sm text-secondary">Projenizin işleyişini ve yapılandırmasını yönetin.</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <Link
+                                to={`/projects/${projectId}/git-integration`}
+                                className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                            >
+                                <GitBranch className="h-4 w-4" />
+                                Git Entegrasyonu →
+                            </Link>
+                            <Link
+                                to={`/projects/${projectId}/issue-templates`}
+                                className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                            >
+                                <FileText className="h-4 w-4" />
+                                Issue Şablonları →
+                            </Link>
+                            <Link
+                                to={`/projects/${projectId}/bulk-import`}
+                                className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                            >
+                                <UploadCloud className="h-4 w-4" />
+                                Toplu Görev İçe Aktar (CSV) →
+                            </Link>
+                        </div>
                     </div>
 
                     <div className="overflow-hidden rounded-lg border border-border bg-surface">
+                        <Link
+                            to={`/projects/${projectId}/git-integration`}
+                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
+                        >
+                            <div>
+                                <p className="text-sm font-medium text-primary">Git Entegrasyonu</p>
+                                <p className="mt-1 text-xs text-secondary">GitHub webhook ve otomatik commit bağlama ayarlarını yapılandırın.</p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-muted" />
+                        </Link>
+
                         <Link
                             to={`/projects/${projectId}/issue-types`}
                             className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
@@ -369,6 +434,17 @@ export function ProjectDetailPage() {
                             <div>
                                 <p className="text-sm font-medium text-primary">Workflow</p>
                                 <p className="mt-1 text-xs text-secondary">İş akışı ve durum geçişlerini yapılandırın.</p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-muted" />
+                        </Link>
+
+                        <Link
+                            to={`/projects/${projectId}/board-settings`}
+                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
+                        >
+                            <div>
+                                <p className="text-sm font-medium text-primary">Board Settings (Columns)</p>
+                                <p className="mt-1 text-xs text-secondary">Board sütunlarını, durum eşleştirmelerini ve WIP limitlerini yapılandırın.</p>
                             </div>
                             <ChevronRight className="h-5 w-5 text-muted" />
                         </Link>
@@ -408,11 +484,33 @@ export function ProjectDetailPage() {
 
                         <Link
                             to={`/projects/${projectId}/components`}
-                            className="flex items-center justify-between px-5 py-4 hover:bg-surface-muted"
+                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
                         >
                             <div>
                                 <p className="text-sm font-medium text-primary">Component'ler</p>
                                 <p className="mt-1 text-xs text-secondary">Projeye ait modül ve bileşenleri yönetin.</p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-muted" />
+                        </Link>
+
+                        <Link
+                            to={`/projects/${projectId}/issue-templates`}
+                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
+                        >
+                            <div>
+                                <p className="text-sm font-medium text-primary">Issue Şablonları</p>
+                                <p className="mt-1 text-xs text-secondary">Görev oluştururken kullanılabilecek hazır açıklama şablonlarını yönetin.</p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-muted" />
+                        </Link>
+
+                        <Link
+                            to={`/projects/${projectId}/bulk-import`}
+                            className="flex items-center justify-between px-5 py-4 hover:bg-surface-muted"
+                        >
+                            <div>
+                                <p className="text-sm font-medium text-primary">Toplu Görev İçe Aktarma</p>
+                                <p className="mt-1 text-xs text-secondary">CSV dosyası üzerinden toplu görev ve hiyerarşi aktarımı yapın.</p>
                             </div>
                             <ChevronRight className="h-5 w-5 text-muted" />
                         </Link>
@@ -432,7 +530,7 @@ export function ProjectDetailPage() {
                         {canManage && availableTeamsToAdd.length > 0 && (
                             <button
                                 onClick={() => setIsAddTeamModalOpen(true)}
-                                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-secondary hover:bg-surface-muted"
+                                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-secondary hover:bg-surface-muted cursor-pointer"
                             >
                                 <Plus className="h-3.5 w-3.5" />
                                 Takım Ekle
@@ -456,7 +554,7 @@ export function ProjectDetailPage() {
                                     {canManage && (
                                         <button
                                             onClick={() => handleRemoveTeam(teamName)}
-                                            className="text-red-500 text-xs font-medium hover:underline"
+                                            className="text-red-500 text-xs font-medium hover:underline cursor-pointer"
                                         >
                                             Çıkar
                                         </button>
@@ -477,7 +575,7 @@ export function ProjectDetailPage() {
                         {canManage && projectTeamIds.length > 0 && (
                             <button
                                 onClick={() => setIsAddMemberModalOpen(true)}
-                                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-secondary hover:bg-surface-muted"
+                                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-secondary hover:bg-surface-muted cursor-pointer"
                             >
                                 <Plus className="h-3.5 w-3.5" />
                                 Üye Ekle
@@ -497,7 +595,7 @@ export function ProjectDetailPage() {
                                         <span className="text-muted"> — {m.teamName} — {m.projectRole}</span>
                                     </span>
                                     {canManage && (
-                                        <button onClick={() => removeProjectMember.mutate(m.memberId)} className="text-red-500 text-xs hover:underline shrink-0">
+                                        <button onClick={() => removeProjectMember.mutate(m.memberId)} className="text-red-500 text-xs hover:underline shrink-0 cursor-pointer">
                                             Çıkar
                                         </button>
                                     )}
@@ -516,7 +614,7 @@ export function ProjectDetailPage() {
                             <h3 className="font-bold text-lg text-primary">Takım Ekle</h3>
                             <button
                                 onClick={() => setIsAddTeamModalOpen(false)}
-                                className="text-muted hover:text-secondary font-bold"
+                                className="text-muted hover:text-secondary font-bold cursor-pointer"
                             >
                                 ✕
                             </button>
@@ -524,7 +622,7 @@ export function ProjectDetailPage() {
                         <select
                             value={selectedNewTeamId}
                             onChange={(e) => setSelectedNewTeamId(e.target.value)}
-                            className="w-full input-base border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-full input-base border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                         >
                             <option value="">Takım seçin...</option>
                             {availableTeamsToAdd.map((t) => (
@@ -536,14 +634,14 @@ export function ProjectDetailPage() {
                         <div className="flex justify-end gap-2 pt-2">
                             <button
                                 onClick={() => setIsAddTeamModalOpen(false)}
-                                className="px-4 py-2 text-sm border rounded hover-surface"
+                                className="px-4 py-2 text-sm border rounded hover-surface cursor-pointer"
                             >
                                 İptal
                             </button>
                             <button
                                 onClick={handleAddTeam}
                                 disabled={!selectedNewTeamId}
-                                className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 disabled:opacity-50"
+                                className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
                             >
                                 Ekle
                             </button>
@@ -560,7 +658,7 @@ export function ProjectDetailPage() {
                             <h3 className="font-bold text-lg text-primary">Proje Üyesi Ekle</h3>
                             <button
                                 onClick={() => setIsAddMemberModalOpen(false)}
-                                className="text-muted hover:text-secondary font-bold"
+                                className="text-muted hover:text-secondary font-bold cursor-pointer"
                             >
                                 ✕
                             </button>
@@ -578,7 +676,7 @@ export function ProjectDetailPage() {
                                         setSelectedMemberTeamId(e.target.value);
                                         setSelectedMemberUserId('');
                                     }}
-                                    className="w-full input-base border rounded px-3 py-2 text-sm"
+                                    className="w-full input-base border rounded px-3 py-2 text-sm cursor-pointer"
                                 >
                                     <option value="">Takım seçin...</option>
                                     {allTeams?.filter((t) => projectTeamIds.includes(t.id)).map((t) => (
@@ -595,7 +693,7 @@ export function ProjectDetailPage() {
                                     <select
                                         value={selectedMemberUserId}
                                         onChange={(e) => setSelectedMemberUserId(e.target.value)}
-                                        className="w-full input-base border rounded px-3 py-2 text-sm"
+                                        className="w-full input-base border rounded px-3 py-2 text-sm cursor-pointer"
                                     >
                                         <option value="">Kullanıcı seçin...</option>
                                         {availableTeamMembers.map((m) => (
@@ -612,7 +710,7 @@ export function ProjectDetailPage() {
                                 <select
                                     value={selectedProjectRole}
                                     onChange={(e) => setSelectedProjectRole(e.target.value)}
-                                    className="w-full input-base border rounded px-3 py-2 text-sm"
+                                    className="w-full input-base border rounded px-3 py-2 text-sm cursor-pointer"
                                 >
                                     <option value="0">Project Manager</option>
                                     <option value="1">Developer</option>
@@ -625,14 +723,14 @@ export function ProjectDetailPage() {
                         <div className="flex justify-end gap-2 pt-2 border-t border-border">
                             <button
                                 onClick={() => setIsAddMemberModalOpen(false)}
-                                className="px-4 py-2 text-sm border rounded hover-surface"
+                                className="px-4 py-2 text-sm border rounded hover-surface cursor-pointer"
                             >
                                 İptal
                             </button>
                             <button
                                 onClick={handleAddProjectMember}
                                 disabled={!selectedMemberUserId}
-                                className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 disabled:opacity-50 font-medium"
+                                className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 disabled:opacity-50 font-medium cursor-pointer"
                             >
                                 Projeye Ekle
                             </button>
@@ -641,6 +739,7 @@ export function ProjectDetailPage() {
                 </div>
             )}
 
+            {/* Arşiv Onay Modalı */}
             <ConfirmDialog
                 isOpen={confirmState.isOpen}
                 title={confirmState.title}
@@ -650,6 +749,65 @@ export function ProjectDetailPage() {
                 onConfirm={handleConfirm}
                 onCancel={handleCancel}
             />
+
+            {/* Proje Silme Onay Modalı */}
+            <ConfirmDialog
+                isOpen={isDeleteConfirmOpen}
+                title="Projeyi Sil"
+                message="Projeyi silmek istediğinize emin misiniz? Bu işlem projeye bağlı görevler, sprintler, workflow, component ve diğer proje verilerini etkileyebilir."
+                confirmLabel="Projeyi Sil"
+                danger
+                onConfirm={handleDeleteProject}
+                onCancel={() => setDeleteConfirmOpen(false)}
+            />
+        </div>
+    );
+}
+
+function AccessDeniedProjectView({ projectId }: { projectId: string }) {
+    const requestAccess = useRequestProjectAccess();
+    const [message, setMessage] = useState('');
+    const [sent, setSent] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleRequest = async () => {
+        setError(null);
+        try {
+            await requestAccess.mutateAsync({ projectId, message: message || undefined });
+            setSent(true);
+        } catch (err) {
+            const axiosError = err as AxiosError<ApiErrorResponse>;
+            setError(axiosError.response?.data?.message ?? 'Talep gönderilemedi.');
+        }
+    };
+
+    return (
+        <div className="text-center py-16 max-w-sm mx-auto">
+            <p className="text-muted mb-4">Bu projeye erişim yetkiniz yok.</p>
+            {sent ? (
+                <p className="text-sm text-green-600 dark:text-green-400">✓ Erişim talebiniz proje sahibine iletildi.</p>
+            ) : (
+                <div className="space-y-2 text-left">
+                    <textarea
+                        placeholder="Talebinize kısa bir not ekleyin (opsiyonel)"
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        rows={2}
+                        className="w-full input-base border rounded px-3 py-2 text-sm"
+                    />
+                    {error && <p className="text-red-500 text-xs">{error}</p>}
+                    <button
+                        onClick={handleRequest}
+                        disabled={requestAccess.isPending}
+                        className="w-full bg-indigo-600 text-white py-2 rounded text-sm hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
+                    >
+                        {requestAccess.isPending ? 'Gönderiliyor...' : 'Erişim Talep Et'}
+                    </button>
+                </div>
+            )}
+            <Link to="/projects" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline mt-4 inline-block">
+                ← Projelere dön
+            </Link>
         </div>
     );
 }

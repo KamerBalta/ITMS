@@ -11,16 +11,14 @@ namespace Infera.Api.Controllers;
 public class RoadmapController : ControllerBase
 {
     private readonly IMediator _mediator;
+
     public RoadmapController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    public async Task<IActionResult> Get(Guid projectId)
+    [ProducesResponseType(typeof(RoadmapDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Get(Guid projectId, CancellationToken ct)
     {
-        try
-        {
-            var result = await _mediator.Send(new GetRoadmapQuery(projectId));
-            return Ok(result);
-        }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        var result = await _mediator.Send(new GetRoadmapQuery(projectId), ct);
+        return Ok(result);
     }
 }

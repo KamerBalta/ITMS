@@ -18,7 +18,8 @@ export interface RefreshTokenResult {
 }
 
 export interface CurrentUser {
-  userId: string;
-  email: string;
-  roles: string[];
+    userId: string;
+    userName: string;
+    email: string;
+    roles: string[];
 }

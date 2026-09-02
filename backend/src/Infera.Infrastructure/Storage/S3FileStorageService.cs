@@ -42,16 +42,38 @@ public class S3FileStorageService : IFileStorageService
         return $"s3://{key}";
     }
 
-    public Stream GetFileStream(string filePath)
+    public async Task<Stream> GetFileStreamAsync(
+      string filePath,
+      CancellationToken ct = default)
     {
         var key = ExtractKey(filePath);
 
-        var request = new GetObjectRequest { BucketName = _bucketName, Key = key };
-        var response = _s3Client.GetObjectAsync(request).GetAwaiter().GetResult();
+        Console.WriteLine($"[S3] Bucket: {_bucketName}");
+        Console.WriteLine($"[S3] Key: {key}");
 
-        return response.ResponseStream;
+        try
+        {
+            var request = new GetObjectRequest
+            {
+                BucketName = _bucketName,
+                Key = key
+            };
+
+            var response = await _s3Client.GetObjectAsync(request, ct);
+
+            return response.ResponseStream;
+        }
+        catch (AmazonS3Exception ex)
+        {
+            Console.WriteLine($"[S3 ERROR] StatusCode: {ex.StatusCode}");
+            Console.WriteLine($"[S3 ERROR] ErrorCode: {ex.ErrorCode}");
+            Console.WriteLine($"[S3 ERROR] Message: {ex.Message}");
+            Console.WriteLine($"[S3 ERROR] Bucket: {_bucketName}");
+            Console.WriteLine($"[S3 ERROR] Key: {key}");
+
+            throw;
+        }
     }
-
     public void Delete(string filePath)
     {
         var key = ExtractKey(filePath);

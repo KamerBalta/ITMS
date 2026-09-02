@@ -49,6 +49,14 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<TaskComponent> TaskComponents => Set<TaskComponent>();
     public DbSet<TaskLink> TaskLinks => Set<TaskLink>();
     public DbSet<PendingDigestEmail> PendingDigestEmails => Set<PendingDigestEmail>();
+    public DbSet<BoardColumn> BoardColumns => Set<BoardColumn>();
+    public DbSet<ProjectWorkflowStatus> ProjectWorkflowStatuses => Set<ProjectWorkflowStatus>();
+    public DbSet<IssueTemplate> IssueTemplates => Set<IssueTemplate>();
+    public DbSet<ChangelogEntry> ChangelogEntries => Set<ChangelogEntry>();
+    public DbSet<UserChangelogSeen> UserChangelogSeen => Set<UserChangelogSeen>();
+    public DbSet<DashboardWidget> DashboardWidgets => Set<DashboardWidget>();
+    public DbSet<ProjectGitIntegration> ProjectGitIntegrations => Set<ProjectGitIntegration>();
+    public DbSet<GitCommitLink> GitCommitLinks => Set<GitCommitLink>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -91,9 +99,6 @@ public class AppDbContext : DbContext, IAppDbContext
                 entry.State = EntityState.Modified;
                 softDeletable.IsDeleted = true;
                 softDeletable.DeletedAt = DateTime.UtcNow;
-                // DeletedBy'i burada set etmiyoruz -- DbContext'in ICurrentUserService'e bagimli
-                // olmasini istemedigim icin bu alan su an icin bos kalabilir; ihtiyac olursa
-                // ileride SaveChangesInterceptor ile eklenebilir.
             }
         }
 

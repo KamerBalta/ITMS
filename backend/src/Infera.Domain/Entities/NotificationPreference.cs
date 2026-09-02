@@ -10,4 +10,5 @@ public class NotificationPreference : BaseEntity
     public bool InAppEnabled { get; set; } = true;
     public bool EmailEnabled { get; set; } = true;
     public string EmailFrequency { get; set; } = "Instant"; // "Instant" | "DailyDigest"
+    public bool OnlyImportantChanges { get; set; } // #A: sadece durum degisikligi/mention/atama gecsin, alan guncellemeleri gecmesin
 }

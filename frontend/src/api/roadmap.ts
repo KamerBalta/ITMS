@@ -1,6 +1,6 @@
 ﻿import { apiClient } from './client';
-import type { RoadmapEpic } from '../types/roadmap';
+import type { RoadmapData } from '../types/roadmap';
 
 export const roadmapApi = {
-    get: (projectId: string) => apiClient.get<RoadmapEpic[]>(`/projects/${projectId}/roadmap`).then((res) => res.data),
+    get: (projectId: string) => apiClient.get<RoadmapData>(`/projects/${projectId}/roadmap`).then((res) => res.data),
 };

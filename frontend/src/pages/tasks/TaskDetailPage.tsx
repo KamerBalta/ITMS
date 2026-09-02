@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import type { AxiosError } from 'axios';
 import type { ApiErrorResponse } from '../../types/api';
@@ -19,7 +19,8 @@ import {
 } from '../../hooks/useTaskDetail';
 import { useReleases } from '../../hooks/useReleases';
 import { useProjectMembers } from '../../hooks/useProjectMembers';
-import type { ItemStatus, Priority } from '../../types/task';
+import { useWorkflowStatuses } from '../../hooks/useWorkflow';
+import type { Priority } from '../../types/task';
 import { CommentsSection } from './sections/CommentsSection';
 import { AttachmentsSection } from './sections/AttachmentsSection';
 import { ChecklistSection } from './sections/ChecklistSection';
@@ -28,7 +29,8 @@ import { WorkLogsSection } from './sections/WorkLogsSection';
 import { LabelsSection } from './sections/LabelsSection';
 import { ComponentsSection } from './sections/ComponentsSection';
 import { TaskLinksSection } from './sections/TaskLinksSection';
-import { SubtasksSection } from './sections/SubtasksSection';
+import { GitActivitySection } from './sections/GitActivitySection';
+import { SubtasksSection, type SubtasksSectionHandle } from './sections/SubtasksSection';
 import { HistorySection } from './sections/HistorySection';
 import { TaskBreadcrumb } from '../../components/TaskBreadcrumb';
 import { RichTextEditor } from '../../components/RichTextEditor';
@@ -45,17 +47,9 @@ import {
     Link2,
     Share2,
     MoreHorizontal,
-    AlertCircle
+    AlertCircle,
+    CheckSquare,
 } from 'lucide-react';
-
-const ALL_STATUSES: { value: ItemStatus; label: string; color: string }[] = [
-    { value: 'ToDo', label: 'TO DO', color: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700' },
-    { value: 'InProgress', label: 'IN PROGRESS', color: 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900 hover:bg-blue-100 dark:hover:bg-blue-900' },
-    { value: 'ReadyForReview', label: 'IN REVIEW', color: 'bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-900 hover:bg-purple-100 dark:hover:bg-purple-900' },
-    { value: 'ReadyForQA', label: 'READY FOR QA', color: 'bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-900 hover:bg-amber-100 dark:hover:bg-amber-900' },
-    { value: 'Done', label: 'DONE', color: 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900 hover:bg-emerald-100 dark:hover:bg-emerald-900' },
-    { value: 'Closed', label: 'CLOSED', color: 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-300 dark:hover:bg-slate-600' },
-];
 
 const PRIORITY_OPTIONS: { value: Priority; label: string; icon: React.ReactNode; color: string }[] = [
     { value: 0, label: 'Low', icon: <ArrowDown size={14} className="text-blue-500" />, color: 'text-blue-600' },
@@ -72,52 +66,15 @@ interface Draft {
     priority: Priority;
     storyPoint: string;
     dueDate: string;
-    status: ItemStatus;
+    status: string;
     assigneeId: string;
     releaseId: string;
 }
 
 export function TaskDetailPage() {
     const { taskId } = useParams<{ taskId: string }>();
-    const currentUser = useAuthStore((state) => state.user);
     const { data: task, isLoading, isError } = useTaskDetail(taskId ?? null);
-
-    const updateStatus = useUpdateTaskStatus(task?.projectId ?? '');
-    const updateTitle = useUpdateTaskTitle(taskId ?? '');
-    const updateDescription = useUpdateTaskDescription(taskId ?? '');
-    const updatePriority = useUpdateTaskPriority(taskId ?? '');
-    const updateStoryPoint = useUpdateTaskStoryPoint(taskId ?? '');
-    const updateDueDate = useUpdateTaskDueDate(taskId ?? '');
-    const updateRelease = useUpdateTaskRelease(taskId ?? '');
-    const reassign = useReassignTaskDetail(taskId ?? '', task?.projectId ?? '');
-    const closeEpic = useCloseEpic(taskId ?? '', task?.projectId ?? '');
-    const uploadAttachment = useUploadAttachment(taskId ?? '');
     const { data: members } = useProjectMembers(task?.projectId ?? null);
-    const { data: releases } = useReleases(task?.projectId ?? null);
-
-    // Referanslar (File Input)
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const [draft, setDraft] = useState<Draft | null>(null);
-    const [isSaving, setIsSaving] = useState(false);
-    const [saveError, setSaveError] = useState<string | null>(null);
-    const [closeEpicError, setCloseEpicError] = useState<string | null>(null);
-    const [activeActivityTab, setActiveActivityTab] = useState<'comments' | 'worklogs' | 'attachments'>('comments');
-
-    useEffect(() => {
-        if (task) {
-            setDraft({
-                title: task.title,
-                description: task.description ?? '',
-                priority: PRIORITY_NAME_TO_NUM(task.priority),
-                storyPoint: task.storyPoint?.toString() ?? '',
-                dueDate: task.dueDate ? task.dueDate.slice(0, 10) : '',
-                status: task.status,
-                assigneeId: members?.find((m) => m.userName === task.assigneeName)?.userId ?? '',
-                releaseId: task.releaseId ?? '',
-            });
-        }
-    }, [task?.id, task?.updatedAt, members]);
 
     if (isError) {
         return (
@@ -130,14 +87,65 @@ export function TaskDetailPage() {
         );
     }
 
-    if (isLoading || !task || !draft) {
+    if (isLoading || !task) {
         return <TaskDetailSkeleton />;
     }
+
+    return (
+        <TaskDetailContent
+            key={`${task.id}-${task.updatedAt ?? task.createdAt}-${task.statusId}`}
+            task={task}
+            members={members ?? []}
+        />
+    );
+}
+
+type TaskDetailData = NonNullable<ReturnType<typeof useTaskDetail>['data']>;
+type ProjectMemberData = NonNullable<ReturnType<typeof useProjectMembers>['data']>[number];
+
+function TaskDetailContent({ task, members }: { task: TaskDetailData; members: ProjectMemberData[] }) {
+    const currentUser = useAuthStore((state) => state.user);
+
+    const updateStatus = useUpdateTaskStatus(task.projectId);
+    const updateTitle = useUpdateTaskTitle(task.id);
+    const updateDescription = useUpdateTaskDescription(task.id);
+    const updatePriority = useUpdateTaskPriority(task.id);
+    const updateStoryPoint = useUpdateTaskStoryPoint(task.id);
+    const updateDueDate = useUpdateTaskDueDate(task.id);
+    const updateRelease = useUpdateTaskRelease(task.id);
+    const reassign = useReassignTaskDetail(task.id, task.projectId);
+    const closeEpic = useCloseEpic(task.id, task.projectId);
+    const uploadAttachment = useUploadAttachment(task.id);
+
+    const { data: releases } = useReleases(task.projectId);
+    const { data: workflowStatuses, isLoading: statusesLoading } = useWorkflowStatuses(task?.projectId ?? null);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const taskLinksRef = useRef<HTMLDivElement>(null);
+    const subtasksSectionRef = useRef<SubtasksSectionHandle>(null);
+    const subtasksContainerRef = useRef<HTMLDivElement>(null);
+
+    const [draft, setDraft] = useState<Draft>(() => ({
+        title: task.title,
+        description: task.description ?? '',
+        priority: PRIORITY_NAME_TO_NUM(task.priority),
+        storyPoint: task.storyPoint?.toString() ?? '',
+        dueDate: task.dueDate ? task.dueDate.slice(0, 10) : '',
+        status: task.statusId,
+        assigneeId: members.find((m) => m.userName === task.assigneeName)?.userId ?? '',
+        releaseId: task.releaseId ?? '',
+    }));
+
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [concurrencyConflict, setConcurrencyConflict] = useState(false);
+    const [closeEpicError, setCloseEpicError] = useState<string | null>(null);
+    const [activeActivityTab, setActiveActivityTab] = useState<'comments' | 'worklogs' | 'attachments'>('comments');
 
     const isPM = currentUser?.roles.some((r) => r === 'System Admin' || r === 'Project Manager') ?? false;
     const isDeveloper = currentUser?.roles.includes('Developer') ?? false;
     const isAssignee =
-        task.assigneeName !== null && members?.some((m) => m.userName === task.assigneeName && m.userId === currentUser?.userId);
+        task.assigneeName !== null && members.some((m) => m.userName === task.assigneeName && m.userId === currentUser?.userId);
 
     const canEditTitle = isPM;
     const canEditDescription = isPM || isAssignee;
@@ -147,19 +155,29 @@ export function TaskDetailPage() {
     const canReassign = isPM;
     const canEditRelease = isPM;
 
+    const canAddSubtask = Boolean(task.allowsChildren && !task.requiresParent);
+
     const isDirty =
         draft.title !== task.title ||
         draft.description !== (task.description ?? '') ||
         draft.priority !== PRIORITY_NAME_TO_NUM(task.priority) ||
         draft.storyPoint !== (task.storyPoint?.toString() ?? '') ||
         draft.dueDate !== (task.dueDate ? task.dueDate.slice(0, 10) : '') ||
-        draft.status !== task.status ||
-        draft.assigneeId !== (members?.find((m) => m.userName === task.assigneeName)?.userId ?? '') ||
+        draft.status !== task.statusId ||
+        draft.assigneeId !== (members.find((m) => m.userName === task.assigneeName)?.userId ?? '') ||
         draft.releaseId !== (task.releaseId ?? '');
 
-    // Dosya Yükleme Eylemleri
     const handleAttachClick = () => {
         fileInputRef.current?.click();
+    };
+
+    const handleScrollToLinks = () => {
+        taskLinksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    const handleAddSubtaskClick = () => {
+        subtasksContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        subtasksSectionRef.current?.openAddForm();
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -189,16 +207,18 @@ export function TaskDetailPage() {
             priority: PRIORITY_NAME_TO_NUM(task.priority),
             storyPoint: task.storyPoint?.toString() ?? '',
             dueDate: task.dueDate ? task.dueDate.slice(0, 10) : '',
-            status: task.status,
-            assigneeId: members?.find((m) => m.userName === task.assigneeName)?.userId ?? '',
+            status: task.statusId,
+            assigneeId: members.find((m) => m.userName === task.assigneeName)?.userId ?? '',
             releaseId: task.releaseId ?? '',
         });
         setSaveError(null);
+        setConcurrencyConflict(false);
     };
 
     const handleSave = async () => {
         setIsSaving(true);
         setSaveError(null);
+        setConcurrencyConflict(false);
 
         const jobs: { label: string; promise: Promise<unknown> }[] = [];
 
@@ -212,9 +232,16 @@ export function TaskDetailPage() {
             jobs.push({ label: 'Story Point', promise: updateStoryPoint.mutateAsync(draft.storyPoint ? Number(draft.storyPoint) : null) });
         if (canEditDueDate && draft.dueDate !== (task.dueDate ? task.dueDate.slice(0, 10) : ''))
             jobs.push({ label: 'Teslim Tarihi', promise: updateDueDate.mutateAsync(draft.dueDate || null) });
-        if (draft.status !== task.status)
-            jobs.push({ label: 'Durum', promise: updateStatus.mutateAsync({ taskId: task.id, status: STATUS_TO_INT[draft.status] }) });
-        if (canReassign && draft.assigneeId !== (members?.find((m) => m.userName === task.assigneeName)?.userId ?? ''))
+        if (draft.status && draft.status !== task.statusId) {
+            jobs.push({
+                label: 'Durum',
+                promise: updateStatus.mutateAsync({
+                    taskId: task.id,
+                    status: draft.status,
+                }),
+            });
+        }
+        if (canReassign && draft.assigneeId !== (members.find((m) => m.userName === task.assigneeName)?.userId ?? ''))
             jobs.push({ label: 'Atanan Kişi', promise: reassign.mutateAsync(draft.assigneeId || null) });
         if (canEditRelease && draft.releaseId !== (task.releaseId ?? ''))
             jobs.push({ label: 'Release', promise: updateRelease.mutateAsync(draft.releaseId || null) });
@@ -227,6 +254,18 @@ export function TaskDetailPage() {
             .filter((x) => x.result.status === 'rejected');
 
         if (failures.length > 0) {
+            // #Kritik-3: 409 (concurrency çatışması) varsa, önce onu ayırt edip özel bir
+            // "sayfayı yenile" aksiyonuyla göster -- diğer hatalarla aynı genel mesaja karıştırma.
+            const concurrencyFailure = failures.find((f) => {
+                const rejected = f.result as PromiseRejectedResult;
+                const axiosError = rejected.reason as AxiosError<ApiErrorResponse>;
+                return axiosError.response?.status === 409;
+            });
+
+            if (concurrencyFailure) {
+                setConcurrencyConflict(true);
+            }
+
             const details = failures
                 .map((f) => {
                     const rejected = f.result as PromiseRejectedResult;
@@ -251,15 +290,13 @@ export function TaskDetailPage() {
 
     const handleAssignToMe = () => {
         if (!currentUser?.userId || !canReassign) return;
-        setDraft((prev) => (prev ? { ...prev, assigneeId: currentUser.userId } : null));
+        setDraft((prev) => ({ ...prev, assigneeId: currentUser.userId }));
     };
 
     const currentPriorityObj = PRIORITY_OPTIONS.find((p) => p.value === draft.priority) || PRIORITY_OPTIONS[1];
-    const currentStatusObj = ALL_STATUSES.find((s) => s.value === draft.status) || ALL_STATUSES[0];
 
     return (
         <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-4 space-y-6 pb-24 text-primary">
-            {/* Gizli Dosya Yükleyici Input */}
             <input
                 type="file"
                 ref={fileInputRef}
@@ -267,7 +304,6 @@ export function TaskDetailPage() {
                 className="hidden"
             />
 
-            {/* Navigasyon / Breadcrumb */}
             <div className="flex items-center justify-between">
                 <TaskBreadcrumb
                     projectId={task.projectId}
@@ -277,23 +313,21 @@ export function TaskDetailPage() {
                 />
                 <div className="flex items-center gap-2">
                     <button
+                        type="button"
                         onClick={handleCopyLink}
                         title="Copy link"
                         className="p-1.5 hover-surface rounded-md text-secondary transition cursor-pointer"
                     >
                         <Share2 size={16} />
                     </button>
-                    <button className="p-1.5 hover-surface rounded-md text-secondary transition cursor-pointer">
+                    <button type="button" className="p-1.5 hover-surface rounded-md text-secondary transition cursor-pointer">
                         <MoreHorizontal size={16} />
                     </button>
                 </div>
             </div>
 
-            {/* Jira 12-Column Grid Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
-                {/* SOL KOLON - İÇERİK (8 Kolon) */}
                 <div className="lg:col-span-8 space-y-6">
-                    {/* Başlık Alanı */}
                     <div className="space-y-1">
                         <div className="flex items-center gap-2 px-2">
                             <span className="text-xs font-semibold text-secondary">
@@ -301,7 +335,7 @@ export function TaskDetailPage() {
                             </span>
                             <span className="text-xs text-muted">•</span>
                             <span className="text-xs text-muted">
-                                Task
+                                {task.issueType}
                             </span>
                         </div>
 
@@ -328,44 +362,30 @@ export function TaskDetailPage() {
                         )}
                     </div>
 
-                    {/* Status Dropdown */}
                     <div className="px-2">
                         <select
                             value={draft.status}
-                            onChange={(e) =>
-                                setDraft({
-                                    ...draft,
-                                    status: e.target.value as ItemStatus,
-                                })
-                            }
-                            className={`
-                                appearance-none
-                                border
-                                font-semibold
-                                text-xs
-                                px-3 py-1.5
-                                rounded-md
-                                cursor-pointer
-                                transition
-                                focus:outline-none
-                                ${currentStatusObj.color}
-                            `}
+                            onChange={(e) => setDraft({ ...draft, status: e.target.value })}
+                            disabled={statusesLoading || !workflowStatuses}
+                            className="input-base border rounded px-2 py-1 text-sm mt-1 w-full bg-transparent font-medium cursor-pointer disabled:opacity-50"
                         >
-                            {ALL_STATUSES.map((s) => (
-                                <option
-                                    key={s.value}
-                                    value={s.value}
-                                    className="surface text-primary font-normal"
-                                >
-                                    {s.label}
-                                </option>
-                            ))}
+                            {!workflowStatuses || workflowStatuses.length === 0 ? (
+                                <option value={draft.status}>Yükleniyor...</option>
+                            ) : (
+                                [...workflowStatuses]
+                                    .sort((a, b) => a.displayOrder - b.displayOrder)
+                                    .map((s) => (
+                                        <option key={s.id} value={s.id} className="surface text-primary font-normal">
+                                            {s.name}
+                                        </option>
+                                    ))
+                            )}
                         </select>
                     </div>
 
-                    {/* Jira Aksiyon Barı */}
                     <div className="flex items-center gap-2 flex-wrap text-xs px-2">
                         <button
+                            type="button"
                             onClick={handleAssignToMe}
                             disabled={!canReassign || draft.assigneeId === currentUser?.userId}
                             className="
@@ -386,6 +406,7 @@ export function TaskDetailPage() {
                             <span>Bana Ata</span>
                         </button>
                         <button
+                            type="button"
                             onClick={handleAttachClick}
                             className="
                                 inline-flex items-center gap-1.5
@@ -403,23 +424,51 @@ export function TaskDetailPage() {
                             <Paperclip size={14} />
                             <span>Ekle</span>
                         </button>
-                        <button className="
-                            inline-flex items-center gap-1.5
-                            surface hover-surface
-                            text-secondary
-                            font-medium
-                            px-2.5 py-1.5
-                            rounded-md
-                            transition
-                            cursor-pointer
-                            border border-gray-200
-                            dark:border-gray-700
-                        ">
+                        <button
+                            type="button"
+                            onClick={handleScrollToLinks}
+                            className="
+                                inline-flex items-center gap-1.5
+                                surface hover-surface
+                                text-secondary
+                                font-medium
+                                px-2.5 py-1.5
+                                rounded-md
+                                transition
+                                cursor-pointer
+                                border border-gray-200
+                                dark:border-gray-700
+                            "
+                        >
                             <Link2 size={14} />
                             <span>İlişkilendir</span>
                         </button>
+
+                        {canAddSubtask && (
+                            <button
+                                type="button"
+                                onClick={handleAddSubtaskClick}
+                                className="
+                                    inline-flex items-center gap-1.5
+                                    surface hover-surface
+                                    text-secondary
+                                    font-medium
+                                    px-2.5 py-1.5
+                                    rounded-md
+                                    transition
+                                    cursor-pointer
+                                    border border-gray-200
+                                    dark:border-gray-700
+                                "
+                            >
+                                <CheckSquare size={14} className="text-sky-600 dark:text-sky-400" />
+                                <span>Alt Görev Ekle</span>
+                            </button>
+                        )}
+
                         {task.allowsChildren && isPM && task.status !== 'Closed' && (
                             <button
+                                type="button"
                                 onClick={handleCloseEpic}
                                 className="
                                     inline-flex items-center gap-1.5
@@ -441,7 +490,6 @@ export function TaskDetailPage() {
                     </div>
                     {closeEpicError && <p className="text-red-500 dark:text-red-400 text-xs font-medium px-2">{closeEpicError}</p>}
 
-                    {/* Açıklama Alanı */}
                     <div className="space-y-2">
                         <h3 className="text-xs font-bold text-muted uppercase tracking-wider">Açıklama</h3>
                         {canEditDescription ? (
@@ -462,18 +510,30 @@ export function TaskDetailPage() {
                     </div>
 
                     <CustomFieldsSection taskId={task.id} projectId={task.projectId} />
-                    <TaskLinksSection taskId={task.id} projectId={task.projectId} />
-                    <SubtasksSection taskId={task.id} projectId={task.projectId} />
 
-                    {/* Checklist */}
+                    <div ref={taskLinksRef} className="scroll-mt-6">
+                        <TaskLinksSection taskId={task.id} projectId={task.projectId} />
+                    </div>
+
+                    <GitActivitySection taskId={task.id} issueKey={task.issueKey} />
+
+                    <div ref={subtasksContainerRef} className="scroll-mt-6">
+                        <SubtasksSection
+                            ref={subtasksSectionRef}
+                            taskId={task.id}
+                            projectId={task.projectId}
+                            canAdd={canAddSubtask}
+                        />
+                    </div>
+
                     <ChecklistSection taskId={task.id} />
 
-                    {/* Activity Tabs */}
                     <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                         <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
                             <h3 className="text-sm font-semibold text-primary">Activity</h3>
                             <div className="flex items-center gap-4">
                                 <button
+                                    type="button"
                                     onClick={() => setActiveActivityTab('comments')}
                                     className={`
                                         px-1 py-2
@@ -491,6 +551,7 @@ export function TaskDetailPage() {
                                     Yorumlar ({task.commentCount ?? 0})
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => setActiveActivityTab('worklogs')}
                                     className={`
                                         px-1 py-2
@@ -508,6 +569,7 @@ export function TaskDetailPage() {
                                     Çalışma Günlükleri
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => setActiveActivityTab('attachments')}
                                     className={`
                                         px-1 py-2
@@ -544,13 +606,10 @@ export function TaskDetailPage() {
                         </div>
                     </div>
 
-                    {/* History / Audit Log */}
                     <HistorySection taskId={task.id} />
                 </div>
 
-                {/* SAĞ KOLON - ÖZELLİKLER & ÖZET (4 Kolon) */}
                 <div className="lg:col-span-4 space-y-6">
-                    {/* Property List (Details) */}
                     <div className="
                         surface
                         border
@@ -576,7 +635,6 @@ export function TaskDetailPage() {
                             Details
                         </div>
 
-                        {/* Assignee */}
                         <div className="py-3 grid grid-cols-12 items-center gap-2">
                             <span className="col-span-4 text-muted font-medium">Assignee</span>
                             <div className="col-span-8">
@@ -587,7 +645,7 @@ export function TaskDetailPage() {
                                         className="w-full bg-transparent hover-surface font-medium text-primary input-base border border-transparent hover:border-gray-200 dark:hover:border-gray-700 rounded px-1.5 py-1 transition focus:bg-white dark:focus:bg-gray-800 focus:border-blue-500 cursor-pointer"
                                     >
                                         <option value="">Unassigned</option>
-                                        {members?.map((m) => (
+                                        {members.map((m) => (
                                             <option key={m.userId} value={m.userId}>
                                                 {m.userName}
                                             </option>
@@ -602,7 +660,6 @@ export function TaskDetailPage() {
                             </div>
                         </div>
 
-                        {/* Priority */}
                         <div className="py-3 grid grid-cols-12 items-center gap-2">
                             <span className="col-span-4 text-muted font-medium">Priority</span>
                             <div className="col-span-8">
@@ -627,7 +684,6 @@ export function TaskDetailPage() {
                             </div>
                         </div>
 
-                        {/* Story Points */}
                         <div className="py-3 grid grid-cols-12 items-center gap-2">
                             <span className="col-span-4 text-muted font-medium">Story Points</span>
                             <div className="col-span-8">
@@ -658,7 +714,6 @@ export function TaskDetailPage() {
                             </div>
                         </div>
 
-                        {/* Reporter */}
                         <div className="py-3 grid grid-cols-12 items-center gap-2">
                             <span className="col-span-4 text-muted font-medium">Reporter</span>
                             <div className="col-span-8 flex items-center gap-2 font-medium text-primary px-1.5 py-1">
@@ -667,7 +722,6 @@ export function TaskDetailPage() {
                             </div>
                         </div>
 
-                        {/* Due Date */}
                         <div className="py-3 grid grid-cols-12 items-center gap-2">
                             <span className="col-span-4 text-muted font-medium">Due Date</span>
                             <div className="col-span-8">
@@ -686,7 +740,6 @@ export function TaskDetailPage() {
                             </div>
                         </div>
 
-                        {/* Release */}
                         <div className="py-3 grid grid-cols-12 items-center gap-2">
                             <span className="col-span-4 text-muted font-medium">Fix Version</span>
                             <div className="col-span-8">
@@ -717,7 +770,6 @@ export function TaskDetailPage() {
                             </div>
                         </div>
 
-                        {/* Watchers */}
                         <div className="py-3 grid grid-cols-12 items-center gap-2">
                             <span className="col-span-4 text-muted font-medium">Watchers</span>
                             <div className="col-span-8 px-1.5 py-1">
@@ -725,7 +777,6 @@ export function TaskDetailPage() {
                             </div>
                         </div>
 
-                        {/* Labels */}
                         <div className="py-3 grid grid-cols-12 items-start gap-2">
                             <span className="col-span-4 text-muted font-medium pt-1">Labels</span>
                             <div className="col-span-8">
@@ -733,7 +784,6 @@ export function TaskDetailPage() {
                             </div>
                         </div>
 
-                        {/* Components */}
                         <div className="py-3 grid grid-cols-12 items-start gap-2">
                             <span className="col-span-4 text-muted font-medium pt-1">Components</span>
                             <div className="col-span-8">
@@ -742,15 +792,13 @@ export function TaskDetailPage() {
                         </div>
                     </div>
 
-                    {/* Metadata Footer */}
                     <div className="text-[11px] text-muted space-y-1 px-1">
                         <p>Oluşturulma: {new Date(task.createdAt).toLocaleDateString('tr-TR')}</p>
-                        <p>Son Güncelleme: {new Date(task.updatedAt).toLocaleDateString('tr-TR')}</p>
+                        <p>Son Güncelleme: {new Date(task.updatedAt ?? task.createdAt).toLocaleDateString('tr-TR')}</p>
                     </div>
                 </div>
             </div>
 
-            {/* Jira Unsaved Changes Floating Bar */}
             {isDirty && (
                 <div className="
                     fixed
@@ -766,43 +814,66 @@ export function TaskDetailPage() {
                     rounded-md
                     px-5 py-3
                     flex
-                    items-center
-                    gap-5
+                    flex-col
+                    gap-3
                     z-50
                     text-xs
                     animate-in
                     slide-in-from-bottom
                     duration-200
+                    max-w-2xl
+                    w-[calc(100%-2rem)]
                 ">
-                    <div className="flex items-center gap-2 text-secondary font-medium">
-                        <AlertCircle size={16} className="text-amber-500 shrink-0" />
-                        <span>Kaydedilmemiş değişiklikleriniz var.</span>
-                    </div>
-                    {saveError && <span className="text-red-600 dark:text-red-400 font-semibold">{saveError}</span>}
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleCancel}
-                            className="px-3 py-1.5 text-secondary hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition font-medium cursor-pointer"
-                        >
-                            İptal
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={isSaving}
-                            className="
-                                bg-blue-600
-                                hover:bg-blue-700
-                                text-white
-                                font-semibold
-                                px-4 py-1.5
-                                rounded-md
-                                transition
-                                disabled:opacity-50
-                                cursor-pointer
-                            "
-                        >
-                            {isSaving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
-                        </button>
+                    {concurrencyConflict && (
+                        <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900 rounded px-3 py-2 flex items-center justify-between">
+                            <p className="text-sm text-orange-700 dark:text-orange-300">
+                                Bu görev siz düzenlerken başka biri tarafından değiştirildi.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => window.location.reload()}
+                                className="text-sm bg-orange-600 text-white px-3 py-1.5 rounded hover:bg-orange-700 whitespace-nowrap ml-3 cursor-pointer"
+                            >
+                                Sayfayı Yenile
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-5 flex-wrap">
+                        <div className="flex items-center gap-2 text-secondary font-medium">
+                            <AlertCircle size={16} className="text-amber-500 shrink-0" />
+                            <span>Kaydedilmemiş değişiklikleriniz var.</span>
+                        </div>
+
+                        {saveError && <span className="text-red-600 dark:text-red-400 font-semibold">{saveError}</span>}
+
+                        <div className="flex items-center gap-2 ml-auto">
+                            <button
+                                type="button"
+                                onClick={handleCancel}
+                                className="px-3 py-1.5 text-secondary hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition font-medium cursor-pointer"
+                            >
+                                İptal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSave}
+                                disabled={isSaving}
+                                className="
+                                    bg-blue-600
+                                    hover:bg-blue-700
+                                    text-white
+                                    font-semibold
+                                    px-4 py-1.5
+                                    rounded-md
+                                    transition
+                                    disabled:opacity-50
+                                    cursor-pointer
+                                "
+                            >
+                                {isSaving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -810,7 +881,6 @@ export function TaskDetailPage() {
     );
 }
 
-// Basit Avatar Bileşeni
 function Avatar({ name }: { name: string }) {
     const initials = name
         ? name
@@ -828,7 +898,6 @@ function Avatar({ name }: { name: string }) {
     );
 }
 
-// Skeleton Yüklenme Ekranı
 function TaskDetailSkeleton() {
     return (
         <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-6 space-y-6 animate-pulse">
@@ -852,12 +921,3 @@ function PRIORITY_NAME_TO_NUM(name: string): Priority {
     const map: Record<string, Priority> = { Low: 0, Medium: 1, High: 2, Critical: 3 };
     return map[name] ?? 1;
 }
-
-const STATUS_TO_INT: Record<ItemStatus, number> = {
-    ToDo: 0,
-    InProgress: 1,
-    ReadyForReview: 2,
-    ReadyForQA: 3,
-    Done: 4,
-    Closed: 5,
-};

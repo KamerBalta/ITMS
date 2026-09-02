@@ -14,6 +14,7 @@ import {
     Shield,
     Settings,
     Tag,
+    Megaphone,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -128,6 +129,13 @@ export const navItems: NavItem[] = [
         label: 'Issue Type Kataloğu',
         path: '/admin/issue-types',
         icon: Tag,
+        adminOnly: true,
+        section: 'SETTINGS',
+    },
+    {
+        label: 'Değişiklik Günlüğü',
+        path: '/admin/changelog',
+        icon: Megaphone,
         adminOnly: true,
         section: 'SETTINGS',
     },

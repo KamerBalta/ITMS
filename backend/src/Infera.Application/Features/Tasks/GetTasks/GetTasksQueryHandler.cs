@@ -1,6 +1,7 @@
 ﻿using Infera.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+
 namespace Infera.Application.Features.Tasks.GetTasks;
 
 public class GetTasksQueryHandler : IRequestHandler<GetTasksQuery, List<TaskDto>>
@@ -26,11 +27,13 @@ public class GetTasksQueryHandler : IRequestHandler<GetTasksQuery, List<TaskDto>
         else if (request.SprintId is not null)
             query = query.Where(t => t.SprintId == request.SprintId);
 
-        if (request.AssigneeId is not null)
+        if (request.UnassignedOnly == true)
+            query = query.Where(t => t.AssigneeId == null);
+        else if (request.AssigneeId is not null)
             query = query.Where(t => t.AssigneeId == request.AssigneeId);
 
         if (!string.IsNullOrWhiteSpace(request.Status))
-            query = query.Where(t => t.Status.ToString() == request.Status);
+            query = query.Where(t => t.WorkflowStatus.Name == request.Status);
 
         if (request.IssueTypeId is not null)
             query = query.Where(t => t.IssueTypeId == request.IssueTypeId);
@@ -48,22 +51,32 @@ public class GetTasksQueryHandler : IRequestHandler<GetTasksQuery, List<TaskDto>
         if (request.LabelId is not null)
             query = query.Where(t => t.TaskLabels.Any(tl => tl.LabelId == request.LabelId));
 
+        if (request.ComponentId is not null)
+            query = query.Where(t => _db.TaskComponents.Any(tc => tc.TaskId == t.Id && tc.ProjectComponentId == request.ComponentId));
+
         return await query
             .AsSplitQuery()
             .OrderBy(t => t.Rank)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .Select(t => new TaskDto(
-                t.Id, t.Title,
+                t.Id,
+                t.Title,
                 t.IssueType != null ? t.IssueType.Name : "-",
                 t.IssueType != null ? t.IssueType.Icon : null,
                 t.Project.Key + "-" + t.TaskNumber,
                 t.IssueTypeId,
                 t.IssueType != null && t.IssueType.AllowsChildren,
                 t.IssueType != null && t.IssueType.RequiresParent,
-                t.Priority.ToString(), t.Status.ToString(), t.StoryPoint,
-                t.AssigneeId, t.Assignee != null ? t.Assignee.Name : null,
-                t.SprintId, t.Rank, t.ParentTaskId,
+                t.Priority.ToString(),
+                t.WorkflowStatus.Name,
+                t.WorkflowStatus.Id,
+                t.StoryPoint,
+                t.AssigneeId,
+                t.Assignee != null ? t.Assignee.Name : null,
+                t.SprintId,
+                t.Rank,
+                t.ParentTaskId,
                 t.TaskLabels.Select(tl => tl.Label.Name).ToList()))
             .ToListAsync(ct);
     }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useProjectStore } from '../../store/projectStore';
 import { useAuthStore } from '../../store/authStore';
@@ -9,7 +9,7 @@ import { CreateSprintModal } from '../../components/CreateSprintModal';
 import { useConfirm } from '../../hooks/useConfirm';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { BacklogTaskItem } from '../../api/backlog';
-import { AuthenticatedImage } from '../../components/AuthenticatedImage';
+import { Avatar } from '../../components/Avatar';
 import { usePagination } from '../../hooks/usePagination';
 import { PaginationBar } from '../../components/PaginationBar';
 import {
@@ -33,26 +33,61 @@ import {
 } from 'lucide-react';
 
 // 1. İş Tipi İkonları
-const ISSUE_ICONS: Record<string, React.ReactNode> = {
-    Bug: <Bug size={16} className="text-red-500 shrink-0" title="Bug" />,
-    Task: <CheckSquare size={16} className="text-blue-500 shrink-0" title="Task" />,
-    Story: <Bookmark size={16} className="text-emerald-500 fill-emerald-500 shrink-0" title="Story" />,
-    Epic: <Layers size={16} className="text-purple-500 shrink-0" title="Epic" />,
+const ISSUE_ICONS: Record<string, ReactNode> = {
+    Bug: (
+        <span title="Bug" className="inline-flex items-center">
+            <Bug size={16} className="text-red-500 shrink-0" />
+        </span>
+    ),
+    Task: (
+        <span title="Task" className="inline-flex items-center">
+            <CheckSquare size={16} className="text-blue-500 shrink-0" />
+        </span>
+    ),
+    Story: (
+        <span title="Story" className="inline-flex items-center">
+            <Bookmark size={16} className="text-emerald-500 fill-emerald-500 shrink-0" />
+        </span>
+    ),
+    Epic: (
+        <span title="Epic" className="inline-flex items-center">
+            <Layers size={16} className="text-purple-500 shrink-0" />
+        </span>
+    ),
 };
 
 // 2. Öncelik İkonları
-const PRIORITY_ICONS: Record<string, React.ReactNode> = {
-    Highest: <ArrowUp size={15} className="text-red-600 stroke-[3] shrink-0" title="Highest" />,
-    High: <ArrowUp size={15} className="text-red-500 shrink-0" title="High" />,
-    Medium: <Minus size={15} className="text-amber-500 stroke-[3] shrink-0" title="Medium" />,
-    Low: <ArrowDown size={15} className="text-blue-500 shrink-0" title="Low" />,
-    Lowest: <ArrowDown size={15} className="text-slate-400 shrink-0" title="Lowest" />,
+const PRIORITY_ICONS: Record<string, ReactNode> = {
+    Highest: (
+        <span title="Highest" className="inline-flex items-center">
+            <ArrowUp size={15} className="text-red-600 stroke-[3] shrink-0" />
+        </span>
+    ),
+    High: (
+        <span title="High" className="inline-flex items-center">
+            <ArrowUp size={15} className="text-red-500 shrink-0" />
+        </span>
+    ),
+    Medium: (
+        <span title="Medium" className="inline-flex items-center">
+            <Minus size={15} className="text-amber-500 stroke-[3] shrink-0" />
+        </span>
+    ),
+    Low: (
+        <span title="Low" className="inline-flex items-center">
+            <ArrowDown size={15} className="text-blue-500 shrink-0" />
+        </span>
+    ),
+    Lowest: (
+        <span title="Lowest" className="inline-flex items-center">
+            <ArrowDown size={15} className="text-slate-400 shrink-0" />
+        </span>
+    ),
 };
 
 export function BacklogPage() {
     const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
     const user = useAuthStore((state) => state.user);
-    const avatarRefreshKey = useAuthStore((state) => state.avatarRefreshKey);
     const isPM = user?.roles.some((r) => r === 'System Admin' || r === 'Project Manager') ?? false;
 
     const { page, setPage, pageSize, reset: resetPagination } = usePagination(25);
@@ -243,12 +278,10 @@ export function BacklogPage() {
                     <>
                         <BacklogGroupedList
                             tasks={backlogTasks}
-                            projectId={selectedProjectId}
                             isPM={isPM}
                             hasActiveSprint={!!activeSprint}
                             onMoveToSprint={handleMoveToSprint}
                             onDragStart={handleDragStart}
-                            avatarRefreshKey={avatarRefreshKey}
                         />
                         <PaginationBar
                             page={page}
@@ -323,21 +356,45 @@ export function BacklogPage() {
 // Jira Stili Sıkıştırılmış Satır Yapısı (Compact Table Row List)
 // ----------------------------------------------------------------------
 
+const TASKS_PER_GROUP_LIMIT = 25;
+
+function BoundedTaskList({
+    tasks,
+    renderTask,
+}: {
+    tasks: BacklogTaskItem[];
+    renderTask: (t: BacklogTaskItem) => ReactNode;
+}) {
+    const [expanded, setExpanded] = useState(false);
+    const visible = expanded ? tasks : tasks.slice(0, TASKS_PER_GROUP_LIMIT);
+    const hiddenCount = tasks.length - visible.length;
+    return (
+        <>
+            {visible.map(renderTask)}
+            {hiddenCount > 0 && (
+                <button
+                    onClick={() => setExpanded(true)}
+                    className="w-full text-xs text-indigo-600 dark:text-indigo-400 hover:underline py-1"
+                >
+                    + {hiddenCount} görev daha göster
+                </button>
+            )}
+        </>
+    );
+}
+
 function BacklogGroupedList({
     tasks,
     isPM,
     hasActiveSprint,
     onMoveToSprint,
     onDragStart,
-    avatarRefreshKey,
 }: {
     tasks: BacklogTaskItem[];
-    projectId: string;
     isPM: boolean;
     hasActiveSprint: boolean;
     onMoveToSprint: (taskId: string) => void;
     onDragStart: (e: React.DragEvent, taskId: string) => void;
-    avatarRefreshKey: number;
 }) {
     const grouped = tasks.reduce<Record<string, BacklogTaskItem[]>>((acc, t) => {
         const key = t.parentTaskId ?? '__none__';
@@ -349,15 +406,6 @@ function BacklogGroupedList({
     const epicGroups = Object.entries(grouped).filter(([key]) => key !== '__none__');
 
     const renderTaskRow = (task: BacklogTaskItem) => {
-        const assigneeInitials = task.assigneeName
-            ? task.assigneeName
-                .split(' ')
-                .map((n) => n[0])
-                .join('')
-                .toUpperCase()
-                .slice(0, 2)
-            : 'U';
-
         return (
             <div
                 key={task.id}
@@ -370,7 +418,7 @@ function BacklogGroupedList({
                     {ISSUE_ICONS[task.issueType] ?? <CheckSquare size={16} className="text-blue-500 shrink-0" />}
 
                     <span className="font-mono text-[11px] text-muted font-semibold shrink-0">
-                        {task.taskKey ?? `#${task.id.slice(0, 5)}`}
+                        {`#${task.id.slice(0, 5)}`}
                     </span>
 
                     <Link
@@ -398,28 +446,17 @@ function BacklogGroupedList({
                     )}
 
                     {/* Assignee Avatar */}
-                    <div
-                        className="w-6 h-6 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700 shrink-0"
-                        title={task.assigneeName ?? 'Unassigned'}
-                    >
-                        {task.assigneeName ? (
-                            <AuthenticatedImage
-                                src={`/users/${task.assigneeId}/avatar`}
-                                refreshKey={avatarRefreshKey}
-                                alt={task.assigneeName}
-                                className="w-full h-full object-cover"
-                                fallback={
-                                    <div className="w-full h-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-[9px] font-bold flex items-center justify-center">
-                                        {assigneeInitials}
-                                    </div>
-                                }
-                            />
-                        ) : (
-                            <div className="w-full h-full bg-gray-100 dark:bg-gray-800 text-muted text-[9px] font-bold flex items-center justify-center">
-                                ?
-                            </div>
-                        )}
-                    </div>
+                    {task.assigneeName ? (
+                        <Avatar
+                            userId={task.assigneeId}
+                            name={task.assigneeName}
+                            size="sm"
+                        />
+                    ) : (
+                        <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 text-muted text-[9px] font-bold flex items-center justify-center">
+                            ?
+                        </div>
+                    )}
 
                     {/* Sprint'e Taşı Butonu (Sadece İkon) */}
                     {isPM && hasActiveSprint && (
@@ -452,7 +489,7 @@ function BacklogGroupedList({
 
                     {/* Epic İçindeki Tasklar */}
                     <div className="ml-4 sm:ml-6 space-y-1">
-                        {epicTasks.map(renderTaskRow)}
+                        <BoundedTaskList tasks={epicTasks} renderTask={renderTaskRow} />
                     </div>
                 </div>
             ))}
@@ -465,7 +502,7 @@ function BacklogGroupedList({
                             Diğer Görevler
                         </p>
                     )}
-                    {noEpicTasks.map(renderTaskRow)}
+                    <BoundedTaskList tasks={noEpicTasks} renderTask={renderTaskRow} />
                 </div>
             )}
         </div>

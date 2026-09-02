@@ -18,11 +18,16 @@ public class BurndownSnapshotService : IBurndownSnapshotJob
         foreach (var sprint in activeSprints)
         {
             var alreadyExists = await _db.SprintBurndownSnapshots
-                .AnyAsync(sn => sn.SprintId == sprint.Id && sn.SnapshotDate == today, ct);
+                .AnyAsync(
+                    sn => sn.SprintId == sprint.Id &&
+                          sn.SnapshotDate == today,
+                    ct);
+
             if (alreadyExists) continue;
 
             var remaining = await _db.Tasks
-                .Where(t => t.SprintId == sprint.Id && t.Status != ItemStatus.Done)
+                .Where(t => t.SprintId == sprint.Id &&
+                            t.WorkflowStatus.Category != "Done")
                 .SumAsync(t => t.StoryPoint ?? 0, ct);
 
             _db.SprintBurndownSnapshots.Add(new SprintBurndownSnapshot

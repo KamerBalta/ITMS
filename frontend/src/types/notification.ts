@@ -7,9 +7,11 @@ export interface NotificationItem {
     createdAt: string;
     actionUrl: string | null;
 }
+
 export interface NotificationPreference {
     notificationType: string;
     inAppEnabled: boolean;
     emailEnabled: boolean;
     emailFrequency: 'Instant' | 'DailyDigest';
+    onlyImportantChanges: boolean;
 }

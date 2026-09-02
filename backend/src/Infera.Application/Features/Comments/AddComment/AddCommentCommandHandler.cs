@@ -73,7 +73,7 @@ public class AddCommentCommandHandler : IRequestHandler<AddCommentCommand, Guid>
                 $"\"{task.Title}\" adlı göreve yeni bir yorum eklendi.",
                 NotificationType.Task,
                 $"/tasks/{task.Id}",
-                ct);
+                ct: ct);
         }
 
         // BR-014: @Mention bildirimi -- yukaridaki genel bildirimden bagimsiz, ozel mesajla
@@ -83,9 +83,12 @@ public class AddCommentCommandHandler : IRequestHandler<AddCommentCommand, Guid>
         foreach (var userId in mentionedUserIds)
         {
             await _notificationService.NotifyAsync(
-                userId, "Bir yorumda bahsedildiniz",
+                userId,
+                "Bir yorumda bahsedildiniz",
                 $"\"{task.Title}\" görevindeki bir yorumda sizden bahsedildi.",
-                NotificationType.Mention, $"/tasks/{task.Id}?commentId={comment.Id}#comments", ct);
+                NotificationType.Mention,
+                $"/tasks/{task.Id}?commentId={comment.Id}#comments",
+                ct: ct);
         }
 
         await _realtime.NotifyProjectAsync(task.ProjectId, "comment", "created", ct);

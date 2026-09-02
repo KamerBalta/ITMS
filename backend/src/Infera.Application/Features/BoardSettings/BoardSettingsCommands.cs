@@ -1,14 +1,13 @@
 ﻿using Infera.Application.Common.Interfaces;
 using Infera.Domain.Entities;
-using Infera.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infera.Application.Features.BoardSettings;
 
 public record GetBoardColumnSettingsQuery(Guid ProjectId) : IRequest<List<BoardColumnSettingDto>>;
-public record UpdateWipLimitCommand(Guid ProjectId, string Status, int? WipLimit) : IRequest;
-public record BoardColumnSettingDto(string Status, int? WipLimit);
+public record UpdateWipLimitCommand(Guid ProjectId, Guid ColumnId, int? WipLimit) : IRequest;
+public record BoardColumnSettingDto(Guid BoardColumnId, int? WipLimit);
 
 public class GetBoardColumnSettingsQueryHandler : IRequestHandler<GetBoardColumnSettingsQuery, List<BoardColumnSettingDto>>
 {
@@ -28,7 +27,7 @@ public class GetBoardColumnSettingsQueryHandler : IRequestHandler<GetBoardColumn
 
         return await _db.BoardColumnSettings
             .Where(s => s.ProjectId == request.ProjectId)
-            .Select(s => new BoardColumnSettingDto(s.Status, s.WipLimit))
+            .Select(s => new BoardColumnSettingDto(s.BoardColumnId, s.WipLimit))
             .ToListAsync(ct);
     }
 }
@@ -36,54 +35,36 @@ public class GetBoardColumnSettingsQueryHandler : IRequestHandler<GetBoardColumn
 public class UpdateWipLimitCommandHandler : IRequestHandler<UpdateWipLimitCommand>
 {
     private readonly IAppDbContext _db;
-    private readonly ICurrentUserService _currentUser;
+    private readonly IProjectManagementAuthService _projectAuth;
+    private readonly IRealtimeNotifier _realtime;
 
     public UpdateWipLimitCommandHandler(
         IAppDbContext db,
-        ICurrentUserService currentUser)
+        IProjectManagementAuthService projectAuth,
+        IRealtimeNotifier realtime)
     {
         _db = db;
-        _currentUser = currentUser;
+        _projectAuth = projectAuth;
+        _realtime = realtime;
     }
 
-    public async System.Threading.Tasks.Task Handle(
-        UpdateWipLimitCommand request,
-        CancellationToken ct)
+    public async System.Threading.Tasks.Task Handle(UpdateWipLimitCommand request, CancellationToken ct)
     {
-        var project = await _db.Projects
-            .FirstOrDefaultAsync(
-                p => p.Id == request.ProjectId,
-                ct)
-            ?? throw new KeyNotFoundException("Proje bulunamadı.");
-
-        var isProjectManager = await _db.ProjectMembers
-            .AnyAsync(pm =>
-                pm.ProjectId == request.ProjectId &&
-                pm.UserId == _currentUser.UserId &&
-                pm.ProjectRole == ProjectRole.ProjectManager,
-                ct);
-
-        if (!_currentUser.IsAdmin && !isProjectManager)
-            throw new UnauthorizedAccessException(
-                "WIP limiti değiştirme yetkiniz yok.");
+        await _projectAuth.EnsureProjectManagerOrAdminAsync(request.ProjectId, ct);
 
         if (request.WipLimit is not null && request.WipLimit < 0)
-            throw new InvalidOperationException(
-                "WIP limiti negatif olamaz.");
+            throw new InvalidOperationException("WIP limiti negatif olamaz.");
 
         var setting = await _db.BoardColumnSettings
-            .FirstOrDefaultAsync(
-                s => s.ProjectId == request.ProjectId &&
-                     s.Status == request.Status,
-                ct);
+            .FirstOrDefaultAsync(s => s.ProjectId == request.ProjectId && s.BoardColumnId == request.ColumnId, ct);
 
         if (setting is null)
         {
             _db.BoardColumnSettings.Add(new BoardColumnSetting
             {
                 ProjectId = request.ProjectId,
-                Status = request.Status,
-                WipLimit = request.WipLimit,
+                BoardColumnId = request.ColumnId,
+                WipLimit = request.WipLimit
             });
         }
         else
@@ -92,5 +73,7 @@ public class UpdateWipLimitCommandHandler : IRequestHandler<UpdateWipLimitComman
         }
 
         await _db.SaveChangesAsync(ct);
+
+        await _realtime.NotifyProjectAsync(request.ProjectId, "board-columns", "wip-limit-changed", ct);
     }
 }

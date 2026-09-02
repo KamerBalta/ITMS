@@ -33,7 +33,12 @@ public class GetDashboardQueryHandler : IRequestHandler<GetDashboardQuery, Dashb
 
         var tasks = await _db.Tasks
             .Where(t => t.ProjectId == request.ProjectId && t.AssigneeId == _currentUser.UserId)
-            .Select(t => new { t.Status, t.DueDate })
+            .Select(t => new
+            {
+                StatusName = t.WorkflowStatus.Name,
+                StatusCategory = t.WorkflowStatus.Category,
+                t.DueDate
+            })
             .ToListAsync(ct);
 
         var activeSprint = await _db.Sprints
@@ -45,12 +50,15 @@ public class GetDashboardQueryHandler : IRequestHandler<GetDashboardQuery, Dashb
 
         var result = new DashboardDto(
             TotalTasks: tasks.Count,
-            ToDoCount: tasks.Count(t => t.Status == ItemStatus.ToDo),
-            InProgressCount: tasks.Count(t => t.Status == ItemStatus.InProgress),
-            ReadyForReviewCount: tasks.Count(t => t.Status == ItemStatus.ReadyForReview),
-            ReadyForQACount: tasks.Count(t => t.Status == ItemStatus.ReadyForQA),
-            DoneCount: tasks.Count(t => t.Status == ItemStatus.Done),
-            OverdueCount: tasks.Count(t => t.DueDate != null && t.DueDate < now && t.Status != ItemStatus.Done),
+            ToDoCount: tasks.Count(t => t.StatusCategory == "ToDo"),
+            InProgressCount: tasks.Count(t => t.StatusCategory == "InProgress"),
+            ReadyForReviewCount: tasks.Count(t => t.StatusName == ItemStatus.ReadyForReview.ToString()),
+            ReadyForQACount: tasks.Count(t => t.StatusName == ItemStatus.ReadyForQA.ToString()),
+            DoneCount: tasks.Count(t => t.StatusCategory == "Done"),
+            OverdueCount: tasks.Count(t =>
+                t.DueDate != null &&
+                t.DueDate < now &&
+                t.StatusCategory != "Done"),
             ActiveSprintName: activeSprint?.Name,
             ActiveSprintEndDate: activeSprint?.EndDate,
             ActiveSprintTaskCount: activeSprint?.TaskCount ?? 0);

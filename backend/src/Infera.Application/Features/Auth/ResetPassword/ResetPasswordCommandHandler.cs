@@ -29,7 +29,15 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand>
         user.PasswordHash = _passwordHasher.Hash(request.NewPassword);
         user.PasswordResetTokenHash = null;
         user.PasswordResetTokenExpiresAt = null;
+        user.TokenVersion = Guid.NewGuid();
         user.UpdatedAt = DateTime.UtcNow;
+
+        var existingTokens = await _db.RefreshTokens
+            .Where(t => t.UserId == user.Id && t.RevokedAt == null)
+            .ToListAsync(ct);
+
+        foreach (var token in existingTokens)
+            token.RevokedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
     }

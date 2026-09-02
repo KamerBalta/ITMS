@@ -3,6 +3,7 @@ import {
     useImperativeHandle,
     useRef,
     useState,
+    useEffect,
 } from 'react';
 import type { ProjectMemberItem } from '../types/projectMember';
 
@@ -18,12 +19,11 @@ interface MentionTextareaProps {
 const MENTION_PATTERN = /@\[([^\]]+)\]\(([0-9a-fA-F-]{36})\)/g;
 
 /**
- * Backend formatını kullanıcıya gösterilecek formata çevirir.
- * @[Ayşe Demir](uuid) -> @Ayşe Demir
+ * Backend formatını (@[İsim](uuid)) -> @İsim haline getirir
  */
-function displayValue(value: string): string {
-    if (!value) return '';
-    return value.replace(MENTION_PATTERN, '@$1');
+function decodeMentions(encoded: string): string {
+    if (!encoded) return '';
+    return encoded.replace(MENTION_PATTERN, '@$1');
 }
 
 export const MentionTextarea = forwardRef<
@@ -33,7 +33,7 @@ export const MentionTextarea = forwardRef<
     {
         value,
         onChange,
-        members,
+        members = [],
         placeholder,
         rows = 2,
         className,
@@ -47,10 +47,33 @@ export const MentionTextarea = forwardRef<
         () => innerRef.current as HTMLTextAreaElement
     );
 
+    // Ekranda görünen metin state'i
+    const [text, setText] = useState(() => decodeMentions(value));
     const [mentionQuery, setMentionQuery] = useState<string | null>(null);
     const [mentionStartIndex, setMentionStartIndex] = useState(0);
 
-    const displayText = displayValue(value);
+    // Dışarıdan value tamamen sıfırlandığında (örn: Gönder butonuna basılınca) iç state'i senkronize et
+    useEffect(() => {
+        const decoded = decodeMentions(value);
+        if (decoded !== text && (value === '' || !value.includes('@['))) {
+            setText(decoded);
+        }
+    }, [value]);
+
+    // Düz metindeki @İsim ifadelerini @[İsim](uuid) haline çevirip onChange tetikler
+    const emitEncodedChange = (newText: string) => {
+        let encoded = newText;
+        if (members && members.length > 0) {
+            for (const member of members) {
+                const mentionPattern = new RegExp(`@${member.userName}(?![a-zA-Z0-9_])`, 'g');
+                encoded = encoded.replace(
+                    mentionPattern,
+                    `@[${member.userName}](${member.userId})`
+                );
+            }
+        }
+        onChange(encoded);
+    };
 
     const suggestions =
         mentionQuery !== null
@@ -63,46 +86,14 @@ export const MentionTextarea = forwardRef<
                 .slice(0, 5)
             : [];
 
-    /**
-     * Düz yazma/silme esnasında:
-     * Ekrandaki metinde var olan mention'lar bozulmadıysa UUID'lerini korur,
-     * silindilerse temizler ve backend formatını günceller.
-     */
-    const syncEncodedValue = (currentDisplayText: string, originalEncodedValue: string) => {
-        let updatedEncoded = originalEncodedValue;
-
-        // Backend formatındaki tüm mention'ları bul
-        const matches = [...originalEncodedValue.matchAll(MENTION_PATTERN)];
-
-        for (const match of matches) {
-            const fullMatch = match[0]; // @[Ayşe Demir](uuid)
-            const userName = match[1];  // Ayşe Demir
-            const displayMention = `@${userName}`;
-
-            // Eğer kullanıcı ekrandan bu mention'ı kısmen veya tamamen sildiyse
-            if (!currentDisplayText.includes(displayMention)) {
-                updatedEncoded = updatedEncoded.replace(fullMatch, displayMention);
-            }
-        }
-
-        // Düz metin değişikliklerini senkronize et
-        if (!updatedEncoded.includes('@[')) {
-            // Hiç mention kalmadıysa direkt ekrandaki metni ver
-            return currentDisplayText;
-        }
-
-        return updatedEncoded;
-    };
-
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const newDisplayText = e.target.value;
         const cursorPos = e.target.selectionStart;
 
-        // Arka plan verisini güncelle
-        const nextEncodedValue = syncEncodedValue(newDisplayText, value);
-        onChange(nextEncodedValue);
+        setText(newDisplayText);
+        emitEncodedChange(newDisplayText);
 
-        // Arama (Query) Kontrolü
+        // Mention Arama Kontrolü
         const textBeforeCursor = newDisplayText.slice(0, cursorPos);
         const lastAtIndex = textBeforeCursor.lastIndexOf('@');
 
@@ -113,7 +104,7 @@ export const MentionTextarea = forwardRef<
 
         const textAfterAt = textBeforeCursor.slice(lastAtIndex + 1);
 
-        // Boşluk veya yeni satır varsa mention aramasını kapat
+        // @ işaretinden sonra boşluk veya alt satır varsa öneri listesini kapat
         if (/\s/.test(textAfterAt)) {
             setMentionQuery(null);
             return;
@@ -128,76 +119,30 @@ export const MentionTextarea = forwardRef<
         if (!textarea) return;
 
         const cursorPos = textarea.selectionStart;
-        const currentDisplayText = displayValue(value);
 
-        // Ekran metni için
-        const displayBefore = currentDisplayText.slice(0, mentionStartIndex);
-        const displayAfter = currentDisplayText.slice(cursorPos);
-        const displayMention = `@${member.userName}`;
+        const textBefore = text.slice(0, mentionStartIndex);
+        const textAfter = text.slice(cursorPos);
+        const mentionText = `@${member.userName} `;
 
-        // Backend metni için
-        const encodedMention = `@[${member.userName}](${member.userId})`;
+        const updatedText = `${textBefore}${mentionText}${textAfter}`;
 
-        // Kullanıcıya görünecek yeni metin
-        const newDisplayText = `${displayBefore}${displayMention} ${displayAfter}`;
-
-        // Arka plana gidecek yeni metin (Var olan UUID'leri koruyarak yeni UUID'yi yerleştirir)
-        let newEncodedValue = value;
-
-        // Eğer ilk defa mention ekleniyorsa veya aramadan yerleştiriliyorsa
-        const searchTarget = `@${mentionQuery}`;
-        if (mentionQuery !== null && newEncodedValue.includes(searchTarget)) {
-            newEncodedValue = newEncodedValue.replace(searchTarget, encodedMention);
-        } else {
-            // Alternatif güvenli yerleştirme
-            const encodedBefore = displayValueToEncodedIndex(value, mentionStartIndex);
-            newEncodedValue = `${value.slice(0, encodedBefore)}${encodedMention} ${value.slice(encodedBefore + (cursorPos - mentionStartIndex))}`;
-        }
-
-        // Tam eşleşme garantisi için fallback
-        if (!newEncodedValue.includes(member.userId)) {
-            newEncodedValue = newDisplayText.replace(displayMention, encodedMention);
-        }
-
-        onChange(newEncodedValue);
+        setText(updatedText);
+        emitEncodedChange(updatedText);
         setMentionQuery(null);
 
+        // İmleci seçilen ismin ve bırakılan boşluğun sonuna taşı
+        const nextCursorPos = mentionStartIndex + mentionText.length;
         requestAnimationFrame(() => {
-            const newCursorPos = displayBefore.length + displayMention.length + 1;
             textarea.focus();
-            textarea.setSelectionRange(newCursorPos, newCursorPos);
+            textarea.setSelectionRange(nextCursorPos, nextCursorPos);
         });
-    };
-
-    // Ekrandaki index ile Backend metnindeki index'i hizalama yardımcısı
-    const displayValueToEncodedIndex = (encoded: string, displayIndex: number): number => {
-        let currentDisplayLen = 0;
-        let currentEncodedLen = 0;
-
-        const matches = [...encoded.matchAll(MENTION_PATTERN)];
-        let lastIndex = 0;
-
-        for (const match of matches) {
-            const matchIndex = match.index!;
-            const textBefore = encoded.slice(lastIndex, matchIndex);
-
-            if (currentDisplayLen + textBefore.length >= displayIndex) {
-                return currentEncodedLen + (displayIndex - currentDisplayLen);
-            }
-
-            currentDisplayLen += textBefore.length + match[1].length + 1; // +1 for @
-            currentEncodedLen += textBefore.length + match[0].length;
-            lastIndex = matchIndex + match[0].length;
-        }
-
-        return currentEncodedLen + (displayIndex - currentDisplayLen);
     };
 
     return (
         <div className="relative">
             <textarea
                 ref={innerRef}
-                value={displayText}
+                value={text}
                 onChange={handleChange}
                 placeholder={placeholder}
                 rows={rows}
@@ -205,7 +150,7 @@ export const MentionTextarea = forwardRef<
             />
 
             {mentionQuery !== null && suggestions.length > 0 && (
-                <div className="absolute z-10 bottom-full mb-1 left-0 surface border rounded-lg shadow-lg w-56 max-h-40 overflow-y-auto">
+                <div className="absolute z-50 bottom-full mb-1 left-0 surface border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg shadow-lg w-56 max-h-40 overflow-y-auto">
                     {suggestions.map((member) => (
                         <button
                             key={member.userId}
@@ -214,9 +159,11 @@ export const MentionTextarea = forwardRef<
                                 e.preventDefault();
                                 handleSelectMention(member);
                             }}
-                            className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-indigo-50 dark:hover:bg-indigo-950 flex items-center justify-between cursor-pointer"
+                            className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-indigo-50 dark:hover:bg-indigo-950/60 flex items-center justify-between cursor-pointer transition-colors"
                         >
-                            <span>{member.userName}</span>
+                            <span className="font-medium text-slate-800 dark:text-gray-200">
+                                {member.userName}
+                            </span>
                             <span className="text-xs text-muted">
                                 {member.teamName}
                             </span>

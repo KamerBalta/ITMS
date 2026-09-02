@@ -1,11 +1,15 @@
-﻿using Infera.Application.Features.Projects.ArchiveProject;
+﻿using Infera.Application.Features.ProjectAccess.RequestProjectAccess;
+using Infera.Application.Features.Projects.AddTeamToProject;
+using Infera.Application.Features.Projects.ArchiveProject;
 using Infera.Application.Features.Projects.CreateProject;
+using Infera.Application.Features.Projects.DeleteProject;
+using Infera.Application.Features.Projects.GetMyProjectPermissions;
 using Infera.Application.Features.Projects.GetProjectById;
 using Infera.Application.Features.Projects.GetProjects;
-using Infera.Application.Features.Projects.UpdateProject;
 using Infera.Application.Features.Projects.RemoveTeamFromProject;
-using Infera.Application.Features.Projects.AddTeamToProject;
 using Infera.Application.Features.Projects.UnarchiveProject;
+using Infera.Application.Features.Projects.UpdateProject;
+using Infera.Application.Features.Tasks.BulkImport;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -41,39 +45,12 @@ public class ProjectsController : ControllerBase
         }
     }
 
-    [HttpPut("{projectId}/unarchive")]
-    [Authorize(Policy = "RequireProjectManager")]
-    public async Task<IActionResult> Unarchive(Guid projectId)
-    {
-        try
-        {
-            await _mediator.Send(new UnarchiveProjectCommand(projectId));
-            return NoContent();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(
-        StatusCodes.Status403Forbidden,
-        new { message = ex.Message });
-        }
-    }
-
     [HttpGet("{projectId}")]
     public async Task<IActionResult> GetById(Guid projectId)
     {
         try
         {
-            var result = await _mediator.Send(
-                new GetProjectByIdQuery(projectId));
-
+            var result = await _mediator.Send(new GetProjectByIdQuery(projectId));
             return Ok(result);
         }
         catch (KeyNotFoundException ex)
@@ -158,6 +135,23 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpDelete("{projectId}")]
+    public async Task<IActionResult> Delete(Guid projectId)
+    {
+        try
+        {
+            await _mediator.Send(new DeleteProjectCommand(projectId));
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new { message = ex.Message });
+        }
+    }
+
+    [HttpPut("{projectId}/archive")]
     [Authorize(Policy = "RequireProjectManager")]
     public async Task<IActionResult> Archive(Guid projectId)
     {
@@ -180,6 +174,50 @@ public class ProjectsController : ControllerBase
                 StatusCodes.Status403Forbidden,
                 new { message = ex.Message });
         }
+    }
+
+    [HttpPut("{projectId}/unarchive")]
+    [Authorize(Policy = "RequireProjectManager")]
+    public async Task<IActionResult> Unarchive(Guid projectId)
+    {
+        try
+        {
+            await _mediator.Send(new UnarchiveProjectCommand(projectId));
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("{projectId}/my-permissions")]
+    public async Task<IActionResult> GetMyPermissions(Guid projectId)
+    {
+        var result = await _mediator.Send(new GetMyProjectPermissionsQuery(projectId));
+        return Ok(result);
+    }
+
+    [HttpPost("{projectId}/request-access")]
+    public async Task<IActionResult> RequestAccess(Guid projectId, RequestAccessRequest request)
+    {
+        try
+        {
+            await _mediator.Send(new RequestProjectAccessCommand(projectId, request.Message));
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
     }
 
     [HttpPost("{projectId}/teams/{teamId}")]
@@ -235,6 +273,30 @@ public class ProjectsController : ControllerBase
                 new { message = ex.Message });
         }
     }
+
+    [HttpPost("{projectId}/bulk-import")]
+    public async Task<IActionResult> BulkImport(Guid projectId, [FromBody] BulkImportRequest request)
+    {
+        try
+        {
+            var result = await _mediator.Send(new BulkImportTasksCommand(projectId, request.Rows));
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new { message = ex.Message });
+        }
+    }
 }
 
 public record CreateProjectRequest(
@@ -250,3 +312,7 @@ public record UpdateProjectRequest(
     string? Description,
     DateOnly? StartDate,
     DateOnly? EndDate);
+
+public record BulkImportRequest(List<ImportRowDto> Rows);
+
+public record RequestAccessRequest(string? Message);

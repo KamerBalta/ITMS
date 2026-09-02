@@ -1,4 +1,4 @@
-import { NavLink, Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, Link, Outlet, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { Search, Menu, X, Plus, LogOut, ChevronDown, User } from 'lucide-react';
 
@@ -17,6 +17,9 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { GlobalSearchPopover } from './GlobalSearchPopover';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
 import { ShortcutsHelpModal } from './ShortcutsHelpModal';
+import { Avatar } from './Avatar';
+import { OnboardingTour } from './OnboardingTour';
+import { ChangelogModal } from './ChangelogModal';
 
 import logoImg from '../assets/logo.png';
 
@@ -36,7 +39,6 @@ const SECTION_ORDER = [
 
 export function AppLayout() {
     const navigate = useNavigate();
-    const location = useLocation();
 
     const user = useAuthStore((state) => state.user);
     const refreshToken = useAuthStore((state) => state.refreshToken);
@@ -77,15 +79,6 @@ export function AppLayout() {
 
     // Realtime
     useRealtimeSync();
-
-    // Route değiştiğinde mobil sidebar, search ve profile dropdown kapanır
-    useEffect(() => {
-        closeMobileSidebar();
-        setSearchOpen(false);
-        setProfileOpen(false);
-
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [location.pathname]);
 
     // Dışarı tıklandığında profil menüsünü kapat
     useEffect(() => {
@@ -131,19 +124,6 @@ export function AppLayout() {
             (!item.adminOnly || isAdmin) &&
             item.path !== '/search'
     );
-
-    const getUserInitials = () => {
-        if (user?.name) {
-            return user.name
-                .split(' ')
-                .map((n) => n[0])
-                .join('')
-                .toUpperCase()
-                .slice(0, 2);
-        }
-
-        return user?.email?.slice(0, 2).toUpperCase() ?? 'UI';
-    };
 
     return (
         <div
@@ -304,6 +284,7 @@ export function AppLayout() {
                     "
                 >
                     <button
+                        data-tour="sidebar-create"
                         onClick={() => setCreateOpen(true)}
                         className="
                             w-full
@@ -325,7 +306,6 @@ export function AppLayout() {
                         "
                     >
                         <Plus className="w-4 h-4 stroke-[2.5]" />
-
                         <span>Oluştur</span>
                     </button>
                 </div>
@@ -364,7 +344,6 @@ export function AppLayout() {
                                 className="mb-5"
                             >
                                 {/* Section başlığı */}
-
                                 <div
                                     className="
                                         px-3
@@ -382,16 +361,23 @@ export function AppLayout() {
                                 </div>
 
                                 {/* Navigation Items */}
-
                                 <div className="space-y-0.5">
                                     {itemsInSection.map((item) => {
                                         const IconComponent =
                                             item.icon;
 
+                                        const tourId =
+                                            item.path === '/board'
+                                                ? 'sidebar-board'
+                                                : item.path === '/backlog'
+                                                    ? 'sidebar-backlog'
+                                                    : undefined;
+
                                         return (
                                             <NavLink
                                                 key={item.path}
                                                 to={item.path}
+                                                data-tour={tourId}
                                                 className={({
                                                     isActive,
                                                 }) =>
@@ -455,7 +441,6 @@ export function AppLayout() {
                                                 </span>
 
                                                 {/* Notification Badge */}
-
                                                 {item.path ===
                                                     '/notifications' &&
                                                     unreadCount >
@@ -521,7 +506,6 @@ export function AppLayout() {
                     "
                 >
                     {/* Sol taraf */}
-
                     <div
                         className="
                             flex
@@ -533,7 +517,6 @@ export function AppLayout() {
                         "
                     >
                         {/* Mobil hamburger */}
-
                         <button
                             onClick={toggleMobileSidebar}
                             className="
@@ -550,17 +533,13 @@ export function AppLayout() {
                             <Menu className="w-5 h-5" />
                         </button>
 
-                       
-
                         <div className="min-w-0 shrink-0">
                             <ProjectSelector />
                         </div>
 
                         {/* Search */}
-
                         <div className="relative min-w-0">
                             {/* Desktop Search */}
-
                             <div
                                 className="
                                     hidden
@@ -649,12 +628,9 @@ export function AppLayout() {
                                 )}
                             </div>
 
-                          
-
                             <button
-                                onClick={() =>
-                                    setSearchOpen(true)
-                                }
+                                data-tour="header-search"
+                                onClick={() => navigate('/search')}
                                 className="
                                     lg:hidden
                                     p-1.5
@@ -671,8 +647,6 @@ export function AppLayout() {
                                 <Search className="w-5 h-5" />
                             </button>
 
-                       
-
                             <GlobalSearchPopover
                                 isOpen={isSearchOpen}
                                 searchQuery={searchQuery}
@@ -683,8 +657,7 @@ export function AppLayout() {
                         </div>
                     </div>
 
-                    
-
+                    {/* Sağ taraf */}
                     <div
                         className="
                             flex
@@ -694,15 +667,9 @@ export function AppLayout() {
                             shrink-0
                         "
                     >
-                       
-
                         <RealtimeIndicator />
 
-                       
-
                         <NotificationDropdown />
-
-                        
 
                         <div
                             ref={profileRef}
@@ -723,26 +690,11 @@ export function AppLayout() {
                                 "
                                 title={user?.email}
                             >
-                                <div
-                                    className="
-                                        w-8
-                                        h-8
-                                        rounded-full
-                                        bg-blue-600
-                                        text-white
-                                        font-semibold
-                                        text-xs
-                                        flex
-                                        items-center
-                                        justify-center
-                                        border
-                                        border-blue-200
-                                        dark:border-blue-800
-                                        shrink-0
-                                    "
-                                >
-                                    {getUserInitials()}
-                                </div>
+                                <Avatar
+                                    userId={user?.userId ?? ''}
+                                    name={user?.userName ?? user?.email ?? 'User'}
+                                    size="md"
+                                />
 
                                 <ChevronDown
                                     className={`
@@ -787,23 +739,11 @@ export function AppLayout() {
                                         "
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div
-                                                className="
-                                                    w-10
-                                                    h-10
-                                                    rounded-full
-                                                    bg-blue-600
-                                                    text-white
-                                                    font-semibold
-                                                    text-sm
-                                                    flex
-                                                    items-center
-                                                    justify-center
-                                                    shrink-0
-                                                "
-                                            >
-                                                {getUserInitials()}
-                                            </div>
+                                            <Avatar
+                                                userId={user?.userId ?? ''}
+                                                name={user?.userName ?? user?.email ?? 'User'}
+                                                size="lg"
+                                            />
 
                                             <div className="min-w-0">
                                                 <p
@@ -814,7 +754,7 @@ export function AppLayout() {
                                                         truncate
                                                     "
                                                 >
-                                                    {user?.name || 'Kullanıcı'}
+                                                    {user?.userName || 'Kullanıcı'}
                                                 </p>
 
                                                 <p
@@ -900,8 +840,6 @@ export function AppLayout() {
                     </div>
                 </header>
 
-          
-
                 <main
                     className="
                         flex-1
@@ -916,8 +854,6 @@ export function AppLayout() {
                 </main>
             </div>
 
-           
-
             <CreateTaskModal
                 projectId={selectedProjectId}
                 sprintId={null}
@@ -929,6 +865,9 @@ export function AppLayout() {
                 isOpen={isHelpOpen}
                 onClose={() => setHelpOpen(false)}
             />
+
+            <OnboardingTour />
+            <ChangelogModal />
         </div>
     );
 }

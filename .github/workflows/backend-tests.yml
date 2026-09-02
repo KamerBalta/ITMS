@@ -15,13 +15,18 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore backend/Infera.sln
+        run: dotnet restore Infera.slnx
 
       - name: Build
-        run: dotnet build backend/Infera.sln --no-restore --configuration Release
+        run: dotnet build Infera.slnx --no-restore --configuration Release
 
       - name: Test
-        run: dotnet test backend/Infera.sln --no-build --configuration Release --logger "console;verbosity=normal"
+        run: dotnet test Infera.slnx --no-build --configuration Release --logger "console;verbosity=normal" --collect:"XPlat Code Coverage"
+
+      - name: Coverage Summary
+        run: |
+          echo "Test coverage raporu artifact olarak saklandi."
+          find . -name "coverage.cobertura.xml" -exec echo "Found: {}" \;

@@ -35,7 +35,7 @@ public class GetVelocityQueryHandler : IRequestHandler<GetVelocityQuery, List<Ve
             .Select(s => new VelocityDto(
                 s.Id, s.Name,
                 s.CommittedStoryPoints ?? s.Tasks.Sum(t => t.StoryPoint ?? 0),
-                s.Tasks.Where(t => t.Status == ItemStatus.Done).Sum(t => t.StoryPoint ?? 0)))
+                s.Tasks.Where(t => t.WorkflowStatus.Category == "Done").Sum(t => t.StoryPoint ?? 0)))
             .ToListAsync(ct);
 
         await _cache.SetAsync(cacheKey, result, TimeSpan.FromMinutes(10), ct);

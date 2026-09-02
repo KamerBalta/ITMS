@@ -4,7 +4,7 @@ import { useProjectStore } from '../store/projectStore';
 import { getRealtimeConnection, joinProjectGroup } from '../lib/realtimeConnection';
 
 interface ProjectUpdatePayload {
-    entityType: 'task' | 'sprint' | 'comment';
+    entityType: 'task' | 'sprint' | 'comment' | 'board-columns';
     action: string;
     timestamp: string;
 }
@@ -27,8 +27,7 @@ export function useRealtimeSync() {
         const handler = (payload: ProjectUpdatePayload) => {
             if (cancelled) return;
 
-            // Entity turune gore ilgili react-query cache'lerini gecersiz kil --
-            // boylece bir sonraki render'da otomatik yeniden cekilir.
+            // Entity turune gore ilgili react-query cache'lerini gecersiz kil
             switch (payload.entityType) {
                 case 'task':
                     queryClient.invalidateQueries({ queryKey: ['tasks', selectedProjectId] });
@@ -39,10 +38,19 @@ export function useRealtimeSync() {
                     queryClient.invalidateQueries({ queryKey: ['sprints', selectedProjectId] });
                     queryClient.invalidateQueries({ queryKey: ['tasks', selectedProjectId] });
                     queryClient.invalidateQueries({ queryKey: ['backlog', selectedProjectId] });
+                    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
                     break;
                 case 'comment':
+                    // #Perf: yalnizca 'comments' cache'lerini gecersiz kil --
+                    // onceden buraya tum 'tasks' (liste) sorgusu da dahildi, gereksiz yere Board/Backlog/
+                    // IssueList'i de yeniden cekiyordu ama yorum eklenmesi bunlarin gorunumunu degistirmez.
                     queryClient.invalidateQueries({ queryKey: ['comments'] });
-                    queryClient.invalidateQueries({ queryKey: ['task'] });
+                    break;
+                case 'board-columns':
+                    // #8: Board Settings'te yapilan her degisiklik aninda Board'a ve Board Settings sayfasina yansir
+                    queryClient.invalidateQueries({ queryKey: ['board-columns', selectedProjectId] });
+                    queryClient.invalidateQueries({ queryKey: ['board-column-settings', selectedProjectId] });
+                    queryClient.invalidateQueries({ queryKey: ['workflow-statuses', selectedProjectId] });
                     break;
             }
         };

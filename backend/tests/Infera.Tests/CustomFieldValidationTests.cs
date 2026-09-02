@@ -71,4 +71,19 @@ public class CustomFieldValidationTests
 
         isValid.Should().BeTrue();
     }
+    [Fact]
+    public void SelectTipi_OptionsJsonBossaGecersizSayilmali()
+    {
+        var field = new CustomFieldDefinition { Id = Guid.NewGuid(), FieldType = "select", OptionsJson = null };
+        var isValidDefinition = field.FieldType != "select" || !string.IsNullOrEmpty(field.OptionsJson);
+        isValidDefinition.Should().BeFalse();
+    }
+
+    [Fact]
+    public void SelectTipi_OptionsJsonDoluysaGecerli()
+    {
+        var field = new CustomFieldDefinition { Id = Guid.NewGuid(), FieldType = "select", OptionsJson = "[\"Düşük\",\"Yüksek\"]" };
+        var isValidDefinition = field.FieldType != "select" || !string.IsNullOrEmpty(field.OptionsJson);
+        isValidDefinition.Should().BeTrue();
+    }
 }

@@ -22,7 +22,8 @@ public class Task : BaseEntity,ISoftDelete
     public IssueType? IssueType { get; set; }
     public Priority Priority { get; set; }
     public int? StoryPoint { get; set; }
-    public ItemStatus Status { get; set; } = ItemStatus.ToDo;
+    public Guid StatusId { get; set; }
+    public ProjectWorkflowStatus WorkflowStatus { get; set; } = default!;
 
     public Guid? AssigneeId { get; set; }
     public User? Assignee { get; set; }
@@ -35,6 +36,7 @@ public class Task : BaseEntity,ISoftDelete
     public int TaskNumber { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+    
     public bool IsDeleted { get; set; } = false;
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }

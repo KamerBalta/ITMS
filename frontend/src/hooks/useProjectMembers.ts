@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { projectMembersApi } from '../api/projectMembers';
-
+import { REFERENCE_STALE_TIME } from '../lib/queryClient';
 export function useProjectMembers(projectId: string | null) {
     return useQuery({
         queryKey: ['projectMembers', projectId],
         queryFn: () => projectMembersApi.getByProject(projectId!),
         enabled: !!projectId,
+        staleTime: REFERENCE_STALE_TIME,
     });
 }
 

@@ -6,6 +6,7 @@ import {
     useMarkAllAsRead,
     useDeleteNotification,
 } from '../../hooks/useNotifications';
+import type { NotificationItem } from '../../types/notification';
 import {
     Search,
     CheckCheck,
@@ -71,8 +72,7 @@ export function NotificationsPage() {
         return notifications.filter((n) => {
             const matchesSearch =
                 n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                n.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (n.taskKey && n.taskKey.toLowerCase().includes(searchQuery.toLowerCase()));
+                n.message.toLowerCase().includes(searchQuery.toLowerCase());
 
             let matchesTab = true;
             if (selectedFilter === 'unread') matchesTab = !n.isRead;
@@ -87,7 +87,7 @@ export function NotificationsPage() {
 
     // Tarihe Göre Gruplama (Bugün, Dün, Daha Önce)
     const groupedNotifications = useMemo(() => {
-        const groups: Record<string, typeof filteredNotifications> = {
+        const groups: Record<string, NotificationItem[]> = {
             Bugün: [],
             Dün: [],
             'Daha Önce': [],
@@ -103,17 +103,13 @@ export function NotificationsPage() {
     }, [filteredNotifications]);
 
     // Bildirime Tıklama Eylemi
-    const handleNotificationClick = (n: any) => {
+    const handleNotificationClick = (n: NotificationItem) => {
         if (!n.isRead) {
             markAsRead.mutate(n.id);
         }
 
         if (n.actionUrl) {
             navigate(n.actionUrl);
-        } else if (n.taskId) {
-            navigate(`/tasks/${n.taskId}`);
-        } else if (n.projectId) {
-            navigate(`/projects/${n.projectId}`);
         }
     };
 
@@ -144,7 +140,7 @@ export function NotificationsPage() {
                     <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted" />
                     <input
                         type="text"
-                        placeholder="Bildirimlerde ara veya görev anahtarı yaz (Örn: PROJ-12)..."
+                        placeholder="Bildirimlerde ara..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full input-base border rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 dark:border-gray-600"
@@ -196,7 +192,7 @@ export function NotificationsPage() {
 
                                 {/* Bildirim Satırları */}
                                 <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                                    {items.map((n: any) => {
+                                    {items.map((n) => {
                                         const badge = TYPE_BADGES[n.type] ?? {
                                             label: 'BİLDİRİM',
                                             color: 'bg-gray-100 dark:bg-gray-800 text-secondary border-gray-200 dark:border-gray-700',
@@ -204,15 +200,9 @@ export function NotificationsPage() {
                                         };
 
                                         const BadgeIcon = badge.icon;
-                                        const senderName = n.actorName || n.userName || 'Sistem';
-                                        const initials = senderName
-                                            .split(' ')
-                                            .map((x: string) => x[0])
-                                            .join('')
-                                            .toUpperCase()
-                                            .slice(0, 2);
-
-                                        const isClickable = Boolean(n.actionUrl || n.taskId || n.projectId);
+                                        const senderName = 'Sistem';
+                                        const initials = 'S';
+                                        const isClickable = Boolean(n.actionUrl);
 
                                         return (
                                             <div
@@ -226,18 +216,10 @@ export function NotificationsPage() {
                                                     <span className="absolute left-2 top-6 w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0" />
                                                 )}
 
-                                                {/* Avatar */}
-                                                {n.avatarUrl ? (
-                                                    <img
-                                                        src={n.avatarUrl}
-                                                        alt={senderName}
-                                                        className="w-9 h-9 rounded-full object-cover shrink-0 border border-gray-200 dark:border-gray-700"
-                                                    />
-                                                ) : (
-                                                    <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-xs shrink-0 border border-indigo-200 dark:border-indigo-800">
-                                                        {initials}
-                                                    </div>
-                                                )}
+                                                {/* İkon / Baş Harf */}
+                                                <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-xs shrink-0 border border-indigo-200 dark:border-indigo-800">
+                                                    {initials}
+                                                </div>
 
                                                 {/* Bildirim İçeriği */}
                                                 <div className="flex-1 min-w-0 pr-16">
@@ -253,13 +235,6 @@ export function NotificationsPage() {
                                                             <BadgeIcon className="w-3 h-3 shrink-0" />
                                                             <span>{badge.label}</span>
                                                         </span>
-
-                                                        {/* Task Key Linki */}
-                                                        {n.taskKey && (
-                                                            <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
-                                                                {n.taskKey}
-                                                            </span>
-                                                        )}
                                                     </div>
 
                                                     <p className="text-sm font-semibold text-primary leading-snug">
@@ -275,7 +250,7 @@ export function NotificationsPage() {
                                                     </span>
                                                 </div>
 
-                                                {/* Hover Durumında Görünür Olan Eylemler */}
+                                                {/* Hover Durumunda Görünür Olan Eylemler */}
                                                 <div
                                                     className="absolute right-4 top-4 hidden group-hover:flex items-center gap-1 surface/90 backdrop-blur-xs p-1 rounded-lg border border-gray-200 dark:border-gray-700 shadow-xs"
                                                     onClick={(e) => e.stopPropagation()}

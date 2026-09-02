@@ -1,9 +1,11 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useUserDetail } from '../../hooks/useUsers';
 import { AuthenticatedImage } from '../../components/AuthenticatedImage';
+import { apiClient } from '../../api/client';
 
 export function UserDetailPage() {
     const { userId } = useParams<{ userId: string }>();
+    const navigate = useNavigate();
     const { data: user, isLoading, isError } = useUserDetail(userId ?? null);
 
     if (isError) {
@@ -106,6 +108,27 @@ export function UserDetailPage() {
                         ))}
                     </div>
                 )}
+            </div>
+
+            {/* Kullanıcı İşlemleri */}
+            <div className="surface border rounded-lg p-4 space-y-3">
+                <p className="text-sm font-medium text-primary">Kullanıcı İşlemleri</p>
+                <div>
+                    <button
+                        onClick={async () => {
+                            if (!confirm(`"${user.name}" kullanıcısını anonimleştirmek istediğinize emin misiniz? Bu işlem geri alınamaz — isim ve e-posta kalıcı olarak değiştirilir, hesap girişe kapatılır.`)) return;
+                            try {
+                                await apiClient.post(`/users/${userId}/anonymize`);
+                                navigate('/admin/users');
+                            } catch {
+                                alert('Kullanıcı anonimleştirilirken bir hata oluştu.');
+                            }
+                        }}
+                        className="text-sm border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 transition cursor-pointer font-medium"
+                    >
+                        Kullanıcıyı Anonimleştir (GDPR)
+                    </button>
+                </div>
             </div>
 
             <p className="text-xs text-muted">Katılım tarihi: {new Date(user.createdAt).toLocaleDateString('tr-TR')}</p>

@@ -25,11 +25,11 @@ public class DownloadAttachmentQueryHandler : IRequestHandler<DownloadAttachment
         if (!await _access.HasTaskAccessAsync(attachment.TaskId, ct))
             throw new UnauthorizedAccessException("Bu dosyaya erişim yetkiniz yok.");
 
-        var stream = _storage.GetFileStream(attachment.FilePath);
+        var stream = await _storage.GetFileStreamAsync(attachment.FilePath, ct);
 
         return new DownloadAttachmentResult(
-     stream,
-     attachment.FileName,
-     attachment.ContentType);
+            stream,
+            attachment.FileName,
+            attachment.ContentType);
     }
 }

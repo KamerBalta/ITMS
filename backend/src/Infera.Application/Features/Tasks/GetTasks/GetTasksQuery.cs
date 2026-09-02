@@ -13,11 +13,26 @@ public record GetTasksQuery(
     string? Search,
     Guid? ParentTaskId,
     Guid? LabelId,
+    Guid? ComponentId,
+    bool? UnassignedOnly,
     int Page = 1,
     int PageSize = 50) : IRequest<List<TaskDto>>;
 
 public record TaskDto(
-    Guid Id, string Title, string IssueType, string? IssueTypeIcon, string IssueKey,
-    Guid? IssueTypeId, bool AllowsChildren, bool RequiresParent,
-    string Priority, string Status, int? StoryPoint, Guid? AssigneeId, string? AssigneeName,
-    Guid? SprintId, long Rank, Guid? ParentTaskId, List<string> Labels);
+    Guid Id,
+    string Title,
+    string IssueType,
+    string? IssueTypeIcon,
+    string IssueKey,
+    Guid? IssueTypeId,
+    bool AllowsChildren,
+    bool RequiresParent,
+    string Priority,
+    string Status, Guid StatusId,
+    int? StoryPoint,
+    Guid? AssigneeId,
+    string? AssigneeName,
+    Guid? SprintId,
+    long Rank,
+    Guid? ParentTaskId,
+    List<string> Labels);

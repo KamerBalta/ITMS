@@ -6,14 +6,46 @@ import {
     useDeactivateUser,
     useActivateUser,
     useUpdateUser,
-    useUpdateUserRole
+    useUpdateUserRole,
 } from '../../hooks/useUsers';
 import { useProjects } from '../../hooks/useProjects';
-import { useTeams } from '../../hooks/useTeams';
 import { Modal } from '../../components/Modal';
 import type { AxiosError } from 'axios';
 import type { ApiErrorResponse } from '../../types/api';
 import { Search, UserPlus, MoreVertical, CheckCircle2, Filter, X } from 'lucide-react';
+
+type ManagedUser = {
+    id: string;
+    name: string;
+    email: string;
+    title?: string | null;
+    roles: string[];
+    isActive: boolean;
+};
+
+type ProjectOption = {
+    id: string;
+    name: string;
+};
+
+type UpdateUserMutation = {
+    mutateAsync: (args: {
+        userId: string;
+        data: {
+            name: string;
+            title?: string;
+        };
+    }) => Promise<unknown>;
+    isPending: boolean;
+};
+
+type UpdateUserRoleMutation = {
+    mutateAsync: (args: {
+        userId: string;
+        roleName: string;
+    }) => Promise<unknown>;
+    isPending: boolean;
+};
 
 const ROLE_BADGE_COLORS: Record<string, string> = {
     'System Admin': 'bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 border-red-200 dark:border-red-900',
@@ -29,7 +61,7 @@ const SYSTEM_ROLES = [
     'System Admin',
     'Project Manager',
     'Developer',
-    'QA/Tester'
+    'QA/Tester',
 ];
 
 const TITLE_OPTIONS = [
@@ -45,7 +77,7 @@ const TITLE_OPTIONS = [
     'Project Manager',
     'Product Owner',
     'UI/UX Designer',
-    'System Administrator'
+    'System Administrator',
 ];
 
 const ITEMS_PER_PAGE = 8;
@@ -54,7 +86,6 @@ export function UsersManagementPage() {
     const navigate = useNavigate();
     const { data: users, isLoading } = useAllUsers();
     const { data: projects } = useProjects();
-    const { data: allTeams } = useTeams();
 
     const deactivateUser = useDeactivateUser();
     const activateUser = useActivateUser();
@@ -67,7 +98,7 @@ export function UsersManagementPage() {
     const [selectedStatusFilter, setSelectedStatusFilter] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [activeMenuUserId, setActiveMenuUserId] = useState<string | null>(null);
-    const [editingUser, setEditingUser] = useState<any>(null);
+    const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
 
     // Toast State
     const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -80,7 +111,7 @@ export function UsersManagementPage() {
     // Filtreleme Mantığı
     const filteredUsers = useMemo(() => {
         if (!users) return [];
-        return users.filter((u) => {
+        return (users as ManagedUser[]).filter((u) => {
             const matchesSearch =
                 u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -264,7 +295,8 @@ export function UsersManagementPage() {
                                                     {u.roles.map((r) => (
                                                         <span
                                                             key={r}
-                                                            className={`text-[11px] px-2 py-0.5 rounded-full font-semibold border whitespace-nowrap ${ROLE_BADGE_COLORS[r] ?? 'surface-muted text-secondary border-gray-200 dark:border-gray-700'
+                                                            className={`text-[11px] px-2 py-0.5 rounded-full font-semibold border whitespace-nowrap ${ROLE_BADGE_COLORS[r] ??
+                                                                'surface-muted text-secondary border-gray-200 dark:border-gray-700'
                                                                 }`}
                                                         >
                                                             {r}
@@ -277,8 +309,8 @@ export function UsersManagementPage() {
                                             <td className="px-3 sm:px-5 py-3.5 whitespace-nowrap">
                                                 <span
                                                     className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full font-semibold border ${u.isActive
-                                                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+                                                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
                                                         }`}
                                                 >
                                                     <span
@@ -308,7 +340,7 @@ export function UsersManagementPage() {
                                                                 setEditingUser(u);
                                                                 setActiveMenuUserId(null);
                                                             }}
-                                                            className="w-full px-4 py-2 hover-surface text-secondary cursor-pointer"
+                                                            className="w-full px-4 py-2 hover-surface text-secondary cursor-pointer text-left"
                                                         >
                                                             Düzenle
                                                         </button>
@@ -317,7 +349,7 @@ export function UsersManagementPage() {
                                                                 showToast(`${u.name} için davet bağlantısı tekrar gönderildi.`);
                                                                 setActiveMenuUserId(null);
                                                             }}
-                                                            className="w-full px-4 py-2 hover-surface text-indigo-600 dark:text-indigo-400 font-medium cursor-pointer"
+                                                            className="w-full px-4 py-2 hover-surface text-indigo-600 dark:text-indigo-400 font-medium cursor-pointer text-left"
                                                         >
                                                             Yeniden Davet Gönder
                                                         </button>
@@ -335,12 +367,12 @@ export function UsersManagementPage() {
                                                                         await activateUser.mutateAsync(u.id);
                                                                         showToast(`${u.name} yeniden aktifleştirildi. Yeni aktivasyon e-postası gönderildi.`);
                                                                     } catch {
-                                                                        alert("Kullanıcı aktifleştirilemedi.");
+                                                                        alert('Kullanıcı aktifleştirilemedi.');
                                                                     }
                                                                 }
                                                                 setActiveMenuUserId(null);
                                                             }}
-                                                            className="w-full px-4 py-2 hover-surface text-amber-600 dark:text-amber-400 cursor-pointer"
+                                                            className="w-full px-4 py-2 hover-surface text-amber-600 dark:text-amber-400 cursor-pointer text-left"
                                                         >
                                                             {u.isActive ? 'Pasifleştir' : 'Aktifleştir'}
                                                         </button>
@@ -389,7 +421,6 @@ export function UsersManagementPage() {
                 onClose={() => setCreateOpen(false)}
                 onSuccess={(msg) => showToast(msg)}
                 projects={projects ?? []}
-                allTeams={allTeams ?? []}
             />
 
             {/* Kullanıcı Düzenle Modalı */}
@@ -416,8 +447,7 @@ function CreateUserModal({
     isOpen: boolean;
     onClose: () => void;
     onSuccess: (msg: string) => void;
-    projects: any[];
-    allTeams: any[];
+    projects: ProjectOption[];
 }) {
     const createUser = useCreateUser();
 
@@ -554,11 +584,11 @@ function EditUserModal({
     updateUser,
     updateUserRole,
 }: {
-    user: any;
+    user: ManagedUser;
     onClose: () => void;
     onSuccess: (msg: string) => void;
-    updateUser: any;
-    updateUserRole: any;
+    updateUser: UpdateUserMutation;
+    updateUserRole: UpdateUserRoleMutation;
 }) {
     const [name, setName] = useState(user.name);
     const [title, setTitle] = useState(user.title ?? '');

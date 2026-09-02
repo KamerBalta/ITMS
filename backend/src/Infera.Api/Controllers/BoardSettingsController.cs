@@ -11,38 +11,58 @@ namespace Infera.Api.Controllers;
 public class BoardSettingsController : ControllerBase
 {
     private readonly IMediator _mediator;
-    public BoardSettingsController(IMediator mediator) => _mediator = mediator;
+
+    public BoardSettingsController(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll(Guid projectId)
     {
         try
         {
-            var result = await _mediator.Send(new GetBoardColumnSettingsQuery(projectId));
+            var result = await _mediator.Send(
+                new GetBoardColumnSettingsQuery(projectId));
+
             return Ok(result);
         }
-        catch (UnauthorizedAccessException ex) {
+        catch (UnauthorizedAccessException ex)
+        {
             return StatusCode(
-        StatusCodes.Status403Forbidden,
-        new { message = ex.Message });
+                StatusCodes.Status403Forbidden,
+                new { message = ex.Message });
         }
     }
 
-    [HttpPut("{status}/wip-limit")]
-    public async Task<IActionResult> UpdateWipLimit(Guid projectId, string status, UpdateWipLimitRequest request)
+    [HttpPut("{columnId:guid}/wip-limit")]
+    public async Task<IActionResult> UpdateWipLimit(
+     [FromRoute] Guid projectId,
+     [FromRoute] Guid columnId,
+     [FromBody] UpdateWipLimitRequest request)
     {
         try
         {
-            await _mediator.Send(new UpdateWipLimitCommand(projectId, status, request.WipLimit));
+            var command = new UpdateWipLimitCommand(projectId, columnId, request.WipLimit);
+            await _mediator.Send(command);
+
             return NoContent();
         }
-        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) {
-            return StatusCode(
-        StatusCodes.Status403Forbidden,
-        new { message = ex.Message }); }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
     }
 }
 
-public record UpdateWipLimitRequest(int? WipLimit);
+public record UpdateWipLimitRequest(
+    Guid StatusId,
+    int? WipLimit);

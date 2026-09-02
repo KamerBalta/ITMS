@@ -12,8 +12,8 @@ export function useBoardColumnSettings(projectId: string | null) {
 export function useUpdateWipLimit(projectId: string) {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ status, wipLimit }: { status: string; wipLimit: number | null }) =>
-            boardSettingsApi.updateWipLimit(projectId, status, wipLimit),
+        mutationFn: ({ statusId, wipLimit }: { statusId: string; wipLimit: number | null }) =>
+            boardSettingsApi.updateWipLimit(projectId, statusId, wipLimit),
         onSuccess: () => qc.invalidateQueries({ queryKey: ['board-settings', projectId] }),
     });
 }

@@ -1,16 +1,28 @@
 ﻿import { useState } from 'react';
 import { useTaskCustomFieldValues, useSetTaskCustomFieldValue } from '../../../hooks/useCustomFields';
+import { useCustomFields } from '../../../hooks/useCustomFields';
 import { useProjectMembers } from '../../../hooks/useProjectMembers';
 
+function parseOptions(optionsJson: string | null | undefined): string[] {
+    if (!optionsJson) return [];
+    try {
+        return JSON.parse(optionsJson);
+    } catch {
+        return [];
+    }
+}
+
 export function CustomFieldsSection({ taskId, projectId }: { taskId: string; projectId: string }) {
-    const { data: fields } = useTaskCustomFieldValues(taskId);
+    const { data: values } = useTaskCustomFieldValues(taskId);
+    const { data: definitions } = useCustomFields(projectId); // optionsJson icin tam tanima ihtiyac var
     const { data: members } = useProjectMembers(projectId);
     const setValue = useSetTaskCustomFieldValue(taskId);
     const [drafts, setDrafts] = useState<Record<string, string>>({});
 
-    if (!fields || fields.length === 0) return null;
+    if (!values || values.length === 0) return null;
 
     const getValue = (fieldId: string, current: string | null) => drafts[fieldId] ?? current ?? '';
+    const getOptions = (fieldId: string) => parseOptions(definitions?.find((d) => d.id === fieldId)?.optionsJson);
 
     const handleBlur = (fieldId: string, value: string) => {
         setValue.mutate({ fieldId, value: value || null });
@@ -18,9 +30,9 @@ export function CustomFieldsSection({ taskId, projectId }: { taskId: string; pro
 
     return (
         <div className="surface border rounded-lg p-4">
-            <h2 className="font-semibold mb-3 text-primary">Özel Alanlar</h2>
+            <h2 className="font-semibold text-primary mb-3">Özel Alanlar</h2>
             <div className="grid grid-cols-2 gap-3">
-                {fields.map((f) => (
+                {values.map((f) => (
                     <div key={f.fieldId}>
                         <label className="text-xs text-muted">
                             {f.name}
@@ -36,8 +48,9 @@ export function CustomFieldsSection({ taskId, projectId }: { taskId: string; pro
                                 className="w-full input-base border rounded px-2 py-1.5 text-sm mt-1"
                             >
                                 <option value="">-</option>
-                                {/* select tipi icin optionsJson backend'den ayrica gelmiyor bu DTO'da -- MVP icin
-                    kullanicinin serbest deger girmesine izin veriyoruz, ileride optionsJson eklenebilir */}
+                                {getOptions(f.fieldId).map((opt) => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                ))}
                             </select>
                         ) : f.fieldType === 'user' ? (
                             <select
@@ -50,9 +63,7 @@ export function CustomFieldsSection({ taskId, projectId }: { taskId: string; pro
                             >
                                 <option value="">-</option>
                                 {members?.map((m) => (
-                                    <option key={m.userId} value={m.userId}>
-                                        {m.userName}
-                                    </option>
+                                    <option key={m.userId} value={m.userId}>{m.userName}</option>
                                 ))}
                             </select>
                         ) : (

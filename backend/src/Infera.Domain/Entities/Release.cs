@@ -10,4 +10,6 @@ public class Release : BaseEntity
     public string Version { get; set; } = default!;
     public DateOnly? ReleaseDate { get; set; }
     public string? Description { get; set; }
+
+    public ICollection<Task> Tasks { get; set; } = new List<Task>();
 }

@@ -7,7 +7,6 @@ namespace Infera.Application.Features.ProjectPermissions;
 
 public record GetProjectPermissionsQuery(Guid ProjectId) : IRequest<List<ProjectPermissionDto>>;
 public record SetProjectPermissionCommand(Guid ProjectId, string PermissionKey, bool IsEnabled) : IRequest;
-
 public record ProjectPermissionDto(string PermissionKey, bool IsEnabled);
 
 public static class KnownPermissionKeys
@@ -44,14 +43,17 @@ public class GetProjectPermissionsQueryHandler : IRequestHandler<GetProjectPermi
 public class SetProjectPermissionCommandHandler : IRequestHandler<SetProjectPermissionCommand>
 {
     private readonly IAppDbContext _db;
-    private readonly ICurrentUserService _currentUser;
-    public SetProjectPermissionCommandHandler(IAppDbContext db, ICurrentUserService currentUser) { _db = db; _currentUser = currentUser; }
+    private readonly IProjectManagementAuthService _projectAuth;
+
+    public SetProjectPermissionCommandHandler(IAppDbContext db, IProjectManagementAuthService projectAuth)
+    {
+        _db = db;
+        _projectAuth = projectAuth;
+    }
 
     public async System.Threading.Tasks.Task Handle(SetProjectPermissionCommand request, CancellationToken ct)
     {
-        var project = await _db.Projects.FirstOrDefaultAsync(p => p.Id == request.ProjectId, ct) ?? throw new KeyNotFoundException("Proje bulunamadı.");
-        if (!_currentUser.IsAdmin && project.OwnerId != _currentUser.UserId)
-            throw new UnauthorizedAccessException("Bu projede yetki ayarı değiştirme izniniz yok.");
+        await _projectAuth.EnsureProjectManagerOrAdminAsync(request.ProjectId, ct);
 
         if (!KnownPermissionKeys.All.Contains(request.PermissionKey))
             throw new InvalidOperationException("Bilinmeyen yetki anahtarı.");

@@ -27,8 +27,8 @@ public class DueDateReminderService : IDueDateReminderJob
                 t.DueDate != null &&
                 t.DueDate >= today &&
                 t.DueDate <= tomorrow &&
-                t.Status != ItemStatus.Done &&
-                t.Status != ItemStatus.Closed &&
+                t.WorkflowStatus.Category != "Done" &&
+                t.WorkflowStatus.Name != "Closed" &&
                 t.DueDateReminderSentAt == null &&
                 t.AssigneeId != null)
             .ToListAsync(ct);
@@ -41,7 +41,7 @@ public class DueDateReminderService : IDueDateReminderJob
                 $"\"{task.Title}\" adlı görevin teslim tarihi yaklaşıyor ({task.DueDate:dd.MM.yyyy}).",
                 NotificationType.Task,
                 $"/tasks/{task.Id}",
-                ct);
+                ct: ct);
 
             task.DueDateReminderSentAt = DateTime.UtcNow;
         }

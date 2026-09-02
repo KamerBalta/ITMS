@@ -39,7 +39,7 @@ export function useDeleteNotification() {
 export function useNotificationPreferences() {
     return useQuery({
         queryKey: ['notification-preferences'],
-        queryFn: notificationPreferencesApi.getMine
+        queryFn: notificationPreferencesApi.getMine,
     });
 }
 
@@ -50,13 +50,23 @@ export function useUpdateNotificationPreference() {
             type,
             inApp,
             email,
-            frequency
+            frequency,
+            onlyImportant,
         }: {
             type: string;
             inApp: boolean;
             email: boolean;
             frequency: string;
-        }) => notificationPreferencesApi.update(type, inApp, email, frequency),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['notification-preferences'] }),
+            onlyImportant: boolean;
+        }) =>
+            notificationPreferencesApi.update(
+                type,
+                inApp,
+                email,
+                frequency,
+                onlyImportant
+            ),
+        onSuccess: () =>
+            qc.invalidateQueries({ queryKey: ['notification-preferences'] }),
     });
 }

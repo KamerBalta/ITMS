@@ -1,4 +1,5 @@
-﻿using Infera.Application.Common.Interfaces;
+﻿using Infera.Application.Common.Extensions;
+using Infera.Application.Common.Interfaces;
 using Infera.Application.Common.Services;
 using Infera.Domain.Enums;
 using MediatR;
@@ -45,7 +46,7 @@ public class ReassignTaskCommandHandler : IRequestHandler<ReassignTaskCommand>
 
         task.AssigneeId = request.NewAssigneeId;
         task.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync(ct);
+        await _db.SaveChangesWithConcurrencyCheckAsync(ct);
 
         await _automationEngine.ProcessTaskAssignedAsync(task.Id, request.NewAssigneeId, ct);
 
@@ -67,7 +68,7 @@ public class ReassignTaskCommandHandler : IRequestHandler<ReassignTaskCommand>
                 $"\"{task.Title}\" adlı görev size atandı.",
                 NotificationType.Task,
                 $"/tasks/{task.Id}",
-                ct);
+                ct: ct);
         }
     }
 }

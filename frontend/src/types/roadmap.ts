@@ -8,3 +8,13 @@
     totalTasks: number;
     doneTasks: number;
 }
+export interface RoadmapDependency {
+    fromEpicId: string;
+    toEpicId: string;
+    linkType: string;
+}
+
+export interface RoadmapData {
+    epics: RoadmapEpic[];
+    dependencies: RoadmapDependency[];
+}

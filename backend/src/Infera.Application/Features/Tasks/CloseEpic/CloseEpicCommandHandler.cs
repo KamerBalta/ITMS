@@ -1,5 +1,4 @@
 ﻿using Infera.Application.Common.Interfaces;
-using Infera.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,25 +21,28 @@ public class CloseEpicCommandHandler : IRequestHandler<CloseEpicCommand>
             ?? throw new KeyNotFoundException("Görev bulunamadı.");
 
         if (epic.IssueType is null || !epic.IssueType.AllowsChildren)
-            throw new InvalidOperationException("Yalnızca 'üst görev olabilir' (Epic benzeri) tipteki görevler kapatılabilir.");
+            throw new InvalidOperationException("Yalnızca 'üst görev olabilir' tipteki görevler kapatılabilir.");
 
         if (!await _access.HasProjectAccessAsync(epic.ProjectId, ct))
             throw new UnauthorizedAccessException("Bu görevi kapatma yetkiniz yok.");
 
+        var closeTarget = await _db.ProjectWorkflowStatuses
+            .FirstOrDefaultAsync(s => s.ProjectId == epic.ProjectId && s.IsEpicCloseTarget, ct)
+            ?? throw new InvalidOperationException("Bu proje için Epic kapatma hedefi tanımlanmamış. Workflow ayarlarından bir 'Done' durumunu hedef olarak işaretleyin.");
+
         var children = await _db.Tasks
             .Where(t => t.ParentTaskId == request.EpicId)
-            .Select(t => t.Status)
+            .Select(t => t.WorkflowStatus.Category)
             .ToListAsync(ct);
 
         if (children.Count == 0)
             throw new InvalidOperationException("Bu göreve bağlı hiçbir alt görev yok, kapatılamaz.");
 
-        var incompleteCount = children.Count(s => s != ItemStatus.Done);
+        var incompleteCount = children.Count(c => c != "Done");
         if (incompleteCount > 0)
-            throw new InvalidOperationException(
-                $"Kapatılamaz: bağlı {children.Count} görevden {incompleteCount} tanesi henüz Done durumunda değil.");
+            throw new InvalidOperationException($"Kapatılamaz: bağlı {children.Count} görevden {incompleteCount} tanesi henüz tamamlanmadı.");
 
-        epic.Status = ItemStatus.Closed;
+        epic.StatusId = closeTarget.Id;
         epic.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);

@@ -9,6 +9,8 @@ import { useConfirm } from '../../hooks/useConfirm';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { BurndownChart } from '../../components/BurndownChart';
 import { TaskCard } from '../../components/TaskCard';
+import type { AxiosError } from 'axios';
+import type { ApiErrorResponse } from '../../types/api';
 import {
     ArrowLeft,
     Calendar,
@@ -19,10 +21,9 @@ import {
     Search,
     TrendingUp,
     UserCheck,
-    AlertCircle,
     Activity,
     Plus,
-    Pencil
+    Pencil,
 } from 'lucide-react';
 
 const STATUS_ORDER = ['ToDo', 'InProgress', 'ReadyForReview', 'ReadyForQA', 'Done', 'Closed'];
@@ -73,6 +74,39 @@ export function SprintDetailPage() {
     const [priorityFilter, setPriorityFilter] = useState<string>('all');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+    // Tüm Hook ve useMemo çağrıları Early Return'lerden ÖNCE çalıştırılır
+    const allTasks = useMemo(() => tasks ?? [], [tasks]);
+
+    const filteredTasks = useMemo(() => {
+        return allTasks.filter((t) => {
+            const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase());
+
+            let matchesAssignee = true;
+            if (assigneeFilter === 'me') {
+                matchesAssignee = t.assigneeId === user?.userId;
+            } else if (assigneeFilter === 'unassigned') {
+                matchesAssignee = !t.assigneeId;
+            }
+
+            const matchesType =
+                typeFilter === 'all' || t.issueType.toLowerCase() === typeFilter.toLowerCase();
+
+            const matchesPriority =
+                priorityFilter === 'all' || String(t.priority).toLowerCase() === priorityFilter.toLowerCase();
+
+            return matchesSearch && matchesAssignee && matchesType && matchesPriority;
+        });
+    }, [allTasks, searchQuery, assigneeFilter, typeFilter, priorityFilter, user?.userId]);
+
+    const tasksByStatus = useMemo(() => {
+        return STATUS_ORDER.map((statusKey) => ({
+            status: statusKey,
+            label: STATUS_LABELS[statusKey] ?? statusKey,
+            tasks: filteredTasks.filter((t) => t.status === statusKey || t.statusId === statusKey),
+        })).filter((group) => group.tasks.length > 0);
+    }, [filteredTasks]);
+
+    // Koşullu Erken Dönüşler (Early Returns)
     if (!selectedProjectId) {
         return <p className="text-secondary text-sm p-4">Devam etmek için üstten bir proje seçin.</p>;
     }
@@ -113,8 +147,9 @@ export function SprintDetailPage() {
                 },
             });
             setIsEditing(false);
-        } catch {
-            setEditError('Sprint güncellenemedi.');
+        } catch (err) {
+            const axiosError = err as AxiosError<ApiErrorResponse>;
+            setEditError(axiosError.response?.data?.message ?? 'Güncellenemedi.');
         }
     };
 
@@ -130,8 +165,7 @@ export function SprintDetailPage() {
         setIsMenuOpen(false);
     };
 
-    // 1. İlerleme Hesabı & Metrikler
-    const allTasks = tasks ?? [];
+    // İlerleme ve Metrik Hesapları
     const completedTasks = allTasks.filter((t) => t.status === 'Done' || t.status === 'Closed');
     const progressPercent = allTasks.length > 0 ? Math.round((completedTasks.length / allTasks.length) * 100) : 0;
 
@@ -139,10 +173,8 @@ export function SprintDetailPage() {
     const completedStoryPoints = completedTasks.reduce((acc, t) => acc + (t.storyPoint ?? 0), 0);
     const remainingStoryPoints = totalStoryPoints - completedStoryPoints;
 
-    // Atanan benzersiz kullanıcı sayısı
     const uniqueAssigneesCount = new Set(allTasks.map((t) => t.assigneeId).filter(Boolean)).size;
 
-    // Kalan Gün Sayacı ve Sprint Sağlığı
     const endDate = new Date(sprint.endDate);
     const today = new Date();
     const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
@@ -156,42 +188,9 @@ export function SprintDetailPage() {
         }
     }
 
-    // 2. Filtrelenmiş Görevler
-    const filteredTasks = useMemo(() => {
-        return allTasks.filter((t) => {
-            const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase());
-
-            let matchesAssignee = true;
-            if (assigneeFilter === 'me') {
-                matchesAssignee = t.assigneeId === user?.userId;
-            } else if (assigneeFilter === 'unassigned') {
-                matchesAssignee = !t.assigneeId;
-            }
-
-            let matchesType = true;
-            if (typeFilter !== 'all') {
-                matchesType = t.issueType.toLowerCase() === typeFilter.toLowerCase();
-            }
-
-            let matchesPriority = true;
-            if (priorityFilter !== 'all') {
-                matchesPriority = String(t.priority).toLowerCase() === priorityFilter.toLowerCase();
-            }
-
-            return matchesSearch && matchesAssignee && matchesType && matchesPriority;
-        });
-    }, [allTasks, searchQuery, assigneeFilter, typeFilter, priorityFilter, user?.userId]);
-
-    // 3. Statülere göre Gruplama
-    const tasksByStatus = STATUS_ORDER.map((status) => ({
-        status,
-        label: STATUS_LABELS[status],
-        tasks: filteredTasks.filter((t) => t.status === status),
-    })).filter((group) => group.tasks.length > 0);
-
     return (
         <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-0 select-none">
-            {/* Üst Geri Dönüş Linki */}
+            {/* Geri Dönüş Linki */}
             <div>
                 <Link to="/backlog" className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline">
                     <ArrowLeft size={14} />
@@ -199,7 +198,7 @@ export function SprintDetailPage() {
                 </Link>
             </div>
 
-            {/* 1. BİLGİ VE HEADER KARTI */}
+            {/* Bilgi ve Header Kartı */}
             <div className="surface border rounded-xl p-5 shadow-2xs space-y-5">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex-1 space-y-2">
@@ -339,7 +338,7 @@ export function SprintDetailPage() {
                     )}
                 </div>
 
-                {/* Grid İstatistikler */}
+                {/* İstatistikler */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 pt-3 border-t border-gray-100 dark:border-gray-800 text-xs">
                     <div className="flex items-center gap-2 text-secondary">
                         <Calendar size={16} className="text-muted shrink-0" />
@@ -386,7 +385,7 @@ export function SprintDetailPage() {
                     </div>
                 </div>
 
-                {/* Progress Bar (Jira İlerleme Çubuğu) */}
+                {/* Progress Bar */}
                 <div className="space-y-1.5 pt-2">
                     <div className="flex items-center justify-between text-xs font-semibold text-secondary">
                         <span>Sprint İlerlemesi ({progressPercent}%)</span>
@@ -401,7 +400,7 @@ export function SprintDetailPage() {
                 </div>
             </div>
 
-            {/* 2. BURNDOWN & VELOCITY YAN YANA PANEL */}
+            {/* Burndown & Velocity Paneli */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 <div className="lg:col-span-2 surface border rounded-xl p-4 shadow-2xs">
                     <div className="flex items-center justify-between mb-3">
@@ -419,7 +418,6 @@ export function SprintDetailPage() {
                     )}
                 </div>
 
-                {/* Velocity & SP Metrik Özeti */}
                 <div className="surface border rounded-xl p-4 shadow-2xs flex flex-col justify-between space-y-4">
                     <h2 className="font-bold text-primary text-sm border-b border-gray-100 dark:border-gray-800 pb-2">
                         Sprint Velocity & SP Summary
@@ -450,10 +448,9 @@ export function SprintDetailPage() {
                 </div>
             </div>
 
-            {/* 3. CANLI FİLTRELEME TOOLBARI */}
+            {/* Filtreleme Toolbarı */}
             <div className="surface border rounded-xl p-3 flex flex-col md:flex-row gap-3 shadow-2xs items-stretch md:items-center justify-between">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
-                    {/* Arama Input */}
                     <div className="relative flex-1 min-w-[200px]">
                         <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted" />
                         <input
@@ -465,11 +462,15 @@ export function SprintDetailPage() {
                         />
                     </div>
 
-                    {/* Filtre Dropdown'ları */}
                     <div className="flex flex-wrap items-center gap-2">
                         <select
                             value={assigneeFilter}
-                            onChange={(e) => setAssigneeFilter(e.target.value as any)}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === 'all' || val === 'me' || val === 'unassigned') {
+                                    setAssigneeFilter(val);
+                                }
+                            }}
                             className="input-base border rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                         >
                             <option value="all">Assignee: Tümü</option>
@@ -503,7 +504,7 @@ export function SprintDetailPage() {
                 </div>
             </div>
 
-            {/* 4. GÖREV LİSTESİ VEYA EMPTY STATE */}
+            {/* Görev Listesi veya Empty State */}
             <div>
                 {tasksLoading ? (
                     <p className="text-secondary text-xs p-4">Görevler yükleniyor...</p>
@@ -526,7 +527,7 @@ export function SprintDetailPage() {
                         {tasksByStatus.map((group) => (
                             <div key={group.status} className="space-y-2">
                                 <div className="flex items-center gap-2">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${STATUS_STYLES[group.status]}`}>
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${STATUS_STYLES[group.status] ?? STATUS_STYLES.ToDo}`}>
                                         {group.label}
                                     </span>
                                     <span className="text-xs text-muted font-semibold">({group.tasks.length})</span>

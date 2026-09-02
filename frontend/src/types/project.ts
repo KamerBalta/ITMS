@@ -21,4 +21,5 @@ export interface ProjectDetail {
     teamNames: string[];
     memberCount: number;
     taskCount: number;
+    ownerId: string;
 }

@@ -22,11 +22,16 @@ public class GetWorkloadQueryHandler : IRequestHandler<GetWorkloadQuery, List<Wo
             throw new UnauthorizedAccessException("Bu projeye erişim yetkiniz yok.");
 
         return await _db.Tasks
-            .Where(t => t.ProjectId == request.ProjectId && t.AssigneeId != null && t.Status != ItemStatus.Done)
-            .GroupBy(t => new { t.AssigneeId, t.Assignee!.Name })
-            .Select(g => new WorkloadDto(
-                g.Key.AssigneeId!.Value, g.Key.Name,
-                g.Count(), g.Sum(t => t.StoryPoint ?? 0), 0))
-            .ToListAsync(ct);
+     .Where(t => t.ProjectId == request.ProjectId &&
+                 t.AssigneeId != null &&
+                 t.WorkflowStatus.Category != "Done")
+     .GroupBy(t => new { t.AssigneeId, t.Assignee!.Name })
+     .Select(g => new WorkloadDto(
+         g.Key.AssigneeId!.Value,
+         g.Key.Name,
+         g.Count(),
+         g.Sum(t => t.StoryPoint ?? 0),
+         0))
+     .ToListAsync(ct);
     }
 }

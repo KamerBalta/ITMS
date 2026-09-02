@@ -3,6 +3,7 @@ import {
     useProjectPermissions,
     useSetProjectPermission,
 } from '../../hooks/useProjectPermissions';
+import { useCanManageProject } from '../../hooks/useCanManageProject';
 import { PERMISSION_LABELS } from '../../types/projectPermission';
 
 const PERMISSION_DESCRIPTIONS: Record<string, string> = {
@@ -22,6 +23,7 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
 
 export function ProjectPermissionsPage() {
     const { projectId } = useParams<{ projectId: string }>();
+    const canManage = useCanManageProject(projectId ?? null);
 
     const {
         data: permissions,
@@ -132,7 +134,12 @@ export function ProjectPermissionsPage() {
                                         role="switch"
                                         aria-checked={p.isEnabled}
                                         disabled={
-                                            setPermission.isPending
+                                            !canManage || setPermission.isPending
+                                        }
+                                        title={
+                                            !canManage
+                                                ? 'Bu ayarı değiştirmek için Proje Yöneticisi veya Yönetici olmalısınız.'
+                                                : undefined
                                         }
                                         onClick={() =>
                                             setPermission.mutate({
@@ -144,9 +151,11 @@ export function ProjectPermissionsPage() {
                                         className={`
                                             relative inline-flex h-6 w-11
                                             shrink-0 items-center rounded-full
-                                            transition-colors cursor-pointer
-                                            disabled:cursor-wait
-                                            disabled:opacity-60
+                                            transition-colors
+                                            ${!canManage
+                                                ? 'cursor-not-allowed opacity-50'
+                                                : 'cursor-pointer disabled:cursor-wait disabled:opacity-60'
+                                            }
                                             ${p.isEnabled
                                                 ? 'bg-indigo-600'
                                                 : 'bg-gray-300 dark:bg-gray-700'
