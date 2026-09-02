@@ -1,4 +1,12 @@
-# Build
+# Projeye Özel Yapılandırma ve Hassas Dosyalar
+backend/src/Infera.Api/appsettings.json
+backend/src/Infera.Api/appsettings.Development.json
+frontend/.env
+frontend/node_modules/
+backend/**/bin/
+backend/**/obj/
+
+# Build & Çıktı Dosyaları
 bin/
 obj/
 
@@ -7,15 +15,15 @@ obj/
 *.user
 *.suo
 
-# Rider
+# JetBrains Rider
 .idea/
 
 # VS Code
 .vscode/
 
-# Logs
+# Loglar
 *.log
 
-# OS
+# İşletim Sistemi Dosyaları
 .DS_Store
 Thumbs.db

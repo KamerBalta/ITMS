@@ -1,11 +1,12 @@
 ﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { projectIssueTypesApi } from '../api/projectIssueTypes';
-
+import { REFERENCE_STALE_TIME } from '../lib/queryClient';
 export function useProjectIssueTypes(projectId: string | null) {
     return useQuery({
         queryKey: ['project-issue-types', projectId],
         queryFn: () => projectIssueTypesApi.getAll(projectId!),
         enabled: !!projectId,
+        staleTime: REFERENCE_STALE_TIME,
     });
 }
 

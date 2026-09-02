@@ -1,5 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import type { AxiosError } from 'axios';
+import type { ApiErrorResponse } from '../../types/api';
+import { CustomFieldsSection } from './sections/CustomFieldsSection';
 import { useAuthStore } from '../../store/authStore';
 import {
     useTaskDetail,
@@ -16,16 +19,23 @@ import {
 } from '../../hooks/useTaskDetail';
 import { useReleases } from '../../hooks/useReleases';
 import { useProjectMembers } from '../../hooks/useProjectMembers';
-import type { ItemStatus, Priority } from '../../types/task';
+import { useWorkflowStatuses } from '../../hooks/useWorkflow';
+import type { Priority } from '../../types/task';
 import { CommentsSection } from './sections/CommentsSection';
 import { AttachmentsSection } from './sections/AttachmentsSection';
 import { ChecklistSection } from './sections/ChecklistSection';
 import { WatchersSection } from './sections/WatchersSection';
 import { WorkLogsSection } from './sections/WorkLogsSection';
 import { LabelsSection } from './sections/LabelsSection';
-import { SubtasksSection } from './sections/SubtasksSection';
-import { MentionTextarea } from '../../components/MentionTextarea';
+import { ComponentsSection } from './sections/ComponentsSection';
+import { TaskLinksSection } from './sections/TaskLinksSection';
+import { GitActivitySection } from './sections/GitActivitySection';
+import { SubtasksSection, type SubtasksSectionHandle } from './sections/SubtasksSection';
+import { HistorySection } from './sections/HistorySection';
 import { TaskBreadcrumb } from '../../components/TaskBreadcrumb';
+import { RichTextEditor } from '../../components/RichTextEditor';
+import { MarkdownContent } from '../../components/MarkdownContent';
+import { TimeTrackingWidget } from '../../components/TimeTrackingWidget';
 import {
     CheckCircle2,
     Paperclip,
@@ -34,26 +44,12 @@ import {
     ArrowDown,
     Minus,
     AlertOctagon,
-    Plus,
     Link2,
     Share2,
     MoreHorizontal,
-    Bold,
-    Italic,
-    Code,
-    List,
-    AtSign,
-    AlertCircle
+    AlertCircle,
+    CheckSquare,
 } from 'lucide-react';
-
-const ALL_STATUSES: { value: ItemStatus; label: string; color: string }[] = [
-    { value: 'ToDo', label: 'TO DO', color: 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200' },
-    { value: 'InProgress', label: 'IN PROGRESS', color: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' },
-    { value: 'ReadyForReview', label: 'IN REVIEW', color: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' },
-    { value: 'ReadyForQA', label: 'READY FOR QA', color: 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100' },
-    { value: 'Done', label: 'DONE', color: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' },
-    { value: 'Closed', label: 'CLOSED', color: 'bg-slate-200 text-slate-600 border-slate-300 hover:bg-slate-300' },
-];
 
 const PRIORITY_OPTIONS: { value: Priority; label: string; icon: React.ReactNode; color: string }[] = [
     { value: 0, label: 'Low', icon: <ArrowDown size={14} className="text-blue-500" />, color: 'text-blue-600' },
@@ -70,62 +66,86 @@ interface Draft {
     priority: Priority;
     storyPoint: string;
     dueDate: string;
-    status: ItemStatus;
+    status: string;
     assigneeId: string;
     releaseId: string;
 }
 
 export function TaskDetailPage() {
     const { taskId } = useParams<{ taskId: string }>();
-    const currentUser = useAuthStore((state) => state.user);
-    const { data: task, isLoading } = useTaskDetail(taskId ?? null);
-
-    const updateStatus = useUpdateTaskStatus(task?.projectId ?? '');
-    const updateTitle = useUpdateTaskTitle(taskId ?? '');
-    const updateDescription = useUpdateTaskDescription(taskId ?? '');
-    const updatePriority = useUpdateTaskPriority(taskId ?? '');
-    const updateStoryPoint = useUpdateTaskStoryPoint(taskId ?? '');
-    const updateDueDate = useUpdateTaskDueDate(taskId ?? '');
-    const updateRelease = useUpdateTaskRelease(taskId ?? '');
-    const reassign = useReassignTaskDetail(taskId ?? '', task?.projectId ?? '');
-    const closeEpic = useCloseEpic(taskId ?? '', task?.projectId ?? '');
-    const uploadAttachment = useUploadAttachment(taskId ?? '');
+    const { data: task, isLoading, isError } = useTaskDetail(taskId ?? null);
     const { data: members } = useProjectMembers(task?.projectId ?? null);
-    const { data: releases } = useReleases(task?.projectId ?? null);
 
-    // Referanslar (File Input & Textarea)
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    if (isError) {
+        return (
+            <div className="text-center py-16">
+                <p className="text-secondary">Bu görev bulunamadı veya erişim yetkiniz yok.</p>
+                <Link to="/dashboard" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
+                    ← Dashboard'a dön
+                </Link>
+            </div>
+        );
+    }
 
-    const [draft, setDraft] = useState<Draft | null>(null);
-    const [isSaving, setIsSaving] = useState(false);
-    const [saveError, setSaveError] = useState<string | null>(null);
-    const [closeEpicError, setCloseEpicError] = useState<string | null>(null);
-    const [activeActivityTab, setActiveActivityTab] = useState<'comments' | 'worklogs' | 'attachments'>('comments');
-
-    useEffect(() => {
-        if (task) {
-            setDraft({
-                title: task.title,
-                description: task.description ?? '',
-                priority: PRIORITY_NAME_TO_NUM(task.priority),
-                storyPoint: task.storyPoint?.toString() ?? '',
-                dueDate: task.dueDate ? task.dueDate.slice(0, 10) : '',
-                status: task.status,
-                assigneeId: members?.find((m) => m.userName === task.assigneeName)?.userId ?? '',
-                releaseId: task.releaseId ?? '',
-            });
-        }
-    }, [task?.id, task?.updatedAt, members]);
-
-    if (isLoading || !task || !draft) {
+    if (isLoading || !task) {
         return <TaskDetailSkeleton />;
     }
+
+    return (
+        <TaskDetailContent
+            key={`${task.id}-${task.updatedAt ?? task.createdAt}-${task.statusId}`}
+            task={task}
+            members={members ?? []}
+        />
+    );
+}
+
+type TaskDetailData = NonNullable<ReturnType<typeof useTaskDetail>['data']>;
+type ProjectMemberData = NonNullable<ReturnType<typeof useProjectMembers>['data']>[number];
+
+function TaskDetailContent({ task, members }: { task: TaskDetailData; members: ProjectMemberData[] }) {
+    const currentUser = useAuthStore((state) => state.user);
+
+    const updateStatus = useUpdateTaskStatus(task.projectId);
+    const updateTitle = useUpdateTaskTitle(task.id);
+    const updateDescription = useUpdateTaskDescription(task.id);
+    const updatePriority = useUpdateTaskPriority(task.id);
+    const updateStoryPoint = useUpdateTaskStoryPoint(task.id);
+    const updateDueDate = useUpdateTaskDueDate(task.id);
+    const updateRelease = useUpdateTaskRelease(task.id);
+    const reassign = useReassignTaskDetail(task.id, task.projectId);
+    const closeEpic = useCloseEpic(task.id, task.projectId);
+    const uploadAttachment = useUploadAttachment(task.id);
+
+    const { data: releases } = useReleases(task.projectId);
+    const { data: workflowStatuses, isLoading: statusesLoading } = useWorkflowStatuses(task?.projectId ?? null);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const taskLinksRef = useRef<HTMLDivElement>(null);
+    const subtasksSectionRef = useRef<SubtasksSectionHandle>(null);
+    const subtasksContainerRef = useRef<HTMLDivElement>(null);
+
+    const [draft, setDraft] = useState<Draft>(() => ({
+        title: task.title,
+        description: task.description ?? '',
+        priority: PRIORITY_NAME_TO_NUM(task.priority),
+        storyPoint: task.storyPoint?.toString() ?? '',
+        dueDate: task.dueDate ? task.dueDate.slice(0, 10) : '',
+        status: task.statusId,
+        assigneeId: members.find((m) => m.userName === task.assigneeName)?.userId ?? '',
+        releaseId: task.releaseId ?? '',
+    }));
+
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [concurrencyConflict, setConcurrencyConflict] = useState(false);
+    const [closeEpicError, setCloseEpicError] = useState<string | null>(null);
+    const [activeActivityTab, setActiveActivityTab] = useState<'comments' | 'worklogs' | 'attachments'>('comments');
 
     const isPM = currentUser?.roles.some((r) => r === 'System Admin' || r === 'Project Manager') ?? false;
     const isDeveloper = currentUser?.roles.includes('Developer') ?? false;
     const isAssignee =
-        task.assigneeName !== null && members?.some((m) => m.userName === task.assigneeName && m.userId === currentUser?.userId);
+        task.assigneeName !== null && members.some((m) => m.userName === task.assigneeName && m.userId === currentUser?.userId);
 
     const canEditTitle = isPM;
     const canEditDescription = isPM || isAssignee;
@@ -135,19 +155,29 @@ export function TaskDetailPage() {
     const canReassign = isPM;
     const canEditRelease = isPM;
 
+    const canAddSubtask = Boolean(task.allowsChildren && !task.requiresParent);
+
     const isDirty =
         draft.title !== task.title ||
         draft.description !== (task.description ?? '') ||
         draft.priority !== PRIORITY_NAME_TO_NUM(task.priority) ||
         draft.storyPoint !== (task.storyPoint?.toString() ?? '') ||
         draft.dueDate !== (task.dueDate ? task.dueDate.slice(0, 10) : '') ||
-        draft.status !== task.status ||
-        draft.assigneeId !== (members?.find((m) => m.userName === task.assigneeName)?.userId ?? '') ||
+        draft.status !== task.statusId ||
+        draft.assigneeId !== (members.find((m) => m.userName === task.assigneeName)?.userId ?? '') ||
         draft.releaseId !== (task.releaseId ?? '');
 
-    // Dosya Yükleme Eylemleri
     const handleAttachClick = () => {
         fileInputRef.current?.click();
+    };
+
+    const handleScrollToLinks = () => {
+        taskLinksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    const handleAddSubtaskClick = () => {
+        subtasksContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        subtasksSectionRef.current?.openAddForm();
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -162,28 +192,12 @@ export function TaskDetailPage() {
         }
     };
 
-    // Açıklama Markdown Araç Çubuğu İşlevi
-    const insertFormat = (prefix: string, suffix: string = prefix) => {
-        const textarea = textareaRef.current;
-        if (!textarea || !draft) return;
-
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const selectedText = draft.description.substring(start, end);
-
-        const newText =
-            draft.description.substring(0, start) +
-            prefix +
-            selectedText +
-            suffix +
-            draft.description.substring(end);
-
-        setDraft({ ...draft, description: newText });
-
-        setTimeout(() => {
-            textarea.focus();
-            textarea.setSelectionRange(start + prefix.length, end + prefix.length);
-        }, 0);
+    const handleCopyLink = async () => {
+        try {
+            await navigator.clipboard.writeText(window.location.href);
+        } catch {
+            // Clipboard desteklenmiyorsa sessizce geç
+        }
     };
 
     const handleCancel = () => {
@@ -193,44 +207,74 @@ export function TaskDetailPage() {
             priority: PRIORITY_NAME_TO_NUM(task.priority),
             storyPoint: task.storyPoint?.toString() ?? '',
             dueDate: task.dueDate ? task.dueDate.slice(0, 10) : '',
-            status: task.status,
-            assigneeId: members?.find((m) => m.userName === task.assigneeName)?.userId ?? '',
+            status: task.statusId,
+            assigneeId: members.find((m) => m.userName === task.assigneeName)?.userId ?? '',
             releaseId: task.releaseId ?? '',
         });
         setSaveError(null);
+        setConcurrencyConflict(false);
     };
 
     const handleSave = async () => {
         setIsSaving(true);
         setSaveError(null);
+        setConcurrencyConflict(false);
 
-        const jobs: Promise<unknown>[] = [];
+        const jobs: { label: string; promise: Promise<unknown> }[] = [];
 
-        if (canEditTitle && draft.title !== task.title) jobs.push(updateTitle.mutateAsync(draft.title));
+        if (canEditTitle && draft.title !== task.title)
+            jobs.push({ label: 'Başlık', promise: updateTitle.mutateAsync(draft.title) });
         if (canEditDescription && draft.description !== (task.description ?? ''))
-            jobs.push(updateDescription.mutateAsync(draft.description));
+            jobs.push({ label: 'Açıklama', promise: updateDescription.mutateAsync(draft.description) });
         if (canEditPriority && draft.priority !== PRIORITY_NAME_TO_NUM(task.priority))
-            jobs.push(updatePriority.mutateAsync(draft.priority));
+            jobs.push({ label: 'Öncelik', promise: updatePriority.mutateAsync(draft.priority) });
         if (canEditStoryPoint && draft.storyPoint !== (task.storyPoint?.toString() ?? ''))
-            jobs.push(updateStoryPoint.mutateAsync(draft.storyPoint ? Number(draft.storyPoint) : null));
+            jobs.push({ label: 'Story Point', promise: updateStoryPoint.mutateAsync(draft.storyPoint ? Number(draft.storyPoint) : null) });
         if (canEditDueDate && draft.dueDate !== (task.dueDate ? task.dueDate.slice(0, 10) : ''))
-            jobs.push(updateDueDate.mutateAsync(draft.dueDate || null));
-        if (draft.status !== task.status)
-            jobs.push(updateStatus.mutateAsync({ taskId: task.id, status: STATUS_TO_INT[draft.status] }));
-        if (canReassign && draft.assigneeId !== (members?.find((m) => m.userName === task.assigneeName)?.userId ?? ''))
-            jobs.push(reassign.mutateAsync(draft.assigneeId || null));
+            jobs.push({ label: 'Teslim Tarihi', promise: updateDueDate.mutateAsync(draft.dueDate || null) });
+        if (draft.status && draft.status !== task.statusId) {
+            jobs.push({
+                label: 'Durum',
+                promise: updateStatus.mutateAsync({
+                    taskId: task.id,
+                    status: draft.status,
+                }),
+            });
+        }
+        if (canReassign && draft.assigneeId !== (members.find((m) => m.userName === task.assigneeName)?.userId ?? ''))
+            jobs.push({ label: 'Atanan Kişi', promise: reassign.mutateAsync(draft.assigneeId || null) });
         if (canEditRelease && draft.releaseId !== (task.releaseId ?? ''))
-            jobs.push(updateRelease.mutateAsync(draft.releaseId || null));
+            jobs.push({ label: 'Release', promise: updateRelease.mutateAsync(draft.releaseId || null) });
 
-        const results = await Promise.allSettled(jobs);
-        const failed = results.filter((r) => r.status === 'rejected');
-
+        const results = await Promise.allSettled(jobs.map((j) => j.promise));
         setIsSaving(false);
 
-        if (failed.length > 0) {
-            setSaveError(
-                `${failed.length} değişiklik kaydedilemedi (yetki veya iş kuralı ihlali olabilir). Diğer değişiklikler kaydedildi.`
-            );
+        const failures = results
+            .map((r, i) => ({ result: r, label: jobs[i].label }))
+            .filter((x) => x.result.status === 'rejected');
+
+        if (failures.length > 0) {
+            // #Kritik-3: 409 (concurrency çatışması) varsa, önce onu ayırt edip özel bir
+            // "sayfayı yenile" aksiyonuyla göster -- diğer hatalarla aynı genel mesaja karıştırma.
+            const concurrencyFailure = failures.find((f) => {
+                const rejected = f.result as PromiseRejectedResult;
+                const axiosError = rejected.reason as AxiosError<ApiErrorResponse>;
+                return axiosError.response?.status === 409;
+            });
+
+            if (concurrencyFailure) {
+                setConcurrencyConflict(true);
+            }
+
+            const details = failures
+                .map((f) => {
+                    const rejected = f.result as PromiseRejectedResult;
+                    const axiosError = rejected.reason as AxiosError<ApiErrorResponse>;
+                    const msg = axiosError.response?.data?.message ?? 'bilinmeyen hata';
+                    return `${f.label}: ${msg}`;
+                })
+                .join(' · ');
+            setSaveError(details);
         }
     };
 
@@ -246,15 +290,13 @@ export function TaskDetailPage() {
 
     const handleAssignToMe = () => {
         if (!currentUser?.userId || !canReassign) return;
-        setDraft((prev) => (prev ? { ...prev, assigneeId: currentUser.userId } : null));
+        setDraft((prev) => ({ ...prev, assigneeId: currentUser.userId }));
     };
 
     const currentPriorityObj = PRIORITY_OPTIONS.find((p) => p.value === draft.priority) || PRIORITY_OPTIONS[1];
-    const currentStatusObj = ALL_STATUSES.find((s) => s.value === draft.status) || ALL_STATUSES[0];
 
     return (
-        <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-4 space-y-6 pb-24 text-slate-800">
-            {/* Gizli Dosya Yükleyici Input */}
+        <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-4 space-y-6 pb-24 text-primary">
             <input
                 type="file"
                 ref={fileInputRef}
@@ -262,7 +304,6 @@ export function TaskDetailPage() {
                 className="hidden"
             />
 
-            {/* Navigasyon / Breadcrumb */}
             <div className="flex items-center justify-between">
                 <TaskBreadcrumb
                     projectId={task.projectId}
@@ -271,169 +312,277 @@ export function TaskDetailPage() {
                     issueKey={task.issueKey}
                 />
                 <div className="flex items-center gap-2">
-                    <button className="p-1.5 hover:bg-slate-100 rounded text-slate-500 transition cursor-pointer">
+                    <button
+                        type="button"
+                        onClick={handleCopyLink}
+                        title="Copy link"
+                        className="p-1.5 hover-surface rounded-md text-secondary transition cursor-pointer"
+                    >
                         <Share2 size={16} />
                     </button>
-                    <button className="p-1.5 hover:bg-slate-100 rounded text-slate-500 transition cursor-pointer">
+                    <button type="button" className="p-1.5 hover-surface rounded-md text-secondary transition cursor-pointer">
                         <MoreHorizontal size={16} />
                     </button>
                 </div>
             </div>
 
-            {/* Jira 12-Column Grid Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                {/* SOL KOLON - İÇERİK (8 Kolon) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
                 <div className="lg:col-span-8 space-y-6">
-                    {/* Başlık Alanı */}
-                    <div>
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2 px-2">
+                            <span className="text-xs font-semibold text-secondary">
+                                {task.issueKey}
+                            </span>
+                            <span className="text-xs text-muted">•</span>
+                            <span className="text-xs text-muted">
+                                {task.issueType}
+                            </span>
+                        </div>
+
                         {canEditTitle ? (
                             <input
                                 value={draft.title}
                                 onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-                                className="text-2xl font-bold w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white rounded px-2 py-1.5 focus:outline-none transition-all text-slate-900"
+                                className="
+                                    text-2xl font-semibold text-primary
+                                    w-full bg-transparent
+                                    border border-transparent
+                                    hover:border-gray-300 dark:hover:border-gray-600
+                                    focus:border-blue-500
+                                    focus:bg-white dark:focus:bg-gray-800
+                                    rounded-md
+                                    px-2 py-1.5
+                                    focus:outline-none
+                                    transition-all
+                                "
                                 placeholder="Görev başlığı"
                             />
                         ) : (
-                            <h1 className="text-2xl font-bold px-2 py-1.5 text-slate-900">{task.title}</h1>
+                            <h1 className="text-2xl font-semibold text-primary px-2 py-1.5">{task.title}</h1>
                         )}
                     </div>
 
-                    {/* Jira Aksiyon Barı */}
-                    <div className="flex items-center gap-2 flex-wrap text-xs">
+                    <div className="px-2">
+                        <select
+                            value={draft.status}
+                            onChange={(e) => setDraft({ ...draft, status: e.target.value })}
+                            disabled={statusesLoading || !workflowStatuses}
+                            className="input-base border rounded px-2 py-1 text-sm mt-1 w-full bg-transparent font-medium cursor-pointer disabled:opacity-50"
+                        >
+                            {!workflowStatuses || workflowStatuses.length === 0 ? (
+                                <option value={draft.status}>Yükleniyor...</option>
+                            ) : (
+                                [...workflowStatuses]
+                                    .sort((a, b) => a.displayOrder - b.displayOrder)
+                                    .map((s) => (
+                                        <option key={s.id} value={s.id} className="surface text-primary font-normal">
+                                            {s.name}
+                                        </option>
+                                    ))
+                            )}
+                        </select>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap text-xs px-2">
                         <button
+                            type="button"
                             onClick={handleAssignToMe}
                             disabled={!canReassign || draft.assigneeId === currentUser?.userId}
-                            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-2.5 py-1.5 rounded transition cursor-pointer disabled:opacity-50"
+                            className="
+                                inline-flex items-center gap-1.5
+                                surface hover-surface
+                                text-secondary
+                                font-medium
+                                px-2.5 py-1.5
+                                rounded-md
+                                transition
+                                cursor-pointer
+                                border border-gray-200
+                                dark:border-gray-700
+                                disabled:opacity-50
+                            "
                         >
                             <UserCheck size={14} />
                             <span>Bana Ata</span>
                         </button>
                         <button
+                            type="button"
                             onClick={handleAttachClick}
-                            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-2.5 py-1.5 rounded transition cursor-pointer"
+                            className="
+                                inline-flex items-center gap-1.5
+                                surface hover-surface
+                                text-secondary
+                                font-medium
+                                px-2.5 py-1.5
+                                rounded-md
+                                transition
+                                cursor-pointer
+                                border border-gray-200
+                                dark:border-gray-700
+                            "
                         >
                             <Paperclip size={14} />
                             <span>Ekle</span>
                         </button>
-                        <button className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-2.5 py-1.5 rounded transition cursor-pointer">
-                            <Plus size={14} />
-                            <span>Alt Görev Ekle</span>
-                        </button>
-                        <button className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-2.5 py-1.5 rounded transition cursor-pointer">
+                        <button
+                            type="button"
+                            onClick={handleScrollToLinks}
+                            className="
+                                inline-flex items-center gap-1.5
+                                surface hover-surface
+                                text-secondary
+                                font-medium
+                                px-2.5 py-1.5
+                                rounded-md
+                                transition
+                                cursor-pointer
+                                border border-gray-200
+                                dark:border-gray-700
+                            "
+                        >
                             <Link2 size={14} />
                             <span>İlişkilendir</span>
                         </button>
+
+                        {canAddSubtask && (
+                            <button
+                                type="button"
+                                onClick={handleAddSubtaskClick}
+                                className="
+                                    inline-flex items-center gap-1.5
+                                    surface hover-surface
+                                    text-secondary
+                                    font-medium
+                                    px-2.5 py-1.5
+                                    rounded-md
+                                    transition
+                                    cursor-pointer
+                                    border border-gray-200
+                                    dark:border-gray-700
+                                "
+                            >
+                                <CheckSquare size={14} className="text-sky-600 dark:text-sky-400" />
+                                <span>Alt Görev Ekle</span>
+                            </button>
+                        )}
+
                         {task.allowsChildren && isPM && task.status !== 'Closed' && (
                             <button
+                                type="button"
                                 onClick={handleCloseEpic}
-                                className="flex items-center gap-1.5 border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium px-2.5 py-1.5 rounded transition cursor-pointer"
+                                className="
+                                    inline-flex items-center gap-1.5
+                                    border border-indigo-200 dark:border-indigo-800
+                                    bg-indigo-50 dark:bg-indigo-950
+                                    text-indigo-700 dark:text-indigo-300
+                                    hover:bg-indigo-100 dark:hover:bg-indigo-900
+                                    font-medium
+                                    px-2.5 py-1.5
+                                    rounded-md
+                                    transition
+                                    cursor-pointer
+                                "
                             >
                                 <CheckCircle2 size={14} />
                                 <span>Epic'i Kapat</span>
                             </button>
                         )}
                     </div>
-                    {closeEpicError && <p className="text-red-500 text-xs font-medium">{closeEpicError}</p>}
+                    {closeEpicError && <p className="text-red-500 dark:text-red-400 text-xs font-medium px-2">{closeEpicError}</p>}
 
-                    {/* Açıklama Alanı (Rich Toolbar ile) */}
                     <div className="space-y-2">
-                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Açıklama</h3>
+                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider">Açıklama</h3>
                         {canEditDescription ? (
-                            <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-2xs">
-                                <div className="flex items-center gap-1 px-3 py-1.5 border-b border-slate-100 bg-slate-50/50 text-slate-500">
-                                    <button
-                                        type="button"
-                                        onClick={() => insertFormat('**')}
-                                        title="Kalın"
-                                        className="p-1 hover:bg-slate-200 rounded cursor-pointer"
-                                    >
-                                        <Bold size={14} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => insertFormat('*')}
-                                        title="İtalik"
-                                        className="p-1 hover:bg-slate-200 rounded cursor-pointer"
-                                    >
-                                        <Italic size={14} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => insertFormat('`')}
-                                        title="Kod"
-                                        className="p-1 hover:bg-slate-200 rounded cursor-pointer"
-                                    >
-                                        <Code size={14} />
-                                    </button>
-                                    <span className="w-px h-4 bg-slate-200 mx-1" />
-                                    <button
-                                        type="button"
-                                        onClick={() => insertFormat('\n- ')}
-                                        title="Liste"
-                                        className="p-1 hover:bg-slate-200 rounded cursor-pointer"
-                                    >
-                                        <List size={14} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => insertFormat('@')}
-                                        title="Etiketle"
-                                        className="p-1 hover:bg-slate-200 rounded cursor-pointer"
-                                    >
-                                        <AtSign size={14} />
-                                    </button>
-                                </div>
-                                <MentionTextarea
-                                    value={draft.description}
-                                    onChange={(v) => setDraft({ ...draft, description: v })}
-                                    members={members}
-                                    placeholder="Açıklama ekleyin... (@ ile ekip arkadaşınızı etiketleyebilirsiniz)"
-                                    rows={5}
-                                    className="w-full p-3 text-sm focus:outline-none bg-transparent"
-                                />
+                            <RichTextEditor
+                                value={draft.description}
+                                onChange={(v) => setDraft({ ...draft, description: v })}
+                                members={members}
+                                placeholder="Açıklama ekleyin... (@ ile etiketleme, Markdown biçimlendirme desteklenir)"
+                                rows={5}
+                            />
+                        ) : task.description ? (
+                            <div className="text-secondary">
+                                <MarkdownContent content={task.description} />
                             </div>
                         ) : (
-                            <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                                {task.description || <span className="text-slate-400 italic">Açıklama eklenmemiş.</span>}
-                            </div>
+                            <p className="text-muted">Açıklama yok.</p>
                         )}
                     </div>
 
-                    {/* Subtasks */}
-                    <SubtasksSection taskId={task.id} projectId={task.projectId} />
+                    <CustomFieldsSection taskId={task.id} projectId={task.projectId} />
 
-                    {/* Checklist */}
+                    <div ref={taskLinksRef} className="scroll-mt-6">
+                        <TaskLinksSection taskId={task.id} projectId={task.projectId} />
+                    </div>
+
+                    <GitActivitySection taskId={task.id} issueKey={task.issueKey} />
+
+                    <div ref={subtasksContainerRef} className="scroll-mt-6">
+                        <SubtasksSection
+                            ref={subtasksSectionRef}
+                            taskId={task.id}
+                            projectId={task.projectId}
+                            canAdd={canAddSubtask}
+                        />
+                    </div>
+
                     <ChecklistSection taskId={task.id} />
 
-                    {/* Activity Tabs */}
-                    <div className="space-y-4 pt-4 border-t border-slate-200">
-                        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Aktivite</h3>
-                            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-md text-xs font-medium">
+                    <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
+                            <h3 className="text-sm font-semibold text-primary">Activity</h3>
+                            <div className="flex items-center gap-4">
                                 <button
+                                    type="button"
                                     onClick={() => setActiveActivityTab('comments')}
-                                    className={`px-3 py-1 rounded transition cursor-pointer ${activeActivityTab === 'comments'
-                                        ? 'bg-white text-slate-800 shadow-2xs font-semibold'
-                                        : 'text-slate-600 hover:text-slate-900'
-                                        }`}
+                                    className={`
+                                        px-1 py-2
+                                        text-xs
+                                        font-medium
+                                        border-b-2
+                                        transition
+                                        cursor-pointer
+                                        ${activeActivityTab === 'comments'
+                                            ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                                            : 'border-transparent text-secondary hover:text-primary'
+                                        }
+                                    `}
                                 >
                                     Yorumlar ({task.commentCount ?? 0})
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => setActiveActivityTab('worklogs')}
-                                    className={`px-3 py-1 rounded transition cursor-pointer ${activeActivityTab === 'worklogs'
-                                        ? 'bg-white text-slate-800 shadow-2xs font-semibold'
-                                        : 'text-slate-600 hover:text-slate-900'
-                                        }`}
+                                    className={`
+                                        px-1 py-2
+                                        text-xs
+                                        font-medium
+                                        border-b-2
+                                        transition
+                                        cursor-pointer
+                                        ${activeActivityTab === 'worklogs'
+                                            ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                                            : 'border-transparent text-secondary hover:text-primary'
+                                        }
+                                    `}
                                 >
                                     Çalışma Günlükleri
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => setActiveActivityTab('attachments')}
-                                    className={`px-3 py-1 rounded transition cursor-pointer ${activeActivityTab === 'attachments'
-                                        ? 'bg-white text-slate-800 shadow-2xs font-semibold'
-                                        : 'text-slate-600 hover:text-slate-900'
-                                        }`}
+                                    className={`
+                                        px-1 py-2
+                                        text-xs
+                                        font-medium
+                                        border-b-2
+                                        transition
+                                        cursor-pointer
+                                        ${activeActivityTab === 'attachments'
+                                            ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                                            : 'border-transparent text-secondary hover:text-primary'
+                                        }
+                                    `}
                                 >
                                     Ekler ({task.attachmentCount ?? 0})
                                 </button>
@@ -442,57 +591,68 @@ export function TaskDetailPage() {
 
                         <div>
                             {activeActivityTab === 'comments' && <CommentsSection taskId={task.id} projectId={task.projectId} />}
-                            {activeActivityTab === 'worklogs' && <WorkLogsSection taskId={task.id} />}
+                            {activeActivityTab === 'worklogs' && (
+                                <div className="space-y-4">
+                                    <TimeTrackingWidget
+                                        taskId={task.id}
+                                        originalEstimateMinutes={task.originalEstimateMinutes}
+                                        remainingEstimateMinutes={task.remainingEstimateMinutes}
+                                        canEdit={isPM || isAssignee}
+                                    />
+                                    <WorkLogsSection taskId={task.id} />
+                                </div>
+                            )}
                             {activeActivityTab === 'attachments' && <AttachmentsSection taskId={task.id} />}
                         </div>
                     </div>
+
+                    <HistorySection taskId={task.id} />
                 </div>
 
-                {/* SAĞ KOLON - ÖZELLİKLER & ÖZET (4 Kolon) */}
                 <div className="lg:col-span-4 space-y-6">
-                    {/* Status Dropdown */}
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Status</label>
-                        <div className="relative">
-                            <select
-                                value={draft.status}
-                                onChange={(e) => setDraft({ ...draft, status: e.target.value as ItemStatus })}
-                                className={`appearance-none w-full border font-bold text-xs px-3 py-2 rounded-md cursor-pointer transition focus:outline-none ${currentStatusObj.color}`}
-                            >
-                                {ALL_STATUSES.map((s) => (
-                                    <option key={s.value} value={s.value} className="bg-white text-slate-800 font-normal">
-                                        {s.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Property List (Details) */}
-                    <div className="bg-white border border-slate-200 rounded-lg divide-y divide-slate-100 text-xs">
-                        <div className="p-3 font-bold text-slate-700 uppercase tracking-wider text-[11px] bg-slate-50/50 rounded-t-lg">
+                    <div className="
+                        surface
+                        border
+                        border-gray-200
+                        dark:border-gray-700
+                        rounded-md
+                        p-4
+                        divide-y
+                        divide-gray-100
+                        dark:divide-gray-800
+                        text-xs
+                    ">
+                        <div className="
+                            px-3 py-2
+                            -mx-4 -mt-4 mb-1
+                            text-xs
+                            font-semibold
+                            text-primary
+                            border-b
+                            border-gray-200
+                            dark:border-gray-700
+                        ">
                             Details
                         </div>
 
-                        {/* Assignee */}
-                        <div className="p-3 grid grid-cols-12 items-center gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium">Assignee</span>
+                        <div className="py-3 grid grid-cols-12 items-center gap-2">
+                            <span className="col-span-4 text-muted font-medium">Assignee</span>
                             <div className="col-span-8">
                                 {canReassign ? (
                                     <select
                                         value={draft.assigneeId}
                                         onChange={(e) => setDraft({ ...draft, assigneeId: e.target.value })}
-                                        className="w-full bg-transparent hover:bg-slate-50 font-medium text-slate-800 border border-transparent hover:border-slate-200 rounded px-1.5 py-1 transition focus:bg-white focus:border-blue-500 cursor-pointer"
+                                        className="w-full bg-transparent hover-surface font-medium text-primary input-base border border-transparent hover:border-gray-200 dark:hover:border-gray-700 rounded px-1.5 py-1 transition focus:bg-white dark:focus:bg-gray-800 focus:border-blue-500 cursor-pointer"
                                     >
                                         <option value="">Unassigned</option>
-                                        {members?.map((m) => (
+                                        {members.map((m) => (
                                             <option key={m.userId} value={m.userId}>
                                                 {m.userName}
                                             </option>
                                         ))}
                                     </select>
                                 ) : (
-                                    <div className="flex items-center gap-2 font-medium text-slate-800 px-1.5 py-1">
+                                    <div className="flex items-center gap-2 font-medium text-primary px-1.5 py-1">
                                         <Avatar name={task.assigneeName ?? 'U'} />
                                         <span>{task.assigneeName ?? 'Unassigned'}</span>
                                     </div>
@@ -500,15 +660,14 @@ export function TaskDetailPage() {
                             </div>
                         </div>
 
-                        {/* Priority */}
-                        <div className="p-3 grid grid-cols-12 items-center gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium">Priority</span>
+                        <div className="py-3 grid grid-cols-12 items-center gap-2">
+                            <span className="col-span-4 text-muted font-medium">Priority</span>
                             <div className="col-span-8">
                                 {canEditPriority ? (
                                     <select
                                         value={draft.priority}
                                         onChange={(e) => setDraft({ ...draft, priority: Number(e.target.value) as Priority })}
-                                        className="w-full bg-transparent hover:bg-slate-50 font-semibold text-slate-800 border border-transparent hover:border-slate-200 rounded px-1.5 py-1 transition focus:bg-white focus:border-blue-500 cursor-pointer"
+                                        className="w-full bg-transparent hover-surface font-semibold text-primary input-base border border-transparent hover:border-gray-200 dark:hover:border-gray-700 rounded px-1.5 py-1 transition focus:bg-white dark:focus:bg-gray-800 focus:border-blue-500 cursor-pointer"
                                     >
                                         {PRIORITY_OPTIONS.map((p) => (
                                             <option key={p.value} value={p.value}>
@@ -517,7 +676,7 @@ export function TaskDetailPage() {
                                         ))}
                                     </select>
                                 ) : (
-                                    <div className="flex items-center gap-2 font-semibold text-slate-800 px-1.5 py-1">
+                                    <div className="flex items-center gap-2 font-semibold text-primary px-1.5 py-1">
                                         {currentPriorityObj.icon}
                                         <span>{currentPriorityObj.label}</span>
                                     </div>
@@ -525,15 +684,14 @@ export function TaskDetailPage() {
                             </div>
                         </div>
 
-                        {/* Story Points */}
-                        <div className="p-3 grid grid-cols-12 items-center gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium">Story Points</span>
+                        <div className="py-3 grid grid-cols-12 items-center gap-2">
+                            <span className="col-span-4 text-muted font-medium">Story Points</span>
                             <div className="col-span-8">
                                 {canEditStoryPoint ? (
                                     <select
                                         value={draft.storyPoint}
                                         onChange={(e) => setDraft({ ...draft, storyPoint: e.target.value })}
-                                        className="w-full bg-transparent hover:bg-slate-50 font-semibold text-slate-800 border border-transparent hover:border-slate-200 rounded px-1.5 py-1 transition focus:bg-white focus:border-blue-500 cursor-pointer"
+                                        className="w-full bg-transparent hover-surface font-semibold text-primary input-base border border-transparent hover:border-gray-200 dark:hover:border-gray-700 rounded px-1.5 py-1 transition focus:bg-white dark:focus:bg-gray-800 focus:border-blue-500 cursor-pointer"
                                     >
                                         <option value="">None</option>
                                         {FIBONACCI.map((v) => (
@@ -545,54 +703,51 @@ export function TaskDetailPage() {
                                 ) : (
                                     <div className="px-1.5 py-1">
                                         {task.storyPoint ? (
-                                            <span className="inline-flex items-center justify-center min-w-6 h-6 px-2 text-xs font-bold bg-slate-100 text-slate-700 rounded-full border border-slate-200">
+                                            <span className="inline-flex items-center justify-center min-w-6 h-6 px-2 text-xs font-bold bg-gray-100 dark:bg-gray-700 text-secondary rounded-full border border-gray-200 dark:border-gray-600">
                                                 {task.storyPoint}
                                             </span>
                                         ) : (
-                                            <span className="text-slate-400 font-medium">-</span>
+                                            <span className="text-muted font-medium">-</span>
                                         )}
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        {/* Reporter */}
-                        <div className="p-3 grid grid-cols-12 items-center gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium">Reporter</span>
-                            <div className="col-span-8 flex items-center gap-2 font-medium text-slate-800 px-1.5 py-1">
+                        <div className="py-3 grid grid-cols-12 items-center gap-2">
+                            <span className="col-span-4 text-muted font-medium">Reporter</span>
+                            <div className="col-span-8 flex items-center gap-2 font-medium text-primary px-1.5 py-1">
                                 <Avatar name={task.reporterName} />
                                 <span>{task.reporterName}</span>
                             </div>
                         </div>
 
-                        {/* Due Date */}
-                        <div className="p-3 grid grid-cols-12 items-center gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium">Due Date</span>
+                        <div className="py-3 grid grid-cols-12 items-center gap-2">
+                            <span className="col-span-4 text-muted font-medium">Due Date</span>
                             <div className="col-span-8">
                                 {canEditDueDate ? (
                                     <input
                                         type="date"
                                         value={draft.dueDate}
                                         onChange={(e) => setDraft({ ...draft, dueDate: e.target.value })}
-                                        className="w-full bg-transparent hover:bg-slate-50 font-medium text-slate-800 border border-transparent hover:border-slate-200 rounded px-1.5 py-1 transition focus:bg-white focus:border-blue-500 cursor-pointer"
+                                        className="w-full bg-transparent hover-surface font-medium text-primary input-base border border-transparent hover:border-gray-200 dark:hover:border-gray-700 rounded px-1.5 py-1 transition focus:bg-white dark:focus:bg-gray-800 focus:border-blue-500 cursor-pointer"
                                     />
                                 ) : (
-                                    <span className="px-1.5 py-1 font-medium text-slate-800 block">
+                                    <span className="px-1.5 py-1 font-medium text-primary block">
                                         {task.dueDate ? new Date(task.dueDate).toLocaleDateString('tr-TR') : '-'}
                                     </span>
                                 )}
                             </div>
                         </div>
 
-                        {/* Release */}
-                        <div className="p-3 grid grid-cols-12 items-center gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium">Fix Version</span>
+                        <div className="py-3 grid grid-cols-12 items-center gap-2">
+                            <span className="col-span-4 text-muted font-medium">Fix Version</span>
                             <div className="col-span-8">
                                 {canEditRelease ? (
                                     <select
                                         value={draft.releaseId}
                                         onChange={(e) => setDraft({ ...draft, releaseId: e.target.value })}
-                                        className="w-full bg-transparent hover:bg-slate-50 font-medium text-slate-800 border border-transparent hover:border-slate-200 rounded px-1.5 py-1 transition focus:bg-white focus:border-blue-500 cursor-pointer"
+                                        className="w-full bg-transparent hover-surface font-medium text-primary input-base border border-transparent hover:border-gray-200 dark:hover:border-gray-700 rounded px-1.5 py-1 transition focus:bg-white dark:focus:bg-gray-800 focus:border-blue-500 cursor-pointer"
                                     >
                                         <option value="">Unreleased</option>
                                         {releases?.map((r) => (
@@ -604,64 +759,121 @@ export function TaskDetailPage() {
                                 ) : (
                                     <div className="px-1.5 py-1">
                                         {task.releaseVersion ? (
-                                            <span className="inline-block px-2 py-0.5 text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded">
+                                            <span className="inline-block px-2 py-0.5 text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded">
                                                 {task.releaseVersion}
                                             </span>
                                         ) : (
-                                            <span className="text-slate-400 font-medium">-</span>
+                                            <span className="text-muted font-medium">-</span>
                                         )}
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        {/* Watchers */}
-                        <div className="p-3 grid grid-cols-12 items-center gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium">Watchers</span>
+                        <div className="py-3 grid grid-cols-12 items-center gap-2">
+                            <span className="col-span-4 text-muted font-medium">Watchers</span>
                             <div className="col-span-8 px-1.5 py-1">
                                 <WatchersSection taskId={task.id} watcherCount={task.watcherCount} />
                             </div>
                         </div>
 
-                        {/* Labels */}
-                        <div className="p-3 grid grid-cols-12 items-start gap-2">
-                            <span className="col-span-4 text-slate-500 font-medium pt-1">Labels</span>
+                        <div className="py-3 grid grid-cols-12 items-start gap-2">
+                            <span className="col-span-4 text-muted font-medium pt-1">Labels</span>
                             <div className="col-span-8">
                                 <LabelsSection taskId={task.id} currentLabels={task.labels} />
                             </div>
                         </div>
+
+                        <div className="py-3 grid grid-cols-12 items-start gap-2">
+                            <span className="col-span-4 text-muted font-medium pt-1">Components</span>
+                            <div className="col-span-8">
+                                <ComponentsSection taskId={task.id} projectId={task.projectId} currentComponents={task.components} />
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Metadata Footer */}
-                    <div className="text-[11px] text-slate-400 space-y-1 px-1">
+                    <div className="text-[11px] text-muted space-y-1 px-1">
                         <p>Oluşturulma: {new Date(task.createdAt).toLocaleDateString('tr-TR')}</p>
-                        <p>Son Güncelleme: {new Date(task.updatedAt).toLocaleDateString('tr-TR')}</p>
+                        <p>Son Güncelleme: {new Date(task.updatedAt ?? task.createdAt).toLocaleDateString('tr-TR')}</p>
                     </div>
                 </div>
             </div>
 
-            {/* Jira Unsaved Changes Floating Bar */}
             {isDirty && (
-                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-amber-50 border border-amber-300 shadow-xl rounded-lg px-6 py-3 flex items-center gap-6 z-50 text-xs animate-in slide-in-from-bottom duration-200">
-                    <div className="flex items-center gap-2 text-amber-800 font-medium">
-                        <AlertCircle size={16} className="text-amber-600 shrink-0" />
-                        <span>Kaydedilmemiş değişiklikleriniz var.</span>
-                    </div>
-                    {saveError && <span className="text-red-600 font-semibold">{saveError}</span>}
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleCancel}
-                            className="px-3 py-1.5 text-slate-600 hover:text-slate-800 hover:bg-amber-100 rounded transition font-medium cursor-pointer"
-                        >
-                            İptal
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={isSaving}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded transition shadow-2xs disabled:opacity-50 cursor-pointer"
-                        >
-                            {isSaving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
-                        </button>
+                <div className="
+                    fixed
+                    bottom-4
+                    left-1/2
+                    -translate-x-1/2
+                    bg-white
+                    dark:bg-gray-900
+                    border
+                    border-gray-300
+                    dark:border-gray-700
+                    shadow-xl
+                    rounded-md
+                    px-5 py-3
+                    flex
+                    flex-col
+                    gap-3
+                    z-50
+                    text-xs
+                    animate-in
+                    slide-in-from-bottom
+                    duration-200
+                    max-w-2xl
+                    w-[calc(100%-2rem)]
+                ">
+                    {concurrencyConflict && (
+                        <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900 rounded px-3 py-2 flex items-center justify-between">
+                            <p className="text-sm text-orange-700 dark:text-orange-300">
+                                Bu görev siz düzenlerken başka biri tarafından değiştirildi.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => window.location.reload()}
+                                className="text-sm bg-orange-600 text-white px-3 py-1.5 rounded hover:bg-orange-700 whitespace-nowrap ml-3 cursor-pointer"
+                            >
+                                Sayfayı Yenile
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-5 flex-wrap">
+                        <div className="flex items-center gap-2 text-secondary font-medium">
+                            <AlertCircle size={16} className="text-amber-500 shrink-0" />
+                            <span>Kaydedilmemiş değişiklikleriniz var.</span>
+                        </div>
+
+                        {saveError && <span className="text-red-600 dark:text-red-400 font-semibold">{saveError}</span>}
+
+                        <div className="flex items-center gap-2 ml-auto">
+                            <button
+                                type="button"
+                                onClick={handleCancel}
+                                className="px-3 py-1.5 text-secondary hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition font-medium cursor-pointer"
+                            >
+                                İptal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSave}
+                                disabled={isSaving}
+                                className="
+                                    bg-blue-600
+                                    hover:bg-blue-700
+                                    text-white
+                                    font-semibold
+                                    px-4 py-1.5
+                                    rounded-md
+                                    transition
+                                    disabled:opacity-50
+                                    cursor-pointer
+                                "
+                            >
+                                {isSaving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -669,7 +881,6 @@ export function TaskDetailPage() {
     );
 }
 
-// Basit Avatar Bileşeni
 function Avatar({ name }: { name: string }) {
     const initials = name
         ? name
@@ -687,20 +898,19 @@ function Avatar({ name }: { name: string }) {
     );
 }
 
-// Skeleton Yüklenme Ekranı
 function TaskDetailSkeleton() {
     return (
         <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-6 space-y-6 animate-pulse">
-            <div className="h-4 bg-slate-200 rounded w-1/4" />
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 <div className="lg:col-span-8 space-y-6">
-                    <div className="h-8 bg-slate-200 rounded w-3/4" />
-                    <div className="h-8 bg-slate-100 rounded w-full" />
-                    <div className="h-32 bg-slate-100 rounded w-full" />
+                    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+                    <div className="h-8 bg-gray-100 dark:bg-gray-800 rounded w-full" />
+                    <div className="h-32 bg-gray-100 dark:bg-gray-800 rounded w-full" />
                 </div>
                 <div className="lg:col-span-4 space-y-4">
-                    <div className="h-10 bg-slate-200 rounded w-full" />
-                    <div className="h-64 bg-slate-100 rounded w-full" />
+                    <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-full" />
+                    <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded w-full" />
                 </div>
             </div>
         </div>
@@ -711,12 +921,3 @@ function PRIORITY_NAME_TO_NUM(name: string): Priority {
     const map: Record<string, Priority> = { Low: 0, Medium: 1, High: 2, Critical: 3 };
     return map[name] ?? 1;
 }
-
-const STATUS_TO_INT: Record<ItemStatus, number> = {
-    ToDo: 0,
-    InProgress: 1,
-    ReadyForReview: 2,
-    ReadyForQA: 3,
-    Done: 4,
-    Closed: 5,
-};

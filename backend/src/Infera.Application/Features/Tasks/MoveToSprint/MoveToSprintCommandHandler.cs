@@ -8,11 +8,16 @@ public class MoveToSprintCommandHandler : IRequestHandler<MoveToSprintCommand>
 {
     private readonly IAppDbContext _db;
     private readonly IProjectAccessService _access;
+    private readonly IRealtimeNotifier _realtime;
 
-    public MoveToSprintCommandHandler(IAppDbContext db, IProjectAccessService access)
+    public MoveToSprintCommandHandler(
+        IAppDbContext db,
+        IProjectAccessService access,
+        IRealtimeNotifier realtime)
     {
         _db = db;
         _access = access;
+        _realtime = realtime;
     }
 
     public async System.Threading.Tasks.Task Handle(MoveToSprintCommand request, CancellationToken ct)
@@ -35,5 +40,7 @@ public class MoveToSprintCommandHandler : IRequestHandler<MoveToSprintCommand>
         task.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
+
+        await _realtime.NotifyProjectAsync(task.ProjectId, "task", "sprint-moved", ct);
     }
 }

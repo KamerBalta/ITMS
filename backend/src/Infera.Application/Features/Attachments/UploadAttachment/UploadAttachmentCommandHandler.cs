@@ -10,6 +10,7 @@ public class UploadAttachmentCommandHandler : IRequestHandler<UploadAttachmentCo
     private readonly IAppDbContext _db;
     private readonly IFileStorageService _storage;
     private readonly IProjectAccessService _access;
+    private readonly IFileContentValidator _contentValidator;
 
     private const long MaxFileSizeBytes = 25 * 1024 * 1024;
 
@@ -19,11 +20,16 @@ public class UploadAttachmentCommandHandler : IRequestHandler<UploadAttachmentCo
         ".pdf", ".docx", ".xlsx", ".png", ".jpg", ".jpeg", ".zip"
     };
 
-    public UploadAttachmentCommandHandler(IAppDbContext db, IFileStorageService storage, IProjectAccessService access)
+    public UploadAttachmentCommandHandler(
+        IAppDbContext db,
+        IFileStorageService storage,
+        IProjectAccessService access,
+        IFileContentValidator contentValidator)
     {
         _db = db;
         _storage = storage;
         _access = access;
+        _contentValidator = contentValidator;
     }
 
     public async System.Threading.Tasks.Task<Guid> Handle(UploadAttachmentCommand request, CancellationToken ct)
@@ -42,6 +48,12 @@ public class UploadAttachmentCommandHandler : IRequestHandler<UploadAttachmentCo
         if (string.IsNullOrEmpty(extension) || !AllowedExtensions.Contains(extension))
             throw new InvalidOperationException(
                 "Yalnızca PDF, DOCX, XLSX, PNG, JPG ve ZIP uzantılı dosyalar yüklenebilir.");
+
+        // #Kritik-4: Uzantı whitelist'i (BR-011) yeterli değil -- dosyanın GERÇEK içeriği de
+        // beyan edilen uzantıyla eşleşmeli (magic bytes / mime inspection).
+        var isContentValid = await _contentValidator.IsContentValidForExtensionAsync(request.FileStream, extension, ct);
+        if (!isContentValid)
+            throw new InvalidOperationException($"Dosya içeriği, '{extension}' uzantısıyla uyuşmuyor. Dosya bozuk olabilir ya da uzantısı yanlış değiştirilmiş olabilir.");
 
         var filePath = await _storage.SaveAsync(request.FileStream, request.FileName, ct);
 

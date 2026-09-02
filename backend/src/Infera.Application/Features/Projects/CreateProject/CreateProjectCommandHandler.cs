@@ -1,6 +1,7 @@
 ﻿using Infera.Application.Common.Interfaces;
 using Infera.Application.Features.ProjectIssueTypes;
 using Infera.Domain.Entities;
+using Infera.Application.Features.Workflow;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -64,6 +65,7 @@ public class CreateProjectCommandHandler : IRequestHandler<CreateProjectCommand,
         }
 
         await DefaultProjectIssueTypeSeeder.AssignDefaultsAsync(_db, project.Id, ct);
+        await DefaultWorkflowSeeder.AssignDefaultsAsync(_db, project.Id, ct);
 
         await _db.SaveChangesAsync(ct);
 

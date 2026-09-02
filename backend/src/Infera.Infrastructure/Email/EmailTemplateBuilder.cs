@@ -30,7 +30,7 @@ public static class EmailTemplateBuilder
                       style="background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
                       <tr>
                         <td style="background-color:#4f46e5;padding:20px 32px;">
-                          <span style="color:#ffffff;font-size:18px;font-weight:700;">Infera ITMS</span>
+                          <span style="color:#ffffff;font-size:18px;font-weight:700;"> ITMS</span>
                         </td>
                       </tr>
                       <tr>
@@ -43,7 +43,7 @@ public static class EmailTemplateBuilder
                       <tr>
                         <td style="padding:20px 32px;border-top:1px solid #e5e7eb;">
                           <p style="margin:0;font-size:12px;color:#9ca3af;">
-                            Bu e-posta Infera ITMS tarafından otomatik olarak gönderilmiştir.
+                            Bu e-posta  ITMS tarafından otomatik olarak gönderilmiştir.
                             Bildirim tercihlerinizi Profilim &gt; Bildirim Tercihleri bölümünden yönetebilirsiniz.
                           </p>
                         </td>

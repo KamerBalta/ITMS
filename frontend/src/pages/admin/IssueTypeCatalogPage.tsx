@@ -38,38 +38,38 @@ export function IssueTypeCatalogPage() {
         <div className="max-w-2xl space-y-4">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold">Issue Type Kataloğu</h1>
-                    <p className="text-sm text-gray-400">Sistem genelinde tanımlı, projelerin seçebileceği tipler.</p>
+                    <h1 className="text-2xl font-bold text-primary">Issue Type Kataloğu</h1>
+                    <p className="text-sm text-muted">Sistem genelinde tanımlı, projelerin seçebileceği tipler.</p>
                 </div>
                 <button
                     onClick={() => {
                         setEditingType(null);
                         setFormOpen(true);
                     }}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700"
+                    className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 transition cursor-pointer"
                 >
                     + Yeni Tip
                 </button>
             </div>
 
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {error && <p className="text-red-500 dark:text-red-400 text-sm">{error}</p>}
 
             {isLoading ? (
-                <p className="text-gray-500">Yükleniyor...</p>
+                <p className="text-secondary">Yükleniyor...</p>
             ) : (
-                <div className="bg-white border rounded-lg divide-y">
+                <div className="surface border rounded-lg divide-y divide-gray-200 dark:divide-gray-700">
                     {types?.map((type) => (
                         <div key={type.id} className={`p-4 flex items-center gap-3 ${!type.isActive ? 'opacity-50' : ''}`}>
                             <span className="text-xl">{type.icon || '📄'}</span>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-medium">{type.name}</span>
+                                    <span className="font-medium text-primary">{type.name}</span>
                                     {type.color && <span className="w-3 h-3 rounded-full" style={{ backgroundColor: type.color }} />}
-                                    {type.isSystemDefault && <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">Sistem</span>}
-                                    {!type.isActive && <span className="text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded-full">Pasif</span>}
+                                    {type.isSystemDefault && <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-secondary px-1.5 py-0.5 rounded-full">Sistem</span>}
+                                    {!type.isActive && <span className="text-[10px] bg-red-50 dark:bg-red-950 text-red-500 dark:text-red-400 px-1.5 py-0.5 rounded-full">Pasif</span>}
                                 </div>
-                                {type.description && <p className="text-xs text-gray-400 mt-0.5">{type.description}</p>}
-                                <p className="text-xs text-gray-400 mt-0.5">
+                                {type.description && <p className="text-xs text-muted mt-0.5">{type.description}</p>}
+                                <p className="text-xs text-muted mt-0.5">
                                     {CREATOR_TIER_LABELS[type.creatorTier]}
                                     {type.allowsChildren && ' · Üst görev olabilir'}
                                     {type.requiresParent && ' · Üst göreve bağlı olmalı'}
@@ -78,7 +78,7 @@ export function IssueTypeCatalogPage() {
                             <div className="flex items-center gap-2 shrink-0">
                                 <button
                                     onClick={() => toggleActive.mutate(type.id)}
-                                    className={`text-xs px-2 py-1 rounded border ${type.isActive ? 'border-gray-200 text-gray-600' : 'border-green-200 text-green-600'}`}
+                                    className={`text-xs px-2 py-1 rounded border cursor-pointer ${type.isActive ? 'border-gray-200 dark:border-gray-700 text-secondary' : 'border-green-200 dark:border-green-800 text-green-600 dark:text-green-400'}`}
                                 >
                                     {type.isActive ? 'Pasifleştir' : 'Aktifleştir'}
                                 </button>
@@ -87,12 +87,12 @@ export function IssueTypeCatalogPage() {
                                         setEditingType(type);
                                         setFormOpen(true);
                                     }}
-                                    className="text-xs text-indigo-600 hover:underline"
+                                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                                 >
                                     Düzenle
                                 </button>
                                 {!type.isSystemDefault && (
-                                    <button onClick={() => handleDelete(type)} className="text-xs text-red-500 hover:underline">
+                                    <button onClick={() => handleDelete(type)} className="text-xs text-red-500 dark:text-red-400 hover:underline cursor-pointer">
                                         Sil
                                     </button>
                                 )}
@@ -171,7 +171,7 @@ function IssueTypeFormModal({
                         value={form.icon}
                         onChange={(e) => setForm({ ...form, icon: e.target.value })}
                         maxLength={4}
-                        className="border rounded px-2 py-2 text-sm text-center"
+                        className="input-base border rounded px-3 py-2 text-sm text-center"
                     />
                     <input
                         type="text"
@@ -179,13 +179,13 @@ function IssueTypeFormModal({
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
                         required
-                        className="col-span-2 border rounded px-3 py-2 text-sm"
+                        className="col-span-2 input-base border rounded px-3 py-2 text-sm"
                     />
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-500">Renk</label>
-                    <input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className="w-10 h-8 border rounded" />
+                    <label className="text-xs text-secondary">Renk</label>
+                    <input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className="w-10 h-8 border border-gray-300 dark:border-gray-600 rounded cursor-pointer" />
                 </div>
 
                 <textarea
@@ -193,38 +193,40 @@ function IssueTypeFormModal({
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     rows={2}
-                    className="w-full border rounded px-3 py-2 text-sm"
+                    className="w-full input-base border rounded px-3 py-2 text-sm"
                 />
 
-                <select value={form.creatorTier} onChange={(e) => setForm({ ...form, creatorTier: Number(e.target.value) })} className="w-full border rounded px-3 py-2 text-sm">
+                <select value={form.creatorTier} onChange={(e) => setForm({ ...form, creatorTier: Number(e.target.value) })} className="w-full input-base border rounded px-3 py-2 text-sm cursor-pointer">
                     <option value={0}>Kim oluşturabilir: Herkes</option>
                     <option value={1}>Kim oluşturabilir: Developer ve üstü</option>
                     <option value={2}>Kim oluşturabilir: Yalnızca PM/Admin</option>
                 </select>
 
-                <label className="flex items-center gap-2 text-sm">
+                <label className="flex items-center gap-2 text-sm text-secondary cursor-pointer">
                     <input
                         type="checkbox"
                         checked={form.allowsChildren}
                         onChange={(e) => setForm({ ...form, allowsChildren: e.target.checked, requiresParent: e.target.checked ? false : form.requiresParent })}
+                        className="rounded"
                     />
                     Üst görev olabilir (Epic gibi)
                 </label>
-                <label className="flex items-center gap-2 text-sm">
+                <label className="flex items-center gap-2 text-sm text-secondary cursor-pointer">
                     <input
                         type="checkbox"
                         checked={form.requiresParent}
                         onChange={(e) => setForm({ ...form, requiresParent: e.target.checked, allowsChildren: e.target.checked ? false : form.allowsChildren })}
+                        className="rounded"
                     />
                     Mutlaka bir üst göreve bağlı olmalı (Sub-task gibi)
                 </label>
 
-                {error && <p className="text-red-500 text-sm">{error}</p>}
+                {error && <p className="text-red-500 dark:text-red-400 text-sm">{error}</p>}
 
                 <button
                     type="submit"
                     disabled={createType.isPending || updateType.isPending}
-                    className="w-full bg-indigo-600 text-white py-2 rounded text-sm hover:bg-indigo-700 disabled:opacity-50"
+                    className="w-full bg-indigo-600 text-white py-2 rounded text-sm hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer"
                 >
                     {editingType ? 'Kaydet' : 'Oluştur'}
                 </button>

@@ -24,13 +24,17 @@ public class LocalFileStorageService : IFileStorageService
         return Path.Combine("uploads", safeFileName);
     }
 
-    public Stream GetFileStream(string filePath)
+    public Task<Stream> GetFileStreamAsync(
+    string filePath,
+    CancellationToken ct = default)
     {
         var fullPath = Path.Combine(Directory.GetCurrentDirectory(), filePath);
+
         if (!File.Exists(fullPath))
             throw new FileNotFoundException("Dosya sunucuda bulunamadı.");
 
-        return File.OpenRead(fullPath);
+        Stream stream = File.OpenRead(fullPath);
+        return Task.FromResult(stream);
     }
 
     public void Delete(string filePath)

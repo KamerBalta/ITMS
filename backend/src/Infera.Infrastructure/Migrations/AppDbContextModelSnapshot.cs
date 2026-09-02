@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using NpgsqlTypes;
 
 #nullable disable
 
@@ -113,8 +114,28 @@ namespace Infera.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("FieldName")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
                     b.Property<string>("IpAddress")
                         .HasColumnType("text");
+
+                    b.Property<string>("NewValue")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("OldValue")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("UserAgent")
                         .HasColumnType("text");
@@ -127,6 +148,135 @@ namespace Infera.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("AuditLogs", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.AutomationRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActionParamsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TriggerConditionJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("TriggerType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("AutomationRules", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.BoardColumn", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("BoardColumns", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.BoardColumnSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BoardColumnId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("WipLimit")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoardColumnId");
+
+                    b.HasIndex("ProjectId", "BoardColumnId")
+                        .IsUnique();
+
+                    b.ToTable("BoardColumnSettings", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.ChangelogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ChangelogEntries", (string)null);
                 });
 
             modelBuilder.Entity("Infera.Domain.Entities.ChecklistItem", b =>
@@ -190,6 +340,172 @@ namespace Infera.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Comments", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.CustomFieldDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FieldType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("OptionsJson")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("CustomFieldDefinitions", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.DashboardWidget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConfigJson")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("WidgetType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int>("Width")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("UserId", "ProjectId");
+
+                    b.ToTable("DashboardWidgets", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.GitCommitLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AuthorName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("BranchName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("CommitHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("CommitMessage")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("CommitUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CommittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaskId", "CommitHash")
+                        .IsUnique();
+
+                    b.ToTable("GitCommitLinks", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.IssueTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DefaultPriority")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DescriptionTemplate")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("IssueTypeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IssueTypeId");
+
+                    b.HasIndex("ProjectId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("IssueTemplates", (string)null);
                 });
 
             modelBuilder.Entity("Infera.Domain.Entities.IssueType", b =>
@@ -317,6 +633,10 @@ namespace Infera.Infrastructure.Migrations
                     b.Property<bool>("EmailEnabled")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("EmailFrequency")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<bool>("InAppEnabled")
                         .HasColumnType("boolean");
 
@@ -324,6 +644,9 @@ namespace Infera.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<bool>("OnlyImportantChanges")
+                        .HasColumnType("boolean");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -334,6 +657,38 @@ namespace Infera.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("NotificationPreferences", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.PendingDigestEmail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActionUrl")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PendingDigestEmails", (string)null);
                 });
 
             modelBuilder.Entity("Infera.Domain.Entities.Project", b =>
@@ -381,6 +736,83 @@ namespace Infera.Infrastructure.Migrations
                     b.HasIndex("OwnerId");
 
                     b.ToTable("Projects", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.ProjectComponent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid?>("LeadUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeadUserId");
+
+                    b.HasIndex("ProjectId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("ProjectComponents", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.ProjectGitIntegration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CloseTargetStatusId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("RepositoryUrl")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("WebhookSecret")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CloseTargetStatusId");
+
+                    b.HasIndex("ProjectId")
+                        .IsUnique();
+
+                    b.ToTable("ProjectGitIntegrations", (string)null);
                 });
 
             modelBuilder.Entity("Infera.Domain.Entities.ProjectIssueTypeAssignment", b =>
@@ -452,6 +884,31 @@ namespace Infera.Infrastructure.Migrations
                     b.ToTable("ProjectMembers", (string)null);
                 });
 
+            modelBuilder.Entity("Infera.Domain.Entities.ProjectPermissionOverride", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PermissionKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId", "PermissionKey")
+                        .IsUnique();
+
+                    b.ToTable("ProjectPermissionOverrides", (string)null);
+                });
+
             modelBuilder.Entity("Infera.Domain.Entities.ProjectTeam", b =>
                 {
                     b.Property<Guid>("Id")
@@ -475,6 +932,56 @@ namespace Infera.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("ProjectTeams", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.ProjectWorkflowStatus", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("BoardColumnId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Color")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDraft")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsEpicCloseTarget")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsInitial")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoardColumnId");
+
+                    b.HasIndex("ProjectId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("ProjectWorkflowStatuses", (string)null);
                 });
 
             modelBuilder.Entity("Infera.Domain.Entities.RefreshToken", b =>
@@ -594,6 +1101,42 @@ namespace Infera.Infrastructure.Migrations
                     b.ToTable("Roles", (string)null);
                 });
 
+            modelBuilder.Entity("Infera.Domain.Entities.SavedFilter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FiltersJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<bool>("IsShared")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("SavedFilters", (string)null);
+                });
+
             modelBuilder.Entity("Infera.Domain.Entities.Sprint", b =>
                 {
                     b.Property<Guid>("Id")
@@ -603,8 +1146,8 @@ namespace Infera.Infrastructure.Migrations
                     b.Property<int?>("CommittedStoryPoints")
                         .HasColumnType("integer");
 
-                    b.Property<DateTime>("EndDate")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
 
                     b.Property<string>("Goal")
                         .HasColumnType("text");
@@ -617,8 +1160,8 @@ namespace Infera.Infrastructure.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -705,8 +1248,8 @@ namespace Infera.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
-                    b.Property<DateTime?>("DueDate")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date");
 
                     b.Property<DateTime?>("DueDateReminderSentAt")
                         .HasColumnType("timestamp with time zone");
@@ -716,6 +1259,9 @@ namespace Infera.Infrastructure.Migrations
 
                     b.Property<Guid?>("IssueTypeId")
                         .HasColumnType("uuid");
+
+                    b.Property<int?>("OriginalEstimateMinutes")
+                        .HasColumnType("integer");
 
                     b.Property<Guid?>("ParentTaskId")
                         .HasColumnType("uuid");
@@ -732,14 +1278,21 @@ namespace Infera.Infrastructure.Migrations
                     b.Property<Guid?>("ReleaseId")
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("RemainingEstimateMinutes")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("ReporterId")
                         .HasColumnType("uuid");
+
+                    b.Property<NpgsqlTsVector>("SearchVector")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("tsvector");
 
                     b.Property<Guid?>("SprintId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("StatusId")
+                        .HasColumnType("uuid");
 
                     b.Property<int?>("StoryPoint")
                         .HasColumnType("integer");
@@ -771,7 +1324,58 @@ namespace Infera.Infrastructure.Migrations
 
                     b.HasIndex("SprintId");
 
+                    b.HasIndex("StatusId");
+
                     b.ToTable("Tasks", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.TaskComponent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProjectComponentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectComponentId");
+
+                    b.HasIndex("TaskId", "ProjectComponentId")
+                        .IsUnique();
+
+                    b.ToTable("TaskComponents", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.TaskCustomFieldValue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CustomFieldDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomFieldDefinitionId");
+
+                    b.HasIndex("TaskId", "CustomFieldDefinitionId")
+                        .IsUnique();
+
+                    b.ToTable("TaskCustomFieldValues", (string)null);
                 });
 
             modelBuilder.Entity("Infera.Domain.Entities.TaskLabel", b =>
@@ -794,6 +1398,36 @@ namespace Infera.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("TaskLabels", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.TaskLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LinkType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("SourceTaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TargetTaskId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TargetTaskId");
+
+                    b.HasIndex("SourceTaskId", "TargetTaskId", "LinkType")
+                        .IsUnique();
+
+                    b.ToTable("TaskLinks", (string)null);
                 });
 
             modelBuilder.Entity("Infera.Domain.Entities.Team", b =>
@@ -901,6 +1535,9 @@ namespace Infera.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("MustChangePassword")
                         .HasColumnType("boolean");
 
@@ -924,6 +1561,9 @@ namespace Infera.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Guid>("TokenVersion")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -933,6 +1573,26 @@ namespace Infera.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.UserChangelogSeen", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserChangelogSeen", (string)null);
                 });
 
             modelBuilder.Entity("Infera.Domain.Entities.UserRole", b =>
@@ -1015,6 +1675,47 @@ namespace Infera.Infrastructure.Migrations
                     b.ToTable("WorkLogs", (string)null);
                 });
 
+            modelBuilder.Entity("Infera.Domain.Entities.WorkflowTransition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AllowedRoles")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FromStatusId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDraft")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("RequireAssigneeSelf")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ToStatusId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FromStatusId");
+
+                    b.HasIndex("ToStatusId");
+
+                    b.HasIndex("ProjectId", "FromStatusId", "ToStatusId")
+                        .IsUnique();
+
+                    b.ToTable("WorkflowTransitions", (string)null);
+                });
+
             modelBuilder.Entity("Infera.Domain.Entities.ActivityLog", b =>
                 {
                     b.HasOne("Infera.Domain.Entities.User", "User")
@@ -1056,6 +1757,47 @@ namespace Infera.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Infera.Domain.Entities.AutomationRule", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.BoardColumn", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.BoardColumnSetting", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.BoardColumn", "BoardColumn")
+                        .WithMany()
+                        .HasForeignKey("BoardColumnId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Infera.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BoardColumn");
+
+                    b.Navigation("Project");
+                });
+
             modelBuilder.Entity("Infera.Domain.Entities.ChecklistItem", b =>
                 {
                     b.HasOne("Infera.Domain.Entities.Task", "Task")
@@ -1086,6 +1828,58 @@ namespace Infera.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Infera.Domain.Entities.CustomFieldDefinition", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.DashboardWidget", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.GitCommitLink", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.Task", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Task");
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.IssueTemplate", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.IssueType", "IssueType")
+                        .WithMany()
+                        .HasForeignKey("IssueTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Infera.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("IssueType");
+
+                    b.Navigation("Project");
+                });
+
             modelBuilder.Entity("Infera.Domain.Entities.Notification", b =>
                 {
                     b.HasOne("Infera.Domain.Entities.User", "User")
@@ -1108,6 +1902,17 @@ namespace Infera.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Infera.Domain.Entities.PendingDigestEmail", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Infera.Domain.Entities.Project", b =>
                 {
                     b.HasOne("Infera.Domain.Entities.User", "Owner")
@@ -1117,6 +1922,42 @@ namespace Infera.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.ProjectComponent", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.User", "LeadUser")
+                        .WithMany()
+                        .HasForeignKey("LeadUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Infera.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LeadUser");
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.ProjectGitIntegration", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.ProjectWorkflowStatus", "CloseTargetStatus")
+                        .WithMany()
+                        .HasForeignKey("CloseTargetStatusId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Infera.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CloseTargetStatus");
+
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("Infera.Domain.Entities.ProjectIssueTypeAssignment", b =>
@@ -1165,6 +2006,17 @@ namespace Infera.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Infera.Domain.Entities.ProjectPermissionOverride", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+                });
+
             modelBuilder.Entity("Infera.Domain.Entities.ProjectTeam", b =>
                 {
                     b.HasOne("Infera.Domain.Entities.Project", "Project")
@@ -1182,6 +2034,24 @@ namespace Infera.Infrastructure.Migrations
                     b.Navigation("Project");
 
                     b.Navigation("Team");
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.ProjectWorkflowStatus", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.BoardColumn", "BoardColumn")
+                        .WithMany()
+                        .HasForeignKey("BoardColumnId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Infera.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BoardColumn");
+
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("Infera.Domain.Entities.RefreshToken", b =>
@@ -1223,6 +2093,25 @@ namespace Infera.Infrastructure.Migrations
                     b.Navigation("Sprint");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.SavedFilter", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Infera.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("Infera.Domain.Entities.Sprint", b =>
@@ -1281,7 +2170,7 @@ namespace Infera.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("Infera.Domain.Entities.Release", "Release")
-                        .WithMany()
+                        .WithMany("Tasks")
                         .HasForeignKey("ReleaseId")
                         .OnDelete(DeleteBehavior.SetNull);
 
@@ -1296,6 +2185,12 @@ namespace Infera.Infrastructure.Migrations
                         .HasForeignKey("SprintId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Infera.Domain.Entities.ProjectWorkflowStatus", "WorkflowStatus")
+                        .WithMany()
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Assignee");
 
                     b.Navigation("IssueType");
@@ -1309,6 +2204,46 @@ namespace Infera.Infrastructure.Migrations
                     b.Navigation("Reporter");
 
                     b.Navigation("Sprint");
+
+                    b.Navigation("WorkflowStatus");
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.TaskComponent", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.ProjectComponent", "ProjectComponent")
+                        .WithMany()
+                        .HasForeignKey("ProjectComponentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Infera.Domain.Entities.Task", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProjectComponent");
+
+                    b.Navigation("Task");
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.TaskCustomFieldValue", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.CustomFieldDefinition", "CustomFieldDefinition")
+                        .WithMany()
+                        .HasForeignKey("CustomFieldDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Infera.Domain.Entities.Task", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CustomFieldDefinition");
+
+                    b.Navigation("Task");
                 });
 
             modelBuilder.Entity("Infera.Domain.Entities.TaskLabel", b =>
@@ -1328,6 +2263,25 @@ namespace Infera.Infrastructure.Migrations
                     b.Navigation("Label");
 
                     b.Navigation("Task");
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.TaskLink", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.Task", "SourceTask")
+                        .WithMany()
+                        .HasForeignKey("SourceTaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Infera.Domain.Entities.Task", "TargetTask")
+                        .WithMany()
+                        .HasForeignKey("TargetTaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SourceTask");
+
+                    b.Navigation("TargetTask");
                 });
 
             modelBuilder.Entity("Infera.Domain.Entities.Team", b =>
@@ -1417,6 +2371,33 @@ namespace Infera.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Infera.Domain.Entities.WorkflowTransition", b =>
+                {
+                    b.HasOne("Infera.Domain.Entities.ProjectWorkflowStatus", "FromStatus")
+                        .WithMany()
+                        .HasForeignKey("FromStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Infera.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Infera.Domain.Entities.ProjectWorkflowStatus", "ToStatus")
+                        .WithMany()
+                        .HasForeignKey("ToStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("FromStatus");
+
+                    b.Navigation("Project");
+
+                    b.Navigation("ToStatus");
+                });
+
             modelBuilder.Entity("Infera.Domain.Entities.Label", b =>
                 {
                     b.Navigation("TaskLabels");
@@ -1432,6 +2413,11 @@ namespace Infera.Infrastructure.Migrations
 
                     b.Navigation("Sprints");
 
+                    b.Navigation("Tasks");
+                });
+
+            modelBuilder.Entity("Infera.Domain.Entities.Release", b =>
+                {
                     b.Navigation("Tasks");
                 });
 

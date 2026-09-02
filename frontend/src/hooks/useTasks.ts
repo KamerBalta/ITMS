@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tasksApi } from '../api/tasks';
-import type { CreateTaskPayload } from '../types/task';
+import type { CreateTaskPayload, TaskListItem } from '../types/task';
 
 export function useTasks(
     projectId: string | null,
@@ -9,10 +9,14 @@ export function useTasks(
         backlogOnly?: boolean;
         assigneeId?: string;
         status?: string;
+        statusId?: string;
         issueTypeId?: string;
         priority?: number;
+        labelId?: string;
         search?: string;
         parentTaskId?: string;
+        unassignedOnly?: boolean;
+        componentId?: string;
     }
 ) {
     return useQuery({
@@ -22,10 +26,49 @@ export function useTasks(
     });
 }
 
-// Ust gorev secici icin -- AllowsChildren=true olan gorevleri client-side filtreliyoruz
-export function useParentCandidates(projectId: string | null) {
-    const { data, ...rest } = useTasks(projectId);
-    return { data: data?.filter((t) => t.allowsChildren), ...rest };
+// #Perf: Bu iki fonksiyon artık kendi useTasks çağrısı YAPMIYOR -- dışarıdan (zaten
+// çekilmiş) bir TaskListItem[] alıp filtreliyor. Böylece CreateTaskModal gibi aynı
+// anda ikisine de ihtiyaç duyan bileşenler, TEK bir network isteğini paylaşabiliyor.
+
+// SADECE Epic olan görevleri getirir
+export function filterEpicCandidates(tasks: TaskListItem[] | undefined) {
+    return tasks?.filter((t) => {
+        const typeName = (t.issueType ?? '').toLowerCase();
+
+        return (
+            typeName === 'epic' ||
+            (t.allowsChildren === true &&
+                !t.requiresParent &&
+                typeName !== 'story' &&
+                typeName !== 'task' &&
+                typeName !== 'bug')
+        );
+    });
+}
+
+// Sub-task için üst görev olabilecekler: Sadece Story, Task, Bug (Epic ve Sub-task hariç)
+export function filterSubtaskParentCandidates(tasks: TaskListItem[] | undefined) {
+    return tasks?.filter((t) => {
+        const typeName = (t.issueType ?? '').toLowerCase();
+
+        return (
+            typeName !== 'epic' &&
+            typeName !== 'subtask' &&
+            typeName !== 'sub-task' &&
+            !t.requiresParent
+        );
+    });
+}
+
+// Board gibi yerlerde hala tek başına çağrılabilecek, projeye özel tam liste çeken versiyon --
+// ama artık yalnızca gerçekten gerekliyse (enabled=true) tetiklenir.
+export function useProjectTasksForParentSelection(projectId: string | null, enabled: boolean) {
+    return useQuery({
+        queryKey: ['tasks', projectId, 'all-for-parent-selection'],
+        queryFn: () => tasksApi.getAll({ projectId: projectId!, pageSize: 500 }),
+        enabled: enabled && !!projectId,
+        staleTime: 60_000,
+    });
 }
 
 export function useCreateTask(projectId: string) {
@@ -42,9 +85,39 @@ export function useCreateTask(projectId: string) {
 
 export function useUpdateTaskStatus(projectId: string) {
     const queryClient = useQueryClient();
+
     return useMutation({
-        mutationFn: ({ taskId, status }: { taskId: string; status: number }) => tasksApi.updateStatus(taskId, status),
-        onSuccess: () => {
+        mutationFn: ({ taskId, statusId }: { taskId: string; statusId: string }) =>
+            tasksApi.updateStatus(taskId, statusId),
+
+        // #10: Optimistic update -- backend cevap vermeden ÖNCE local cache'i güncelliyoruz,
+        // böylece kart anında yeni kolona "zıplıyor" gibi görünür. Backend başarısız olursa
+        // (onError) eski hali GERİ YÜKLÜYORUZ.
+        onMutate: async ({ taskId, statusId }) => {
+            await queryClient.cancelQueries({ queryKey: ['tasks', projectId] });
+
+            const previousQueries = queryClient.getQueriesData<TaskListItem[]>({
+                queryKey: ['tasks', projectId],
+            });
+
+            queryClient.setQueriesData<TaskListItem[]>(
+                { queryKey: ['tasks', projectId] },
+                (old) => old?.map((t) => (t.id === taskId ? { ...t, statusId } : t))
+            );
+
+            return { previousQueries };
+        },
+
+        onError: (_err, _variables, context) => {
+            // Başarısız olursa TÜM etkilenen query'leri eski haline geri yükle
+            context?.previousQueries.forEach(([queryKey, data]) => {
+                queryClient.setQueryData(queryKey, data);
+            });
+        },
+
+        onSettled: () => {
+            // Başarılı ya da başarısız, sunucudaki gerçek veriyle senkron kalmak için
+            // arka planda taze veriyi çek
             queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
             queryClient.invalidateQueries({ queryKey: ['dashboard', 'summary', projectId] });
         },
@@ -59,6 +132,25 @@ export function useReassignTask(projectId: string) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
             queryClient.invalidateQueries({ queryKey: ['dashboard', 'workload', projectId] });
+        },
+    });
+}
+
+export function useUpdateTaskEstimates(taskId: string) {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            original,
+            remaining,
+        }: {
+            original: number | null;
+            remaining: number | null;
+        }) => tasksApi.updateEstimates(taskId, original, remaining),
+
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['task', taskId] });
+            qc.invalidateQueries({ queryKey: ['tasks'] });
         },
     });
 }

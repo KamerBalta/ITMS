@@ -1,106 +1,176 @@
-import { MentionsInput, Mention } from 'react-mentions';
+import {
+    forwardRef,
+    useImperativeHandle,
+    useRef,
+    useState,
+    useEffect,
+} from 'react';
+import type { ProjectMemberItem } from '../types/projectMember';
 
-type MentionTextareaProps = {
+interface MentionTextareaProps {
     value: string;
     onChange: (value: string) => void;
-    members?: {
-        userId: string;
-        userName: string;
-    }[];
+    members: ProjectMemberItem[] | undefined;
     placeholder?: string;
     rows?: number;
-};
+    className?: string;
+}
 
-const mentionStyle = {
-    control: {
-        backgroundColor: '#fff',
-        fontSize: 14,
-        lineHeight: '20px',
-        fontFamily: 'inherit',
-        border: '1px solid #d1d5db',
-        borderRadius: '8px',
-    },
-    '&multiLine': {
-        control: {
-            fontFamily: 'inherit',
-            minHeight: 63,
-        },
-        highlighter: {
-            padding: 10,
-            border: '1px solid transparent',
-            boxSizing: 'border-box',
-            overflow: 'hidden',
-        },
-        input: {
-            padding: 10,
-            margin: 0,
-            border: '1px solid transparent',
-            outline: 'none',
-            boxSizing: 'border-box',
-        },
-    },
-    suggestions: {
-        list: {
-            backgroundColor: '#fff',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            boxShadow: '0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-            fontSize: 14,
-            overflow: 'hidden',
-            zIndex: 99999,
-        },
-        item: {
-            padding: 0,
-            borderBottom: '1px solid #f3f4f6',
-            '&focused': {
-                backgroundColor: '#eef2ff',
-                color: '#4f46e5',
-                fontWeight: 600,
-            },
-        },
-    },
-};
+const MENTION_PATTERN = /@\[([^\]]+)\]\(([0-9a-fA-F-]{36})\)/g;
 
-export function MentionTextarea({
-    value,
-    onChange,
-    members,
-    placeholder,
-    rows = 4,
-}: MentionTextareaProps) {
-    const mentionData = (members ?? []).map((m) => ({
-        id: m.userId,
-        display: m.userName,
-    }));
+/**
+ * Backend formatını (@[İsim](uuid)) -> @İsim haline getirir
+ */
+function decodeMentions(encoded: string): string {
+    if (!encoded) return '';
+    return encoded.replace(MENTION_PATTERN, '@$1');
+}
+
+export const MentionTextarea = forwardRef<
+    HTMLTextAreaElement,
+    MentionTextareaProps
+>(function MentionTextarea(
+    {
+        value,
+        onChange,
+        members = [],
+        placeholder,
+        rows = 2,
+        className,
+    },
+    forwardedRef
+) {
+    const innerRef = useRef<HTMLTextAreaElement>(null);
+
+    useImperativeHandle(
+        forwardedRef,
+        () => innerRef.current as HTMLTextAreaElement
+    );
+
+    // Ekranda görünen metin state'i
+    const [text, setText] = useState(() => decodeMentions(value));
+    const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+    const [mentionStartIndex, setMentionStartIndex] = useState(0);
+
+    // Dışarıdan value tamamen sıfırlandığında (örn: Gönder butonuna basılınca) iç state'i senkronize et
+    useEffect(() => {
+        const decoded = decodeMentions(value);
+        if (decoded !== text && (value === '' || !value.includes('@['))) {
+            setText(decoded);
+        }
+    }, [value]);
+
+    // Düz metindeki @İsim ifadelerini @[İsim](uuid) haline çevirip onChange tetikler
+    const emitEncodedChange = (newText: string) => {
+        let encoded = newText;
+        if (members && members.length > 0) {
+            for (const member of members) {
+                const mentionPattern = new RegExp(`@${member.userName}(?![a-zA-Z0-9_])`, 'g');
+                encoded = encoded.replace(
+                    mentionPattern,
+                    `@[${member.userName}](${member.userId})`
+                );
+            }
+        }
+        onChange(encoded);
+    };
+
+    const suggestions =
+        mentionQuery !== null
+            ? (members ?? [])
+                .filter((m) =>
+                    m.userName
+                        .toLowerCase()
+                        .includes(mentionQuery.toLowerCase())
+                )
+                .slice(0, 5)
+            : [];
+
+    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const newDisplayText = e.target.value;
+        const cursorPos = e.target.selectionStart;
+
+        setText(newDisplayText);
+        emitEncodedChange(newDisplayText);
+
+        // Mention Arama Kontrolü
+        const textBeforeCursor = newDisplayText.slice(0, cursorPos);
+        const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+
+        if (lastAtIndex === -1) {
+            setMentionQuery(null);
+            return;
+        }
+
+        const textAfterAt = textBeforeCursor.slice(lastAtIndex + 1);
+
+        // @ işaretinden sonra boşluk veya alt satır varsa öneri listesini kapat
+        if (/\s/.test(textAfterAt)) {
+            setMentionQuery(null);
+            return;
+        }
+
+        setMentionQuery(textAfterAt);
+        setMentionStartIndex(lastAtIndex);
+    };
+
+    const handleSelectMention = (member: ProjectMemberItem) => {
+        const textarea = innerRef.current;
+        if (!textarea) return;
+
+        const cursorPos = textarea.selectionStart;
+
+        const textBefore = text.slice(0, mentionStartIndex);
+        const textAfter = text.slice(cursorPos);
+        const mentionText = `@${member.userName} `;
+
+        const updatedText = `${textBefore}${mentionText}${textAfter}`;
+
+        setText(updatedText);
+        emitEncodedChange(updatedText);
+        setMentionQuery(null);
+
+        // İmleci seçilen ismin ve bırakılan boşluğun sonuna taşı
+        const nextCursorPos = mentionStartIndex + mentionText.length;
+        requestAnimationFrame(() => {
+            textarea.focus();
+            textarea.setSelectionRange(nextCursorPos, nextCursorPos);
+        });
+    };
 
     return (
-        <MentionsInput
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
-            style={mentionStyle}
-            rows={rows}
-        >
-            <Mention
-                trigger="@"
-                data={mentionData}
-                markup="@[__display__](__id__)"
-                displayTransform={(_, display) => `@${display}`}
-                appendSpaceOnAdd
-                style={{
-                    backgroundColor: '#e0e7ff',
-                    color: 'transparent', // Katmandaki metin rengi saydam yapıldı, böylece çakışıp gölge yapmaz!
-                    borderRadius: '4px',
-                }}
-                renderSuggestion={(entry) => (
-                    <div className="flex items-center gap-2.5 px-3 py-2 cursor-pointer transition">
-                        <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold border border-indigo-200 shrink-0">
-                            {entry.display ? entry.display[0].toUpperCase() : 'U'}
-                        </div>
-                        <span className="text-sm text-gray-800 font-medium">{entry.display}</span>
-                    </div>
-                )}
+        <div className="relative">
+            <textarea
+                ref={innerRef}
+                value={text}
+                onChange={handleChange}
+                placeholder={placeholder}
+                rows={rows}
+                className={className}
             />
-        </MentionsInput>
+
+            {mentionQuery !== null && suggestions.length > 0 && (
+                <div className="absolute z-50 bottom-full mb-1 left-0 surface border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg shadow-lg w-56 max-h-40 overflow-y-auto">
+                    {suggestions.map((member) => (
+                        <button
+                            key={member.userId}
+                            type="button"
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleSelectMention(member);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-indigo-50 dark:hover:bg-indigo-950/60 flex items-center justify-between cursor-pointer transition-colors"
+                        >
+                            <span className="font-medium text-slate-800 dark:text-gray-200">
+                                {member.userName}
+                            </span>
+                            <span className="text-xs text-muted">
+                                {member.teamName}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
     );
-}
+});

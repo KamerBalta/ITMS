@@ -14,7 +14,10 @@ public class UpdateCommentCommandHandler : IRequestHandler<UpdateCommentCommand>
     private readonly INotificationService _notificationService;
 
     public UpdateCommentCommandHandler(
-        IAppDbContext db, ICurrentUserService currentUser, IProjectAccessService access, INotificationService notificationService)
+        IAppDbContext db,
+        ICurrentUserService currentUser,
+        IProjectAccessService access,
+        INotificationService notificationService)
     {
         _db = db;
         _currentUser = currentUser;
@@ -58,8 +61,8 @@ public class UpdateCommentCommandHandler : IRequestHandler<UpdateCommentCommand>
                 "Bir yorumda bahsedildiniz",
                 $"\"{task?.Title}\" görevindeki bir yorumda sizden bahsedildi.",
                 NotificationType.Mention,
-                $"/tasks/{comment.TaskId}",
-                ct);
+                $"/tasks/{comment.TaskId}?commentId={comment.Id}#comments",
+                ct: ct);
         }
     }
 }

@@ -25,7 +25,9 @@ public class RetrospectiveController : ControllerBase
             return Ok(result);
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
     }
 
     [HttpPost]
@@ -38,7 +40,9 @@ public class RetrospectiveController : ControllerBase
             return CreatedAtAction(nameof(GetAll), new { sprintId }, new { id });
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 

@@ -13,7 +13,9 @@ public class User : BaseEntity
     public DateTime? UpdatedAt { get; set; }
     public string? PasswordResetTokenHash { get; set; }
     public DateTime? PasswordResetTokenExpiresAt { get; set; }
+    public Guid TokenVersion { get; set; } = Guid.NewGuid();
     public string? AvatarUrl { get; set; }
+    public DateTime? LastLoginAt { get; set; }
     public bool MustChangePassword { get; set; } = false;
     public string? ActivationTokenHash { get; set; }
     public DateTime? ActivationTokenExpiresAt { get; set; }

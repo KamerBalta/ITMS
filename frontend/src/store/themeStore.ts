@@ -1,24 +1,54 @@
 import { create } from 'zustand';
 
-type Theme = 'light' | 'dark';
+type Theme = 'light' | 'dark' | 'system';
 const KEY = 'infera_theme';
 
-function applyTheme(theme: Theme) {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
+function getSystemTheme(): 'light' | 'dark' {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
 }
 
-const initialTheme = (localStorage.getItem(KEY) as Theme) || 'light';
+function applyTheme(theme: Theme) {
+    const actualTheme = theme === 'system' ? getSystemTheme() : theme;
+
+    document.documentElement.classList.toggle('dark', actualTheme === 'dark');
+}
+
+const savedTheme = localStorage.getItem(KEY);
+
+const initialTheme: Theme =
+    savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system'
+        ? savedTheme
+        : 'light';
+
 applyTheme(initialTheme);
 
 interface ThemeState {
     theme: Theme;
+    setTheme: (theme: Theme) => void;
     toggleTheme: () => void;
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
     theme: initialTheme,
+
+    setTheme: (theme) => {
+        localStorage.setItem(KEY, theme);
+        applyTheme(theme);
+        set({ theme });
+    },
+
     toggleTheme: () => {
-        const next = get().theme === 'light' ? 'dark' : 'light';
+        const current = get().theme;
+
+        const next: Theme =
+            current === 'light'
+                ? 'dark'
+                : current === 'dark'
+                    ? 'light'
+                    : 'dark';
+
         localStorage.setItem(KEY, next);
         applyTheme(next);
         set({ theme: next });

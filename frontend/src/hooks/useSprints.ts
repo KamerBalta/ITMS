@@ -7,6 +7,7 @@ export function useSprints(projectId: string | null) {
         queryKey: ['sprints', projectId],
         queryFn: () => sprintsApi.getAll(projectId!),
         enabled: !!projectId,
+        retry: false,
     });
 }
 

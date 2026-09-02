@@ -36,7 +36,7 @@ public class SmtpEmailService : IEmailService
         var username = _config["Smtp:Username"]!;
         var password = _config["Smtp:Password"]!;
         var fromEmail = _config["Smtp:FromEmail"] ?? username;
-        var fromName = _config["Smtp:FromName"] ?? "Infera ITMS";
+        var fromName = _config["Smtp:FromName"] ?? " ITMS";
 
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(fromName, fromEmail));

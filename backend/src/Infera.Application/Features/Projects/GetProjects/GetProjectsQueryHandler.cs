@@ -21,11 +21,18 @@ public class GetProjectsQueryHandler : IRequestHandler<GetProjectsQuery, List<Pr
 
         return await _db.Projects
             .Where(p => accessibleIds.Contains(p.Id))
-            .Select(p => new ProjectDto(
-                p.Id, p.Name, p.Key, p.Description,
-                p.Owner.Name, p.Status.ToString(),
-                p.ProjectTeams.Select(pt => new TeamSummaryDto(pt.TeamId, pt.Team.Name)).ToList()
-            ))
+      .Select(p => new ProjectDto(
+    p.Id,
+    p.Name,
+    p.Key,
+    p.Description,
+    p.Owner.Name,
+    p.Status.ToString(),
+    p.OwnerId,
+    p.ProjectTeams
+        .Select(pt => new TeamSummaryDto(pt.TeamId, pt.Team.Name))
+        .ToList()
+))
             .ToListAsync(ct);
     }
 }

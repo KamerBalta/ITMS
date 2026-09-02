@@ -1,0 +1,32 @@
+﻿name: Backend Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore Infera.slnx
+
+      - name: Build
+        run: dotnet build Infera.slnx --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test Infera.slnx --no-build --configuration Release --logger "console;verbosity=normal" --collect:"XPlat Code Coverage"
+
+      - name: Coverage Summary
+        run: |
+          echo "Test coverage raporu artifact olarak saklandi."
+          find . -name "coverage.cobertura.xml" -exec echo "Found: {}" \;

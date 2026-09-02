@@ -14,4 +14,7 @@ public record CreateTaskCommand(
     int? StoryPoint,
     Guid? AssigneeId,
     Guid ReporterId,
-    DateTime? DueDate) : IRequest<Guid>;
+    DateOnly? DueDate,   
+    List<Guid>? ComponentIds,
+    List<Guid>? LabelIds,
+    Dictionary<Guid, string?>? CustomFieldValues) : IRequest<Guid>;

@@ -1,11 +1,13 @@
 ﻿import { useEffect, useState } from 'react';
 import { apiClient } from '../api/client';
+import { getCachedAvatarBlobUrl } from '../lib/avatarCache';
 
 interface AuthenticatedImageProps {
-    src: string; // apiClient baseURL'e göre relatif path, örn. "/users/{id}/avatar"
+    src: string;
     alt: string;
     className?: string;
     fallback?: React.ReactNode;
+    cacheKey?: string;
     refreshKey?: number;
 }
 
@@ -14,36 +16,67 @@ export function AuthenticatedImage({
     alt,
     className,
     fallback,
-    refreshKey
+    cacheKey,
+    refreshKey,
 }: AuthenticatedImageProps) {
-    const [objectUrl, setObjectUrl] = useState<string | null>(null);
-    const [failed, setFailed] = useState(false);
+    const [image, setImage] = useState<{
+        key: string;
+        url: string | null;
+        failed: boolean;
+    }>({
+        key: '',
+        url: null,
+        failed: false,
+    });
+
+    const imageKey = `${src}:${cacheKey ?? ''}:${refreshKey ?? 0}`;
 
     useEffect(() => {
-        let currentUrl: string | null = null;
         let cancelled = false;
+        let currentUrl: string | null = null;
 
-        setFailed(false);
-        setObjectUrl(null);
+        const fetchBlob = () =>
+            apiClient
+                .get(src, { responseType: 'blob' })
+                .then((res) => res.data as Blob);
 
-        apiClient
-            .get(src, { responseType: 'blob' })
-            .then((res) => {
-                if (cancelled) return;
-                currentUrl = URL.createObjectURL(res.data);
-                setObjectUrl(currentUrl);
-            })
-            .catch(() => {
-                if (!cancelled) setFailed(true);
+        const resultPromise = cacheKey
+            ? getCachedAvatarBlobUrl(fetchBlob, cacheKey)
+            : fetchBlob()
+                .then((blob) => {
+                    currentUrl = URL.createObjectURL(blob);
+                    return currentUrl;
+                })
+                .catch(() => null);
+
+        resultPromise.then((url) => {
+            if (cancelled) return;
+
+            setImage({
+                key: imageKey,
+                url,
+                failed: !url,
             });
+        });
 
         return () => {
             cancelled = true;
-            if (currentUrl) URL.revokeObjectURL(currentUrl);
+
+            if (!cacheKey && currentUrl) {
+                URL.revokeObjectURL(currentUrl);
+            }
         };
-    }, [src, refreshKey]);
+    }, [src, cacheKey, refreshKey, imageKey]);
 
-    if (failed || !objectUrl) return <>{fallback ?? null}</>;
+    if (image.key !== imageKey || image.failed || !image.url) {
+        return <>{fallback ?? null}</>;
+    }
 
-    return <img src={objectUrl} alt={alt} className={className} />;
+    return (
+        <img
+            src={image.url}
+            alt={alt}
+            className={className}
+        />
+    );
 }

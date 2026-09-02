@@ -1,4 +1,6 @@
 export type Priority = 0 | 1 | 2 | 3;
+
+// Geriye dönük uyumluluk için korunabilir ancak artık dinamik GUID (StatusId) esas alınmaktadır.
 export type ItemStatus = 'ToDo' | 'InProgress' | 'ReadyForReview' | 'ReadyForQA' | 'Done' | 'Closed';
 
 export const PRIORITY_LABELS: Record<Priority, string> = {
@@ -25,12 +27,15 @@ export interface TaskListItem {
     allowsChildren: boolean;
     requiresParent: boolean;
     priority: string;
-    status: ItemStatus;
+    status: string;
+    statusId: string; // <-- Dinamik sütun eşleştirmesi ve Board için eklendi
     storyPoint: number | null;
+    assigneeId: string | null;
     assigneeName: string | null;
     sprintId: string | null;
     rank: number;
     parentTaskId: string | null;
+    labels: string[];
 }
 
 export interface TaskDetail {
@@ -43,7 +48,8 @@ export interface TaskDetail {
     allowsChildren: boolean;
     requiresParent: boolean;
     priority: string;
-    status: ItemStatus;
+    status: string;
+    statusId: string; // <-- Detay ekranı ve geçişler için eklendi
     storyPoint: number | null;
     projectId: string;
     projectName: string;
@@ -64,6 +70,15 @@ export interface TaskDetail {
     watcherCount: number;
     releaseId: string | null;
     releaseVersion: string | null;
+    originalEstimateMinutes: number | null;
+    remainingEstimateMinutes: number | null;
+    rowVersion: number;
+    components: {
+        id: string;
+        name: string;
+        leadUserId: string | null;
+        leadUserName: string | null;
+    }[];
 }
 
 export interface CreateTaskPayload {
@@ -77,4 +92,7 @@ export interface CreateTaskPayload {
     storyPoint?: number | null;
     assigneeId?: string | null;
     dueDate?: string | null;
+    componentIds?: string[];
+    labelIds?: string[];
+    customFieldValues?: Record<string, string | null>;
 }

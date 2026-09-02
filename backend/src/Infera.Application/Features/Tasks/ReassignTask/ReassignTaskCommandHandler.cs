@@ -1,18 +1,32 @@
-﻿using Infera.Application.Common.Interfaces;
+﻿using Infera.Application.Common.Extensions;
+using Infera.Application.Common.Interfaces;
+using Infera.Application.Common.Services;
+using Infera.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Infera.Domain.Enums;
+
 namespace Infera.Application.Features.Tasks.ReassignTask;
 
 public class ReassignTaskCommandHandler : IRequestHandler<ReassignTaskCommand>
 {
     private readonly IAppDbContext _db;
     private readonly INotificationService _notificationService;
+    private readonly IRealtimeNotifier _realtime;
+    private readonly IFieldAuditLogger _auditLogger;
+    private readonly IAutomationEngine _automationEngine;
 
-    public ReassignTaskCommandHandler(IAppDbContext db, INotificationService notificationService)
+    public ReassignTaskCommandHandler(
+        IAppDbContext db,
+        INotificationService notificationService,
+        IRealtimeNotifier realtime,
+        IFieldAuditLogger auditLogger,
+        IAutomationEngine automationEngine)
     {
         _db = db;
         _notificationService = notificationService;
+        _realtime = realtime;
+        _auditLogger = auditLogger;
+        _automationEngine = automationEngine;
     }
 
     public async System.Threading.Tasks.Task Handle(ReassignTaskCommand request, CancellationToken ct)
@@ -28,19 +42,33 @@ public class ReassignTaskCommandHandler : IRequestHandler<ReassignTaskCommand>
                 throw new InvalidOperationException("Atanan kullanıcı bu projenin üyesi değil.");
         }
 
+        var oldAssigneeId = task.AssigneeId;
+
         task.AssigneeId = request.NewAssigneeId;
         task.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync(ct);
+        await _db.SaveChangesWithConcurrencyCheckAsync(ct);
+
+        await _automationEngine.ProcessTaskAssignedAsync(task.Id, request.NewAssigneeId, ct);
+
+        await _auditLogger.LogFieldChangeAsync(
+            "Task",
+            task.Id,
+            "AssigneeId",
+            oldAssigneeId?.ToString(),
+            request.NewAssigneeId?.ToString(),
+            ct);
+
+        await _realtime.NotifyProjectAsync(task.ProjectId, "task", "reassigned", ct);
 
         if (request.NewAssigneeId is not null)
         {
             await _notificationService.NotifyAsync(
-    request.NewAssigneeId.Value,
-    "Bir görev size atandı",
-    $"\"{task.Title}\" adlı görev size atandı.",
-    NotificationType.Task,
-    $"/tasks/{task.Id}",
-    ct);
+                request.NewAssigneeId.Value,
+                "Bir görev size atandı",
+                $"\"{task.Title}\" adlı görev size atandı.",
+                NotificationType.Task,
+                $"/tasks/{task.Id}",
+                ct: ct);
         }
     }
 }

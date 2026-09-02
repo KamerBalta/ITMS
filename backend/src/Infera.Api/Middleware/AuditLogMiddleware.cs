@@ -15,8 +15,8 @@ public class AuditLogMiddleware
     {
         await _next(context);
 
-        // Sadece degistiren istekleri, sadece giris yapmis kullanicilar icin, sadece basarili (2xx) sonuclarda logla.
-        // auth/login, auth/refresh gibi anonim uclar zaten kullanici claim'i olmadigi icin dogal olarak atlanir.
+        // Sadece degistiren istekleri, sadece giris yapmis kullanicilar icin,
+        // sadece basarili (2xx) sonuclarda logla.
         if (!MutatingMethods.Contains(context.Request.Method))
             return;
 
@@ -32,17 +32,19 @@ public class AuditLogMiddleware
             db.AuditLogs.Add(new AuditLogEntity
             {
                 UserId = userId,
+                EntityType = "HttpRequest",
+                EntityId = Guid.Empty,
                 Action = $"{context.Request.Method} {context.Request.Path}",
                 IpAddress = context.Connection.RemoteIpAddress?.ToString(),
-                UserAgent = context.Request.Headers.UserAgent.ToString()
+                UserAgent = context.Request.Headers.UserAgent.ToString(),
+                CreatedAt = DateTime.UtcNow
             });
 
             await db.SaveChangesAsync();
         }
         catch
         {
-            // Audit log yazimi asla ana istegi bozmamali -- sessizce yut.
-            // Ileride burada ILogger ile bir uyari loglanabilir.
+            // Audit log yazimi asla ana istegi bozmamali.
         }
     }
 }

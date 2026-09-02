@@ -33,7 +33,9 @@ public class IssueTypesController : ControllerBase
             return Ok(new { id });
         }
         catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
     }
 
     [HttpPut("{id}")]
@@ -49,7 +51,12 @@ public class IssueTypesController : ControllerBase
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id}/toggle-active")]

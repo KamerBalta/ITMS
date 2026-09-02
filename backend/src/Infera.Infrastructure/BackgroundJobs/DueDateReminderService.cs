@@ -1,76 +1,52 @@
-﻿using Infera.Domain.Enums;
-using Infera.Infrastructure.Persistence;
+﻿using Infera.Application.Common.Interfaces;
+using Infera.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace Infera.Infrastructure.BackgroundJobs;
 
-// BR-014: yaklasan teslim tarihi bildirimi -- periyodik olarak calisir.
-// Not: Faz 1'de basit bir IHostedService/Timer kullaniyoruz; Faz 2'de coklu API instance'i
-// calisirsa (yatay olcekleme) bu isin bir Job scheduler'a (Hangfire/Quartz) tasinmasi gerekir,
-// aksi halde her instance ayni bildirimleri tekrar tekrar denemeye calisir (DueDateReminderSentAt
-// alani sayesinde cift bildirim gitmez ama gereksiz sorgu yukü olur).
-public class DueDateReminderService : BackgroundService
+public class DueDateReminderService : IDueDateReminderJob
 {
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<DueDateReminderService> _logger;
-    private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(30);
+    private readonly IAppDbContext _db;
+    private readonly INotificationService _notificationService;
 
-    public DueDateReminderService(IServiceScopeFactory scopeFactory, ILogger<DueDateReminderService> logger)
+    public DueDateReminderService(
+        IAppDbContext db,
+        INotificationService notificationService)
     {
-        _scopeFactory = scopeFactory;
-        _logger = logger;
+        _db = db;
+        _notificationService = notificationService;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public async System.Threading.Tasks.Task RunAsync(CancellationToken ct)
     {
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            try
-            {
-                await CheckAndNotifyAsync(stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "DueDateReminderService çalışırken hata oluştu.");
-            }
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var tomorrow = today.AddDays(1);
 
-            await Task.Delay(CheckInterval, stoppingToken);
-        }
-    }
-
-    private async Task CheckAndNotifyAsync(CancellationToken ct)
-    {
-        using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var notificationService = scope.ServiceProvider.GetRequiredService<Application.Common.Interfaces.INotificationService>();
-
-        var now = DateTime.UtcNow;
-        var next24h = now.AddHours(24);
-
-        var dueSoonTasks = await db.Tasks
+        var dueSoonTasks = await _db.Tasks
             .Where(t =>
-                t.DueDate != null && t.DueDate >= now && t.DueDate <= next24h &&
-                t.Status != ItemStatus.Done && t.Status != ItemStatus.Closed &&
+                t.DueDate != null &&
+                t.DueDate >= today &&
+                t.DueDate <= tomorrow &&
+                t.WorkflowStatus.Category != "Done" &&
+                t.WorkflowStatus.Name != "Closed" &&
                 t.DueDateReminderSentAt == null &&
                 t.AssigneeId != null)
             .ToListAsync(ct);
 
         foreach (var task in dueSoonTasks)
         {
-            await notificationService.NotifyAsync(
-    task.AssigneeId!.Value,
-    "Yaklaşan teslim tarihi",
-    $"\"{task.Title}\" adlı görevin teslim tarihi 24 saat içinde ({task.DueDate:dd.MM.yyyy HH:mm}).",
-    NotificationType.Task,
-    $"/tasks/{task.Id}",
-    ct);
-            task.DueDateReminderSentAt = now;
+            await _notificationService.NotifyAsync(
+                task.AssigneeId!.Value,
+                "Yaklaşan teslim tarihi",
+                $"\"{task.Title}\" adlı görevin teslim tarihi yaklaşıyor ({task.DueDate:dd.MM.yyyy}).",
+                NotificationType.Task,
+                $"/tasks/{task.Id}",
+                ct: ct);
+
+            task.DueDateReminderSentAt = DateTime.UtcNow;
         }
 
         if (dueSoonTasks.Count > 0)
-            await db.SaveChangesAsync(ct);
+            await _db.SaveChangesAsync(ct);
     }
 }

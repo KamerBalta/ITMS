@@ -12,12 +12,21 @@ public class AddCommentCommandHandler : IRequestHandler<AddCommentCommand, Guid>
     private readonly IAppDbContext _db;
     private readonly IProjectAccessService _access;
     private readonly INotificationService _notificationService;
+    private readonly IRealtimeNotifier _realtime;
+    private readonly IAutomationEngine _automationEngine;
 
-    public AddCommentCommandHandler(IAppDbContext db, IProjectAccessService access, INotificationService notificationService)
+    public AddCommentCommandHandler(
+        IAppDbContext db,
+        IProjectAccessService access,
+        INotificationService notificationService,
+        IRealtimeNotifier realtime,
+        IAutomationEngine automationEngine)
     {
         _db = db;
         _access = access;
         _notificationService = notificationService;
+        _realtime = realtime;
+        _automationEngine = automationEngine;
     }
 
     public async System.Threading.Tasks.Task<Guid> Handle(AddCommentCommand request, CancellationToken ct)
@@ -64,7 +73,7 @@ public class AddCommentCommandHandler : IRequestHandler<AddCommentCommand, Guid>
                 $"\"{task.Title}\" adlı göreve yeni bir yorum eklendi.",
                 NotificationType.Task,
                 $"/tasks/{task.Id}",
-                ct);
+                ct: ct);
         }
 
         // BR-014: @Mention bildirimi -- yukaridaki genel bildirimden bagimsiz, ozel mesajla
@@ -78,9 +87,13 @@ public class AddCommentCommandHandler : IRequestHandler<AddCommentCommand, Guid>
                 "Bir yorumda bahsedildiniz",
                 $"\"{task.Title}\" görevindeki bir yorumda sizden bahsedildi.",
                 NotificationType.Mention,
-                $"/tasks/{task.Id}",
-                ct);
+                $"/tasks/{task.Id}?commentId={comment.Id}#comments",
+                ct: ct);
         }
+
+        await _realtime.NotifyProjectAsync(task.ProjectId, "comment", "created", ct);
+
+        await _automationEngine.ProcessCommentAddedAsync(request.TaskId, ct);
 
         return comment.Id;
     }

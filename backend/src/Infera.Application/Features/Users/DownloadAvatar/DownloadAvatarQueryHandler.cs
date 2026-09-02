@@ -15,16 +15,33 @@ public class DownloadAvatarQueryHandler : IRequestHandler<DownloadAvatarQuery, D
         _storage = storage;
     }
 
-    public async System.Threading.Tasks.Task<DownloadAvatarResult> Handle(DownloadAvatarQuery request, CancellationToken ct)
+    public async Task<DownloadAvatarResult> Handle(
+       DownloadAvatarQuery request,
+       CancellationToken ct)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, ct)
+        var user = await _db.Users
+            .FirstOrDefaultAsync(u => u.Id == request.UserId, ct)
             ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
 
-        if (string.IsNullOrEmpty(user.AvatarUrl))
+        if (string.IsNullOrWhiteSpace(user.AvatarUrl))
             throw new KeyNotFoundException("Bu kullanıcının avatarı yok.");
 
-        var stream = _storage.GetFileStream(user.AvatarUrl);
-        var contentType = user.AvatarUrl.EndsWith(".png") ? "image/png" : "image/jpeg";
+        var stream = await _storage.GetFileStreamAsync(
+            user.AvatarUrl,
+            ct);
+
+        var extension = Path.GetExtension(user.AvatarUrl)
+            .ToLowerInvariant();
+
+        var contentType = extension switch
+        {
+            ".png" => "image/png",
+            ".jpg" => "image/jpeg",
+            ".jpeg" => "image/jpeg",
+            ".webp" => "image/webp",
+            ".gif" => "image/gif",
+            _ => "application/octet-stream"
+        };
 
         return new DownloadAvatarResult(stream, contentType);
     }

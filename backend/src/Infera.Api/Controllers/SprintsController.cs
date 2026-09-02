@@ -69,7 +69,9 @@ public class SprintsController : ControllerBase
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
     }
 
     [HttpPut("{sprintId}/complete")]
@@ -98,5 +100,5 @@ public class SprintsController : ControllerBase
     }
 }
 
-public record CreateSprintRequest(Guid ProjectId, string Name, string? Goal, DateTime StartDate, DateTime EndDate);
-public record UpdateSprintRequest(string Name, string? Goal, DateTime StartDate, DateTime EndDate);
+public record CreateSprintRequest(Guid ProjectId, string Name, string? Goal, DateOnly StartDate, DateOnly EndDate);
+public record UpdateSprintRequest(string Name, string? Goal, DateOnly StartDate, DateOnly EndDate);

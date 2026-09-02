@@ -1,80 +1,72 @@
 ﻿using Infera.Application.Common.Interfaces;
-using Infera.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infera.Application.Common.Services;
 
 public class TaskStatusTransitionService : ITaskStatusTransitionService
 {
-    private static readonly Dictionary<string, (ItemStatus From, ItemStatus To)[]> RoleTransitions = new()
+    private readonly IAppDbContext _db;
+    public TaskStatusTransitionService(IAppDbContext db) => _db = db;
+
+    public async System.Threading.Tasks.Task<(bool Allowed, string? ErrorMessage)> CanTransitionAsync(
+        Guid projectId, Guid fromStatusId, Guid toStatusId, IReadOnlyList<string> roles, bool isAdmin, bool isAssignee,
+        CancellationToken ct = default)
     {
-        ["Developer"] = new[]
-        {
-            (ItemStatus.ToDo, ItemStatus.InProgress),
-            (ItemStatus.InProgress, ItemStatus.ReadyForReview),
-        },
-
-        ["QA"] = new[]
-        {
-            (ItemStatus.ReadyForQA, ItemStatus.Done),
-            (ItemStatus.ReadyForQA, ItemStatus.InProgress),
-        },
-
-        ["Tester"] = new[]
-        {
-            (ItemStatus.ReadyForQA, ItemStatus.Done),
-            (ItemStatus.ReadyForQA, ItemStatus.InProgress),
-        }
-    };
-
-
-    public (bool Allowed, string? ErrorMessage) CanTransition(
-        ItemStatus from,
-        ItemStatus to,
-        IReadOnlyList<string> roles,
-        bool isAdmin)
-    {
-        if (from == to)
-        {
+        if (fromStatusId == toStatusId)
             return (false, "Görev zaten bu durumda.");
-        }
 
-
-        // Admin ve Project Manager tüm geçişleri yapabilir.
-        if (isAdmin || roles.Contains(nameof(ProjectRole.ProjectManager)))
-        {
+        if (isAdmin)
             return (true, null);
-        }
 
+        // #Madde-4: yalnizca YAYINLANMIS (IsDraft=false) gecisler gecerlidir.
+        var transition = await _db.WorkflowTransitions
+            .FirstOrDefaultAsync(t =>
+                t.ProjectId == projectId &&
+                t.FromStatusId == fromStatusId &&
+                t.ToStatusId == toStatusId &&
+                !t.IsDraft, ct);
 
-        // BR-016
-        // ReadyForReview -> ReadyForQA sadece PM/Admin
-        if (from == ItemStatus.ReadyForReview &&
-            to == ItemStatus.ReadyForQA)
+        Console.WriteLine("========== WORKFLOW DEBUG ==========");
+        Console.WriteLine($"ProjectId: {projectId}");
+        Console.WriteLine($"FromStatusId: {fromStatusId}");
+        Console.WriteLine($"ToStatusId: {toStatusId}");
+        Console.WriteLine($"Transition found: {transition != null}");
+
+        if (transition != null)
         {
-            return (false,
-                "Bu geçişi yalnızca Project Manager onaylayabilir.");
+            Console.WriteLine($"AllowedRoles: {transition.AllowedRoles}");
+            Console.WriteLine($"RequireAssigneeSelf: {transition.RequireAssigneeSelf}");
         }
 
+        Console.WriteLine($"User roles: {string.Join(", ", roles)}");
+        Console.WriteLine($"IsAdmin: {isAdmin}");
+        Console.WriteLine($"IsAssignee: {isAssignee}");
+        Console.WriteLine("====================================");
 
-        foreach (var role in roles)
-        {
-            if (RoleTransitions.TryGetValue(role, out var transitions))
-            {
-                var allowed = transitions.Any(x =>
-                    x.From == from &&
-                    x.To == to);
+        if (transition is null)
+            return (false, "Bu proje için bu geçiş tanımlanmamış veya henüz yayınlanmamış.");
 
-                if (allowed)
-                {
-                    return (true, null);
-                }
-            }
-        }
+        var allowedRoles = transition.AllowedRoles
+      .Split(',', StringSplitOptions.TrimEntries);
 
+        Console.WriteLine("=== WORKFLOW TRANSITION DEBUG ===");
+        Console.WriteLine($"From: {fromStatusId}");
+        Console.WriteLine($"To: {toStatusId}");
+        Console.WriteLine($"User roles: {string.Join(", ", roles)}");
+        Console.WriteLine($"Allowed roles: {string.Join(", ", allowedRoles)}");
+        Console.WriteLine($"Is admin: {isAdmin}");
+        Console.WriteLine($"Is assignee: {isAssignee}");
 
-        return (
-            false,
-            $"'{string.Join(",", roles)}' rolü için {from} → {to} geçişine izin verilmiyor."
-        );
+        var hasRole = roles.Any(r => allowedRoles.Contains(r));
+
+        Console.WriteLine($"Has role: {hasRole}");
+
+        if (!hasRole)
+            return (false, $"Bu geçiş için yetkiniz yok. Gerekli rol(ler): {transition.AllowedRoles}");
+
+        if (transition.RequireAssigneeSelf && !isAssignee)
+            return (false, "Bu geçişi yalnızca görevin atandığı kişi (ya da Project Manager) yapabilir.");
+
+        return (true, null);
     }
 }

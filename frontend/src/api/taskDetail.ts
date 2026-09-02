@@ -76,6 +76,7 @@ export const workLogsApi = {
 
 export const labelsApi = {
     getAll: () => apiClient.get<LabelItem[]>('/labels').then((res) => res.data),
+    create: (data: { name: string; color?: string }) => apiClient.post('/labels', data),
     addToTask: (taskId: string, labelId: string) => apiClient.post(`/tasks/${taskId}/labels/${labelId}`),
     removeFromTask: (taskId: string, labelId: string) => apiClient.delete(`/tasks/${taskId}/labels/${labelId}`),
 };

@@ -10,6 +10,8 @@ import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { ProjectsPage } from './pages/projects/ProjectsPage';
 import { ProjectDetailPage } from './pages/projects/ProjectDetailPage';
 import { IssueTypesManagementPage } from './pages/projects/IssueTypesManagementPage';
+import { WorkflowEditorPage } from './pages/projects/WorkflowEditorPage';
+import { CustomFieldsManagementPage } from './pages/projects/CustomFieldsManagementPage';
 import { TeamsPage } from './pages/teams/TeamsPage';
 import { KanbanBoardPage } from './pages/tasks/KanbanBoardPage';
 import { BacklogPage } from './pages/backlog/BacklogPage';
@@ -20,14 +22,23 @@ import { UsersManagementPage } from './pages/admin/UsersManagementPage';
 import { UserDetailPage } from './pages/admin/UserDetailPage';
 import { SettingsPage } from './pages/admin/SettingsPage';
 import { IssueTypeCatalogPage } from './pages/admin/IssueTypeCatalogPage';
+import { ChangelogManagementPage } from './pages/admin/ChangelogManagementPage';
 import { ReleasesPage } from './pages/releases/ReleasesPage';
-import { SearchPage } from './pages/search/SearchPage';
+import { SearchPage } from './pages/teams/search/SearchPage';
 import { RetrospectivePage } from './pages/retrospective/RetrospectivePage';
 import { IssueListPage } from './pages/issues/IssueListPage';
 import { MyWorkPage } from './pages/mywork/MyWorkPage';
 import { SprintDetailPage } from './pages/sprints/SprintDetailPage';
 import { ReportsPage } from './pages/reports/ReportsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { AutomationRulesPage } from './pages/projects/AutomationRulesPage';
+import { BoardSettingsPage } from './pages/projects/BoardSettingsPage';
+import { RoadmapPage } from './pages/roadmap/RoadmapPage';
+import { ProjectPermissionsPage } from './pages/projects/ProjectPermissionsPage';
+import { ComponentsManagementPage } from './pages/projects/ComponentsManagementPage';
+import { BulkImportPage } from './pages/projects/BulkImportPage';
+import { IssueTemplatesManagementPage } from './pages/projects/IssueTemplatesManagementPage';
+import { GitIntegrationPage } from './pages/projects/GitIntegrationPage';
 
 export const router = createBrowserRouter([
     { path: '/login', element: <LoginPage />, errorElement: <RouteErrorPage /> },
@@ -48,6 +59,15 @@ export const router = createBrowserRouter([
                     { path: '/projects', element: <ProjectsPage /> },
                     { path: '/projects/:projectId', element: <ProjectDetailPage /> },
                     { path: '/projects/:projectId/issue-types', element: <IssueTypesManagementPage /> },
+                    { path: '/projects/:projectId/workflow', element: <WorkflowEditorPage /> },
+                    { path: '/projects/:projectId/custom-fields', element: <CustomFieldsManagementPage /> },
+                    { path: '/projects/:projectId/bulk-import', element: <BulkImportPage /> },
+                    { path: '/projects/:projectId/issue-templates', element: <IssueTemplatesManagementPage /> },
+                    { path: '/projects/:projectId/git-integration', element: <GitIntegrationPage /> },
+                    { path: '/projects/:projectId/board-settings', element: <BoardSettingsPage /> },
+                    { path: '/projects/:projectId/automation', element: <AutomationRulesPage /> },
+                    { path: '/projects/:projectId/permissions', element: <ProjectPermissionsPage /> },
+                    { path: '/projects/:projectId/components', element: <ComponentsManagementPage /> },
                     { path: '/teams', element: <TeamsPage /> },
                     { path: '/board', element: <KanbanBoardPage /> },
                     { path: '/backlog', element: <BacklogPage /> },
@@ -63,7 +83,9 @@ export const router = createBrowserRouter([
                     { path: '/admin/users', element: <UsersManagementPage /> },
                     { path: '/admin/users/:userId', element: <UserDetailPage /> },
                     { path: '/admin/settings', element: <SettingsPage /> },
+                    { path: '/admin/changelog', element: <ChangelogManagementPage /> },
                     { path: '/admin/issue-types', element: <IssueTypeCatalogPage /> },
+                    { path: '/roadmap', element: <RoadmapPage /> },
                     { path: '*', element: <NotFoundPage /> },
                 ],
             },

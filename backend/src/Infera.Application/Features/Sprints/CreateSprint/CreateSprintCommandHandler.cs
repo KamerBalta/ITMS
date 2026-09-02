@@ -1,4 +1,5 @@
 ﻿using Infera.Application.Common.Interfaces;
+using Infera.Application.Common.Services;
 using Infera.Domain.Entities;
 using Infera.Domain.Enums;
 using MediatR;
@@ -11,12 +12,24 @@ public class CreateSprintCommandHandler : IRequestHandler<CreateSprintCommand, G
     private readonly IAppDbContext _db;
     private readonly IProjectAccessService _access;
     private readonly INotificationService _notificationService;
+    private readonly IRealtimeNotifier _realtime;
+    private readonly ICurrentUserService _currentUser;
+    private readonly IProjectPermissionService _permissionService;
 
-    public CreateSprintCommandHandler(IAppDbContext db, IProjectAccessService access, INotificationService notificationService)
+    public CreateSprintCommandHandler(
+        IAppDbContext db,
+        IProjectAccessService access,
+        INotificationService notificationService,
+        IRealtimeNotifier realtime,
+        ICurrentUserService currentUser,
+        IProjectPermissionService permissionService)
     {
         _db = db;
         _access = access;
         _notificationService = notificationService;
+        _realtime = realtime;
+        _currentUser = currentUser;
+        _permissionService = permissionService;
     }
 
     public async System.Threading.Tasks.Task<Guid> Handle(CreateSprintCommand request, CancellationToken ct)
@@ -27,6 +40,14 @@ public class CreateSprintCommandHandler : IRequestHandler<CreateSprintCommand, G
         if (!await _access.HasProjectAccessAsync(request.ProjectId, ct))
             throw new UnauthorizedAccessException("Bu projede sprint oluşturma yetkiniz yok.");
 
+        var isPrivileged = _currentUser.IsAdmin || _currentUser.Roles.Contains("Project Manager");
+        if (!isPrivileged)
+        {
+            var developerCanManage = await _permissionService.IsOverrideEnabledAsync(request.ProjectId, "DeveloperCanManageSprints", ct);
+            if (!developerCanManage)
+                throw new UnauthorizedAccessException("Sprint oluşturma yetkiniz yok.");
+        }
+
         if (request.EndDate <= request.StartDate)
             throw new InvalidOperationException("Bitiş tarihi başlangıç tarihinden sonra olmalıdır.");
 
@@ -35,8 +56,8 @@ public class CreateSprintCommandHandler : IRequestHandler<CreateSprintCommand, G
             ProjectId = request.ProjectId,
             Name = request.Name,
             Goal = request.Goal,
-            StartDate = DateTime.SpecifyKind(request.StartDate, DateTimeKind.Utc),
-            EndDate = DateTime.SpecifyKind(request.EndDate, DateTimeKind.Utc),
+            StartDate = request.StartDate,
+            EndDate = request.EndDate,
             Status = SprintStatus.Active
         };
 
@@ -53,13 +74,15 @@ public class CreateSprintCommandHandler : IRequestHandler<CreateSprintCommand, G
         foreach (var userId in memberIds)
         {
             await _notificationService.NotifyAsync(
-    userId,
-    "Yeni Sprint başladı",
-    $"\"{sprint.Name}\" sprinti {project.Name} projesinde başladı.",
-    NotificationType.Sprint,
-    $"/sprints/{sprint.Id}",
-    ct);
+                userId,
+                "Yeni Sprint başladı",
+                $"\"{sprint.Name}\" sprinti {project.Name} projesinde başladı.",
+                NotificationType.Sprint,
+                $"/sprints/{sprint.Id}",
+                ct: ct);
         }
+
+        await _realtime.NotifyProjectAsync(request.ProjectId, "sprint", "created", ct);
 
         return sprint.Id;
     }

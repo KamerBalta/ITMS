@@ -38,10 +38,37 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<ProjectIssueTypeAssignment> ProjectIssueTypeAssignments => Set<ProjectIssueTypeAssignment>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
     public DbSet<SprintBurndownSnapshot> SprintBurndownSnapshots => Set<SprintBurndownSnapshot>();
+    public DbSet<BoardColumnSetting> BoardColumnSettings => Set<BoardColumnSetting>();
+    public DbSet<SavedFilter> SavedFilters => Set<SavedFilter>();
+    public DbSet<WorkflowTransition> WorkflowTransitions => Set<WorkflowTransition>();
+    public DbSet<CustomFieldDefinition> CustomFieldDefinitions => Set<CustomFieldDefinition>();
+    public DbSet<TaskCustomFieldValue> TaskCustomFieldValues => Set<TaskCustomFieldValue>();
+    public DbSet<AutomationRule> AutomationRules => Set<AutomationRule>();
+    public DbSet<ProjectPermissionOverride> ProjectPermissionOverrides => Set<ProjectPermissionOverride>();
+    public DbSet<ProjectComponent> ProjectComponents => Set<ProjectComponent>();
+    public DbSet<TaskComponent> TaskComponents => Set<TaskComponent>();
+    public DbSet<TaskLink> TaskLinks => Set<TaskLink>();
+    public DbSet<PendingDigestEmail> PendingDigestEmails => Set<PendingDigestEmail>();
+    public DbSet<BoardColumn> BoardColumns => Set<BoardColumn>();
+    public DbSet<ProjectWorkflowStatus> ProjectWorkflowStatuses => Set<ProjectWorkflowStatus>();
+    public DbSet<IssueTemplate> IssueTemplates => Set<IssueTemplate>();
+    public DbSet<ChangelogEntry> ChangelogEntries => Set<ChangelogEntry>();
+    public DbSet<UserChangelogSeen> UserChangelogSeen => Set<UserChangelogSeen>();
+    public DbSet<DashboardWidget> DashboardWidgets => Set<DashboardWidget>();
+    public DbSet<ProjectGitIntegration> ProjectGitIntegrations => Set<ProjectGitIntegration>();
+    public DbSet<GitCommitLink> GitCommitLinks => Set<GitCommitLink>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            modelBuilder.Entity<Domain.Entities.Task>()
+                .Property<NpgsqlTypes.NpgsqlTsVector>("SearchVector")
+                .HasColumnType("tsvector")
+                .ValueGeneratedOnAddOrUpdate();
+        }
 
         // BR-015 / DB-003: ISoftDelete uygulayan tum entity'ler icin global query filter --
         // hicbir handler'da ".Where(x => !x.IsDeleted)" yazmamiza gerek kalmiyor, EF Core
@@ -72,9 +99,6 @@ public class AppDbContext : DbContext, IAppDbContext
                 entry.State = EntityState.Modified;
                 softDeletable.IsDeleted = true;
                 softDeletable.DeletedAt = DateTime.UtcNow;
-                // DeletedBy'i burada set etmiyoruz -- DbContext'in ICurrentUserService'e bagimli
-                // olmasini istemedigim icin bu alan su an icin bos kalabilir; ihtiyac olursa
-                // ileride SaveChangesInterceptor ile eklenebilir.
             }
         }
 

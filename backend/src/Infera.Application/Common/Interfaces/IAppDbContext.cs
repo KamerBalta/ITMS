@@ -33,5 +33,25 @@ public interface IAppDbContext
     DbSet<ProjectIssueTypeAssignment> ProjectIssueTypeAssignments { get; }
     DbSet<NotificationPreference> NotificationPreferences { get; }
     DbSet<SprintBurndownSnapshot> SprintBurndownSnapshots { get; }
+    DbSet<BoardColumnSetting> BoardColumnSettings { get; }
+    DbSet<SavedFilter> SavedFilters { get; }
+    DbSet<WorkflowTransition> WorkflowTransitions { get; }
+    DbSet<CustomFieldDefinition> CustomFieldDefinitions { get; }
+    DbSet<TaskCustomFieldValue> TaskCustomFieldValues { get; }
+    DbSet<AutomationRule> AutomationRules { get; }
+    DbSet<ProjectPermissionOverride> ProjectPermissionOverrides { get; }
+    DbSet<ProjectComponent> ProjectComponents { get; }
+    DbSet<TaskComponent> TaskComponents { get; }
+    DbSet<TaskLink> TaskLinks { get; }
+    DbSet<PendingDigestEmail> PendingDigestEmails { get; }
+    DbSet<BoardColumn> BoardColumns { get; }
+    DbSet<ProjectWorkflowStatus> ProjectWorkflowStatuses { get; }
+    DbSet<IssueTemplate> IssueTemplates { get; }
+    DbSet<ChangelogEntry> ChangelogEntries { get; }
+    DbSet<UserChangelogSeen> UserChangelogSeen { get; }
+    DbSet<DashboardWidget> DashboardWidgets { get; }
+    DbSet<ProjectGitIntegration> ProjectGitIntegrations { get; }
+    DbSet<GitCommitLink> GitCommitLinks { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

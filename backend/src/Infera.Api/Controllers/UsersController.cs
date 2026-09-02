@@ -6,9 +6,12 @@ using Infera.Application.Features.Users.GetUserById;
 using Infera.Application.Features.Users.GetUsers;
 using Infera.Application.Features.Users.UpdateUser;
 using Infera.Application.Features.Users.UpdateUserRole;
+using Infera.Application.Features.Users.AnonymizeUser;
 using MediatR;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Infera.Application.Features.Users.ExportMyData;
+using Infera.Application.Features.Users.RevokeAllSessions;
 using Infera.Application.Features.Users.DeleteMyAvatar;
 using Infera.Application.Features.Users.UpdateMyAvatar;
 using Infera.Application.Features.Users.DownloadAvatar;
@@ -81,6 +84,14 @@ public class UsersController : ControllerBase
         }
     }
 
+    [HttpPost("me/revoke-all-sessions")]
+    public async Task<IActionResult> RevokeAllSessions()
+    {
+        var userId = Guid.Parse(User.FindFirstValue("sub")!);
+        await _mediator.Send(new RevokeAllSessionsCommand(userId));
+        return NoContent();
+    }
+
     [HttpGet("{userId}/projects")]
     public async Task<IActionResult> GetUserProjects(Guid userId)
     {
@@ -114,7 +125,9 @@ public class UsersController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Forbid(ex.Message);
+            return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message });
         }
     }
 
@@ -252,6 +265,29 @@ public class UsersController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+  
+
+   
+
+[HttpPost("{userId}/anonymize")]
+[Authorize(Policy = "RequireAdmin")]
+public async Task<IActionResult> Anonymize(Guid userId)
+{
+    try
+    {
+        await _mediator.Send(new AnonymizeUserCommand(userId));
+        return NoContent();
+    }
+    catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+    catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+}
+
+[HttpGet("me/export-data")]
+public async Task<IActionResult> ExportMyData()
+{
+    var result = await _mediator.Send(new ExportMyDataQuery());
+    return Ok(result);
+}
 }
 
 public record CreateUserRequest(string Name, string Email, string? Title, Guid? ProjectId, Guid? TeamId, int? ProjectRole, string? TeamRole);

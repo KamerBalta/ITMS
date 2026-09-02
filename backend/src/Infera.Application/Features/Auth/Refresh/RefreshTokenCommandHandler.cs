@@ -37,7 +37,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         existing.RevokedAt = DateTime.UtcNow;
 
         var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
-        var newAccessToken = _jwtService.GenerateAccessToken(user.Id, user.Email, roles);
+        var newAccessToken = _jwtService.GenerateAccessToken(user.Id, user.Email, roles, user.TokenVersion);
         var (newRefreshToken, newHash) = _jwtService.GenerateRefreshToken();
 
         _db.RefreshTokens.Add(new RefreshToken

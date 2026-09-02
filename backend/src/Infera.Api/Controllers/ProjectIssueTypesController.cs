@@ -16,8 +16,12 @@ public class ProjectIssueTypesController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll(Guid projectId)
     {
-        var result = await _mediator.Send(new GetProjectIssueTypesQuery(projectId));
-        return Ok(result);
+        try
+        {
+            var result = await _mediator.Send(new GetProjectIssueTypesQuery(projectId));
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
     }
 
     [HttpPost]
@@ -30,7 +34,10 @@ public class ProjectIssueTypesController : ControllerBase
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { 
+            return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
     }
 
     [HttpDelete("{issueTypeId}")]
@@ -43,7 +50,9 @@ public class ProjectIssueTypesController : ControllerBase
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
     }
 
     [HttpPut("reorder")]
@@ -55,7 +64,9 @@ public class ProjectIssueTypesController : ControllerBase
             return NoContent();
         }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(
+        StatusCodes.Status403Forbidden,
+        new { message = ex.Message }); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 }

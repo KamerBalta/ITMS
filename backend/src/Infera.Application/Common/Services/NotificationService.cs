@@ -20,8 +20,13 @@ public class NotificationService : INotificationService
     }
 
     public async System.Threading.Tasks.Task NotifyAsync(
-        Guid userId, string title, string message, NotificationType type,
-        string? actionUrl = null, CancellationToken ct = default)
+        Guid userId,
+        string title,
+        string message,
+        NotificationType type,
+        string? actionUrl = null,
+        bool isImportant = true,
+        CancellationToken ct = default)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
         if (user is null || !user.IsActive) return;
@@ -29,9 +34,14 @@ public class NotificationService : INotificationService
         var pref = await _db.NotificationPreferences
             .FirstOrDefaultAsync(p => p.UserId == userId && p.NotificationType == type.ToString(), ct);
 
-        // Tercih hic olusturulmamissa (kullanici hic ayar degistirmemis) varsayilan: her iki kanal da acik.
         var inAppEnabled = pref?.InAppEnabled ?? true;
         var emailEnabled = pref?.EmailEnabled ?? true;
+        var emailFrequency = pref?.EmailFrequency ?? "Instant";
+        var onlyImportant = pref?.OnlyImportantChanges ?? false;
+
+        // #A: "Yalnızca önemli değişiklikler" açıkken, önemsiz (isImportant=false) bir olay
+        // için HİÇBİR bildirim üretilmez -- ne in-app ne email.
+        if (onlyImportant && !isImportant) return;
 
         var fullActionUrl = actionUrl is not null
             ? $"{_config["Frontend:BaseUrl"]?.TrimEnd('/')}{actionUrl}"
@@ -51,10 +61,23 @@ public class NotificationService : INotificationService
             await _db.SaveChangesAsync(ct);
         }
 
-        if (emailEnabled)
+        if (!emailEnabled) return;
+
+        if (emailFrequency == "DailyDigest")
         {
-            await _emailService.SendHtmlAsync(
-                user.Email, title, title, message, fullActionUrl, GetActionLabel(type), ct);
+            // #Yuksek-7: anlık göndermek yerine biriktir -- Hangfire her gün tek seferde özetleyip gönderir.
+            _db.PendingDigestEmails.Add(new PendingDigestEmail
+            {
+                UserId = userId,
+                Title = title,
+                Message = message,
+                ActionUrl = fullActionUrl,
+            });
+            await _db.SaveChangesAsync(ct);
+        }
+        else
+        {
+            await _emailService.SendHtmlAsync(user.Email, title, title, message, fullActionUrl, GetActionLabel(type), ct);
         }
     }
 

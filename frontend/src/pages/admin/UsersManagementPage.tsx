@@ -6,30 +6,62 @@ import {
     useDeactivateUser,
     useActivateUser,
     useUpdateUser,
-    useUpdateUserRole
+    useUpdateUserRole,
 } from '../../hooks/useUsers';
 import { useProjects } from '../../hooks/useProjects';
-import { useTeams } from '../../hooks/useTeams';
 import { Modal } from '../../components/Modal';
 import type { AxiosError } from 'axios';
 import type { ApiErrorResponse } from '../../types/api';
 import { Search, UserPlus, MoreVertical, CheckCircle2, Filter, X } from 'lucide-react';
 
+type ManagedUser = {
+    id: string;
+    name: string;
+    email: string;
+    title?: string | null;
+    roles: string[];
+    isActive: boolean;
+};
+
+type ProjectOption = {
+    id: string;
+    name: string;
+};
+
+type UpdateUserMutation = {
+    mutateAsync: (args: {
+        userId: string;
+        data: {
+            name: string;
+            title?: string;
+        };
+    }) => Promise<unknown>;
+    isPending: boolean;
+};
+
+type UpdateUserRoleMutation = {
+    mutateAsync: (args: {
+        userId: string;
+        roleName: string;
+    }) => Promise<unknown>;
+    isPending: boolean;
+};
+
 const ROLE_BADGE_COLORS: Record<string, string> = {
-    'System Admin': 'bg-red-100 text-red-800 border-red-200',
-    'Project Manager': 'bg-purple-100 text-purple-800 border-purple-200',
-    'PM': 'bg-purple-100 text-purple-800 border-purple-200',
-    'Developer': 'bg-blue-100 text-blue-800 border-blue-200',
-    'QA/Tester': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    'QA': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    'Tester': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    'System Admin': 'bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 border-red-200 dark:border-red-900',
+    'Project Manager': 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-900',
+    'PM': 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-900',
+    'Developer': 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-900',
+    'QA/Tester': 'bg-yellow-100 dark:bg-yellow-950/60 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-900',
+    'QA': 'bg-yellow-100 dark:bg-yellow-950/60 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-900',
+    'Tester': 'bg-yellow-100 dark:bg-yellow-950/60 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-900',
 };
 
 const SYSTEM_ROLES = [
     'System Admin',
     'Project Manager',
     'Developer',
-    'QA/Tester'
+    'QA/Tester',
 ];
 
 const TITLE_OPTIONS = [
@@ -45,7 +77,7 @@ const TITLE_OPTIONS = [
     'Project Manager',
     'Product Owner',
     'UI/UX Designer',
-    'System Administrator'
+    'System Administrator',
 ];
 
 const ITEMS_PER_PAGE = 8;
@@ -54,7 +86,6 @@ export function UsersManagementPage() {
     const navigate = useNavigate();
     const { data: users, isLoading } = useAllUsers();
     const { data: projects } = useProjects();
-    const { data: allTeams } = useTeams();
 
     const deactivateUser = useDeactivateUser();
     const activateUser = useActivateUser();
@@ -67,7 +98,7 @@ export function UsersManagementPage() {
     const [selectedStatusFilter, setSelectedStatusFilter] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [activeMenuUserId, setActiveMenuUserId] = useState<string | null>(null);
-    const [editingUser, setEditingUser] = useState<any>(null);
+    const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
 
     // Toast State
     const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -80,7 +111,7 @@ export function UsersManagementPage() {
     // Filtreleme Mantığı
     const filteredUsers = useMemo(() => {
         if (!users) return [];
-        return users.filter((u) => {
+        return (users as ManagedUser[]).filter((u) => {
             const matchesSearch =
                 u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -115,17 +146,17 @@ export function UsersManagementPage() {
                 <div className="fixed top-5 right-5 z-[100000] bg-emerald-900 text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300 max-w-sm sm:max-w-md">
                     <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
                     <span className="text-sm font-medium">{toastMessage}</span>
-                    <button onClick={() => setToastMessage(null)} className="text-emerald-300 hover:text-white ml-auto">
+                    <button onClick={() => setToastMessage(null)} className="text-emerald-300 hover:text-white ml-auto cursor-pointer">
                         <X className="w-4 h-4" />
                     </button>
                 </div>
             )}
 
             {/* Üst Başlık & Eylem Butonu */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-800 pb-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Kullanıcılar</h1>
-                    <p className="text-sm text-gray-500">Sistemdeki tüm kullanıcıları yönetin ve yeni üyeler davet edin.</p>
+                    <h1 className="text-2xl font-bold text-primary">Kullanıcılar</h1>
+                    <p className="text-sm text-secondary">Sistemdeki tüm kullanıcıları yönetin ve yeni üyeler davet edin.</p>
                 </div>
 
                 <button
@@ -138,10 +169,10 @@ export function UsersManagementPage() {
             </div>
 
             {/* Arama Barı ve Filtreler */}
-            <div className="bg-white p-4 border rounded-xl shadow-sm flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center">
+            <div className="surface p-4 border rounded-xl shadow-sm flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center">
                 {/* Arama Input */}
                 <div className="relative w-full md:w-80">
-                    <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                    <Search className="w-4 h-4 absolute left-3 top-3 text-muted" />
                     <input
                         type="text"
                         placeholder="Ad veya e-posta ara..."
@@ -150,13 +181,13 @@ export function UsersManagementPage() {
                             setSearchQuery(e.target.value);
                             setCurrentPage(1);
                         }}
-                        className="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300"
+                        className="w-full input-base border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 dark:border-gray-600"
                     />
                 </div>
 
                 {/* Filtre Dropdown'ları */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
-                    <div className="flex items-center gap-1 text-xs text-gray-400 font-semibold mr-1">
+                    <div className="flex items-center gap-1 text-xs text-muted font-semibold mr-1">
                         <Filter className="w-3.5 h-3.5" /> Filtrele:
                     </div>
 
@@ -167,7 +198,7 @@ export function UsersManagementPage() {
                                 setSelectedRoleFilter(e.target.value);
                                 setCurrentPage(1);
                             }}
-                            className="border rounded-lg px-3 py-2 text-sm bg-white border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+                            className="input-base border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full border-gray-300 dark:border-gray-600 cursor-pointer"
                         >
                             <option value="">Tüm Roller</option>
                             <option value="System Admin">System Admin</option>
@@ -182,7 +213,7 @@ export function UsersManagementPage() {
                                 setSelectedStatusFilter(e.target.value);
                                 setCurrentPage(1);
                             }}
-                            className="border rounded-lg px-3 py-2 text-sm bg-white border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+                            className="input-base border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full border-gray-300 dark:border-gray-600 cursor-pointer"
                         >
                             <option value="">Tüm Durumlar</option>
                             <option value="active">Aktif</option>
@@ -198,7 +229,7 @@ export function UsersManagementPage() {
                                 setSelectedStatusFilter('');
                                 setCurrentPage(1);
                             }}
-                            className="text-xs text-indigo-600 hover:underline px-2 text-center sm:text-left py-1 cursor-pointer"
+                            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline px-2 text-center sm:text-left py-1 cursor-pointer"
                         >
                             Temizle
                         </button>
@@ -207,15 +238,15 @@ export function UsersManagementPage() {
             </div>
 
             {/* Kullanıcılar Tablosu */}
-            <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+            <div className="surface border rounded-xl shadow-sm overflow-hidden">
                 {isLoading ? (
-                    <div className="p-8 text-center text-gray-500 text-sm">Yükleniyor...</div>
+                    <div className="p-8 text-center text-secondary text-sm">Yükleniyor...</div>
                 ) : paginatedUsers.length === 0 ? (
-                    <div className="p-8 text-center text-gray-400 text-sm">Kullanıcı bulunamadı.</div>
+                    <div className="p-8 text-center text-muted text-sm">Kullanıcı bulunamadı.</div>
                 ) : (
                     <div className="overflow-x-auto min-h-[300px]">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 border-b text-xs font-semibold text-gray-500 uppercase tracking-wider sticky top-0">
+                            <thead className="surface-muted border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-secondary uppercase tracking-wider sticky top-0">
                                 <tr>
                                     <th className="px-3 sm:px-5 py-3.5 whitespace-nowrap">Kullanıcı</th>
                                     <th className="px-3 sm:px-5 py-3.5 whitespace-nowrap">E-posta</th>
@@ -225,7 +256,7 @@ export function UsersManagementPage() {
                                     <th className="px-3 sm:px-5 py-3.5 text-right whitespace-nowrap">Eylemler</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                 {paginatedUsers.map((u) => {
                                     const initials = u.name
                                         .split(' ')
@@ -238,25 +269,25 @@ export function UsersManagementPage() {
                                         <tr
                                             key={u.id}
                                             onClick={() => navigate(`/admin/users/${u.id}`)}
-                                            className="hover:bg-slate-50/80 transition cursor-pointer"
+                                            className="hover-surface transition cursor-pointer"
                                         >
                                             {/* Avatar & İsim */}
                                             <td className="px-3 sm:px-5 py-3.5 whitespace-nowrap">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-9 w-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs border border-indigo-200 shrink-0">
+                                                    <div className="h-9 w-9 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-xs border border-indigo-200 dark:border-indigo-800 shrink-0">
                                                         {initials}
                                                     </div>
                                                     <div>
-                                                        <p className="font-semibold text-gray-900">{u.name}</p>
+                                                        <p className="font-semibold text-primary">{u.name}</p>
                                                     </div>
                                                 </div>
                                             </td>
 
                                             {/* E-posta */}
-                                            <td className="px-3 sm:px-5 py-3.5 text-gray-600 whitespace-nowrap">{u.email}</td>
+                                            <td className="px-3 sm:px-5 py-3.5 text-secondary whitespace-nowrap">{u.email}</td>
 
                                             {/* Ünvan */}
-                                            <td className="px-3 sm:px-5 py-3.5 text-gray-500 whitespace-nowrap">{u.title ?? '-'}</td>
+                                            <td className="px-3 sm:px-5 py-3.5 text-secondary whitespace-nowrap">{u.title ?? '-'}</td>
 
                                             {/* Roller */}
                                             <td className="px-3 sm:px-5 py-3.5">
@@ -264,7 +295,8 @@ export function UsersManagementPage() {
                                                     {u.roles.map((r) => (
                                                         <span
                                                             key={r}
-                                                            className={`text-[11px] px-2 py-0.5 rounded-full font-semibold border whitespace-nowrap ${ROLE_BADGE_COLORS[r] ?? 'bg-gray-100 text-gray-700 border-gray-200'
+                                                            className={`text-[11px] px-2 py-0.5 rounded-full font-semibold border whitespace-nowrap ${ROLE_BADGE_COLORS[r] ??
+                                                                'surface-muted text-secondary border-gray-200 dark:border-gray-700'
                                                                 }`}
                                                         >
                                                             {r}
@@ -277,12 +309,12 @@ export function UsersManagementPage() {
                                             <td className="px-3 sm:px-5 py-3.5 whitespace-nowrap">
                                                 <span
                                                     className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full font-semibold border ${u.isActive
-                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                                            : 'bg-gray-100 text-gray-600 border-gray-200'
+                                                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
                                                         }`}
                                                 >
                                                     <span
-                                                        className={`w-1.5 h-1.5 rounded-full ${u.isActive ? 'bg-emerald-500' : 'bg-gray-400'
+                                                        className={`w-1.5 h-1.5 rounded-full ${u.isActive ? 'bg-emerald-500' : 'bg-gray-400 dark:bg-gray-500'
                                                             }`}
                                                     />
                                                     {u.isActive ? 'Aktif' : 'Pasif'}
@@ -296,19 +328,19 @@ export function UsersManagementPage() {
                                             >
                                                 <button
                                                     onClick={() => setActiveMenuUserId(activeMenuUserId === u.id ? null : u.id)}
-                                                    className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+                                                    className="p-1.5 text-muted hover:text-primary rounded-lg hover-surface transition cursor-pointer"
                                                 >
                                                     <MoreVertical className="w-4 h-4" />
                                                 </button>
 
                                                 {activeMenuUserId === u.id && (
-                                                    <div className="absolute right-5 mt-1 w-44 bg-white border rounded-lg shadow-xl py-1 z-30 text-xs text-left">
+                                                    <div className="absolute right-5 mt-1 w-44 surface border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 z-30 text-xs text-left">
                                                         <button
                                                             onClick={() => {
                                                                 setEditingUser(u);
                                                                 setActiveMenuUserId(null);
                                                             }}
-                                                            className="w-full px-4 py-2 hover:bg-gray-50 text-gray-700 cursor-pointer"
+                                                            className="w-full px-4 py-2 hover-surface text-secondary cursor-pointer text-left"
                                                         >
                                                             Düzenle
                                                         </button>
@@ -317,7 +349,7 @@ export function UsersManagementPage() {
                                                                 showToast(`${u.name} için davet bağlantısı tekrar gönderildi.`);
                                                                 setActiveMenuUserId(null);
                                                             }}
-                                                            className="w-full px-4 py-2 hover:bg-gray-50 text-indigo-600 font-medium cursor-pointer"
+                                                            className="w-full px-4 py-2 hover-surface text-indigo-600 dark:text-indigo-400 font-medium cursor-pointer text-left"
                                                         >
                                                             Yeniden Davet Gönder
                                                         </button>
@@ -335,12 +367,12 @@ export function UsersManagementPage() {
                                                                         await activateUser.mutateAsync(u.id);
                                                                         showToast(`${u.name} yeniden aktifleştirildi. Yeni aktivasyon e-postası gönderildi.`);
                                                                     } catch {
-                                                                        alert("Kullanıcı aktifleştirilemedi.");
+                                                                        alert('Kullanıcı aktifleştirilemedi.');
                                                                     }
                                                                 }
                                                                 setActiveMenuUserId(null);
                                                             }}
-                                                            className="w-full px-4 py-2 hover:bg-gray-50 text-amber-600 cursor-pointer"
+                                                            className="w-full px-4 py-2 hover-surface text-amber-600 dark:text-amber-400 cursor-pointer text-left"
                                                         >
                                                             {u.isActive ? 'Pasifleştir' : 'Aktifleştir'}
                                                         </button>
@@ -356,16 +388,16 @@ export function UsersManagementPage() {
                 )}
 
                 {/* Tablo Altı / Pagination */}
-                <div className="p-4 bg-slate-50 border-t flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
+                <div className="p-4 surface-muted border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-secondary">
                     <div>
-                        Toplam <span className="font-semibold text-gray-700">{filteredUsers.length}</span> kullanıcı gösteriliyor
+                        Toplam <span className="font-semibold text-primary">{filteredUsers.length}</span> kullanıcı gösteriliyor
                     </div>
 
                     <div className="flex items-center gap-1">
                         <button
                             disabled={currentPage === 1}
                             onClick={() => setCurrentPage((p) => p - 1)}
-                            className="px-2.5 py-1 border rounded hover:bg-white disabled:opacity-40 transition cursor-pointer"
+                            className="px-2.5 py-1 border border-gray-300 dark:border-gray-600 rounded surface hover-surface disabled:opacity-40 transition cursor-pointer"
                         >
                             Önceki
                         </button>
@@ -375,7 +407,7 @@ export function UsersManagementPage() {
                         <button
                             disabled={currentPage === totalPages}
                             onClick={() => setCurrentPage((p) => p + 1)}
-                            className="px-2.5 py-1 border rounded hover:bg-white disabled:opacity-40 transition cursor-pointer"
+                            className="px-2.5 py-1 border border-gray-300 dark:border-gray-600 rounded surface hover-surface disabled:opacity-40 transition cursor-pointer"
                         >
                             Sonraki
                         </button>
@@ -389,7 +421,6 @@ export function UsersManagementPage() {
                 onClose={() => setCreateOpen(false)}
                 onSuccess={(msg) => showToast(msg)}
                 projects={projects ?? []}
-                allTeams={allTeams ?? []}
             />
 
             {/* Kullanıcı Düzenle Modalı */}
@@ -416,8 +447,7 @@ function CreateUserModal({
     isOpen: boolean;
     onClose: () => void;
     onSuccess: (msg: string) => void;
-    projects: any[];
-    allTeams: any[];
+    projects: ProjectOption[];
 }) {
     const createUser = useCreateUser();
 
@@ -458,37 +488,37 @@ function CreateUserModal({
             <Modal title="Kullanıcı Davet Et" isOpen={isOpen} onClose={onClose}>
                 <form onSubmit={handleSubmit} className="space-y-4 max-w-lg w-full">
                     <div className="space-y-3">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Temel Bilgiler</p>
+                        <p className="text-xs font-bold text-muted uppercase tracking-wider">Temel Bilgiler</p>
                         <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">Ad Soyad</label>
+                            <label className="block text-xs font-semibold text-secondary mb-1">Ad Soyad</label>
                             <input
                                 type="text"
                                 placeholder="Örn: Ahmet Yılmaz"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 required
-                                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">E-posta</label>
+                            <label className="block text-xs font-semibold text-secondary mb-1">E-posta</label>
                             <input
                                 type="email"
                                 placeholder="ahmet@sirket.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">Ünvan</label>
+                            <label className="block text-xs font-semibold text-secondary mb-1">Ünvan</label>
                             <select
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                             >
                                 <option value="">Ünvan seçin...</option>
                                 {TITLE_OPTIONS.map((t) => (
@@ -500,17 +530,17 @@ function CreateUserModal({
                         </div>
                     </div>
 
-                    <hr />
+                    <hr className="border-gray-200 dark:border-gray-700" />
 
                     <div className="space-y-3">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Proje Ataması (Opsiyonel)</p>
+                        <p className="text-xs font-bold text-muted uppercase tracking-wider">Proje Ataması (Opsiyonel)</p>
 
                         <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">Proje</label>
+                            <label className="block text-xs font-semibold text-secondary mb-1">Proje</label>
                             <select
                                 value={projectId}
                                 onChange={(e) => setProjectId(e.target.value)}
-                                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                                className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                             >
                                 <option value="">Atama yapma</option>
                                 {projects.map((p) => (
@@ -522,13 +552,13 @@ function CreateUserModal({
                         </div>
                     </div>
 
-                    {error && <p className="text-red-500 text-xs font-medium">{error}</p>}
+                    {error && <p className="text-red-500 dark:text-red-400 text-xs font-medium">{error}</p>}
 
-                    <div className="flex justify-end gap-2 pt-3 border-t">
+                    <div className="flex justify-end gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 cursor-pointer"
+                            className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover-surface text-secondary cursor-pointer"
                         >
                             İptal
                         </button>
@@ -554,11 +584,11 @@ function EditUserModal({
     updateUser,
     updateUserRole,
 }: {
-    user: any;
+    user: ManagedUser;
     onClose: () => void;
     onSuccess: (msg: string) => void;
-    updateUser: any;
-    updateUserRole: any;
+    updateUser: UpdateUserMutation;
+    updateUserRole: UpdateUserRoleMutation;
 }) {
     const [name, setName] = useState(user.name);
     const [title, setTitle] = useState(user.title ?? '');
@@ -600,22 +630,22 @@ function EditUserModal({
             <Modal title="Kullanıcı Düzenle" isOpen onClose={onClose}>
                 <form onSubmit={handleSubmit} className="space-y-4 max-w-md w-full">
                     <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">Ad Soyad</label>
+                        <label className="block text-xs font-semibold text-secondary mb-1">Ad Soyad</label>
                         <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             required
-                            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">Ünvan</label>
+                        <label className="block text-xs font-semibold text-secondary mb-1">Ünvan</label>
                         <select
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300"
+                            className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                         >
                             <option value="">Ünvan seçiniz...</option>
                             {TITLE_OPTIONS.map((t) => (
@@ -627,11 +657,11 @@ function EditUserModal({
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">Sistem Rolü</label>
+                        <label className="block text-xs font-semibold text-secondary mb-1">Sistem Rolü</label>
                         <select
                             value={role}
                             onChange={(e) => setRole(e.target.value)}
-                            className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300"
+                            className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                         >
                             {SYSTEM_ROLES.map((r) => (
                                 <option key={r} value={r}>
@@ -641,13 +671,13 @@ function EditUserModal({
                         </select>
                     </div>
 
-                    {error && <p className="text-red-500 text-xs font-medium">{error}</p>}
+                    {error && <p className="text-red-500 dark:text-red-400 text-xs font-medium">{error}</p>}
 
-                    <div className="flex justify-end gap-2 pt-3 border-t">
+                    <div className="flex justify-end gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 cursor-pointer"
+                            className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover-surface text-secondary cursor-pointer"
                         >
                             İptal
                         </button>

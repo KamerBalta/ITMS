@@ -6,7 +6,11 @@ export interface UserDetail {
     avatarUrl: string | null;
     isActive: boolean;
     createdAt: string;
-    roles: string[];
+    systemRoles: string[];
+    projects: UserProjectSummary[];
+    teams: string[];
+    createdTaskCount: number;
+    assignedTaskCount: number;
 }
 export interface UserListItem {
     id: string;

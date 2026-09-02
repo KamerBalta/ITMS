@@ -27,7 +27,8 @@ public class GetCommentsQueryHandler : IRequestHandler<GetCommentsQuery, List<Co
         return await _db.Comments
             .Where(c => c.TaskId == request.TaskId)
             .OrderBy(c => c.CreatedAt)
-            .Select(c => new CommentDto(c.Id, c.User.Name, c.Content, c.CreatedAt, c.UserId == currentUserId))
+            .OrderBy(c => c.CreatedAt)
+            .Select(c => new CommentDto(c.Id, c.UserId, c.User.Name, c.Content, c.CreatedAt, c.UserId == currentUserId))
             .ToListAsync(ct);
     }
 }

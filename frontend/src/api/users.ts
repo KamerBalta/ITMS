@@ -18,7 +18,7 @@ export const usersApi = {
         projectId?: string | null;
         teamId?: string | null;
         projectRole?: number | null;
-        teamRole?: string | null
+        teamRole?: string | null;
     }) =>
         apiClient.post<{ id: string }>('/users', data).then((res) => res.data),
 
@@ -30,24 +30,17 @@ export const usersApi = {
             .post<{ avatarUrl: string }>('/users/me/avatar', formData)
             .then((res) => res.data);
     },
+
     deleteAvatar: () =>
         apiClient.delete('/users/me/avatar'),
 
-
     // Admin-only
     getAll: () =>
-        apiClient.get<UserListItem[]>('/users')
-            .then((res) => res.data),
-
-    getById: (userId: string) => apiClient.get<UserFullDetail>(`/users/${userId}`).then((res) => res.data),
-
+        apiClient.get<UserListItem[]>('/users').then((res) => res.data),
 
     // 1) Kullanıcı detay getir
     getById: (userId: string) =>
-        apiClient
-            .get<UserDetail>(`/users/${userId}`)
-            .then((res) => res.data),
-
+        apiClient.get<UserDetail>(`/users/${userId}`).then((res) => res.data),
 
     // 2) Kullanıcı düzenle
     update: (
@@ -59,7 +52,6 @@ export const usersApi = {
     ) =>
         apiClient.put(`/users/${userId}`, data),
 
-
     // 3) Kullanıcı pasifleştir
     deactivate: (userId: string) =>
         apiClient.put(`/users/${userId}/deactivate`),
@@ -67,6 +59,9 @@ export const usersApi = {
     // 4) Kullanıcı aktifleştir
     activate: (userId: string) =>
         apiClient.put(`/users/${userId}/activate`),
+
+    revokeAllSessions: () =>
+        apiClient.post('/users/me/revoke-all-sessions'),
 
     // 5) Kullanıcı rol güncelle
     updateRole: (

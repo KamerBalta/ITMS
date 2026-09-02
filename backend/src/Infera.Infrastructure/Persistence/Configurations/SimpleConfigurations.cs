@@ -89,6 +89,10 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
     public void Configure(EntityTypeBuilder<AuditLog> b)
     {
         b.ToTable("AuditLogs");
+        b.Property(x => x.EntityType).HasMaxLength(100).IsRequired();
+        b.Property(x => x.FieldName).HasMaxLength(60);
+        b.Property(x => x.OldValue).HasMaxLength(500);
+        b.Property(x => x.NewValue).HasMaxLength(500);
         b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
     }
 }
@@ -131,6 +135,7 @@ public class WorkLogConfiguration : IEntityTypeConfiguration<WorkLog>
         b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
     }
 }
+
 public class RetrospectiveNoteConfiguration : IEntityTypeConfiguration<RetrospectiveNote>
 {
     public void Configure(EntityTypeBuilder<RetrospectiveNote> b)
@@ -141,6 +146,7 @@ public class RetrospectiveNoteConfiguration : IEntityTypeConfiguration<Retrospec
         b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
     }
 }
+
 public class NotificationPreferenceConfiguration : IEntityTypeConfiguration<NotificationPreference>
 {
     public void Configure(EntityTypeBuilder<NotificationPreference> b)
@@ -151,6 +157,7 @@ public class NotificationPreferenceConfiguration : IEntityTypeConfiguration<Noti
         b.HasIndex(x => new { x.UserId, x.NotificationType }).IsUnique();
     }
 }
+
 public class IssueTypeConfiguration : IEntityTypeConfiguration<IssueType>
 {
     public void Configure(EntityTypeBuilder<IssueType> b)
@@ -173,6 +180,7 @@ public class ProjectIssueTypeAssignmentConfiguration : IEntityTypeConfiguration<
         b.HasIndex(x => new { x.ProjectId, x.IssueTypeId }).IsUnique();
     }
 }
+
 public class SprintBurndownSnapshotConfiguration : IEntityTypeConfiguration<SprintBurndownSnapshot>
 {
     public void Configure(EntityTypeBuilder<SprintBurndownSnapshot> b)
@@ -180,5 +188,234 @@ public class SprintBurndownSnapshotConfiguration : IEntityTypeConfiguration<Spri
         b.ToTable("SprintBurndownSnapshots");
         b.HasOne(x => x.Sprint).WithMany().HasForeignKey(x => x.SprintId);
         b.HasIndex(x => new { x.SprintId, x.SnapshotDate }).IsUnique();
+    }
+}
+
+public class BoardColumnSettingConfiguration : IEntityTypeConfiguration<BoardColumnSetting>
+{
+    public void Configure(EntityTypeBuilder<BoardColumnSetting> b)
+    {
+        b.ToTable("BoardColumnSettings");
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasOne(x => x.BoardColumn).WithMany().HasForeignKey(x => x.BoardColumnId);
+        b.HasIndex(x => new { x.ProjectId, x.BoardColumnId }).IsUnique();
+    }
+}
+
+public class SavedFilterConfiguration : IEntityTypeConfiguration<SavedFilter>
+{
+    public void Configure(EntityTypeBuilder<SavedFilter> b)
+    {
+        b.ToTable("SavedFilters");
+        b.Property(x => x.Name).HasMaxLength(100).IsRequired();
+        b.Property(x => x.FiltersJson).HasColumnType("jsonb");
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class WorkflowTransitionConfiguration : IEntityTypeConfiguration<WorkflowTransition>
+{
+    public void Configure(EntityTypeBuilder<WorkflowTransition> b)
+    {
+        b.ToTable("WorkflowTransitions");
+        b.Property(x => x.AllowedRoles).HasMaxLength(300).IsRequired();
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasOne(x => x.FromStatus).WithMany().HasForeignKey(x => x.FromStatusId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.ToStatus).WithMany().HasForeignKey(x => x.ToStatusId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(x => new { x.ProjectId, x.FromStatusId, x.ToStatusId }).IsUnique();
+    }
+}
+
+public class CustomFieldDefinitionConfiguration : IEntityTypeConfiguration<CustomFieldDefinition>
+{
+    public void Configure(EntityTypeBuilder<CustomFieldDefinition> b)
+    {
+        b.ToTable("CustomFieldDefinitions");
+        b.Property(x => x.Name).HasMaxLength(80).IsRequired();
+        b.Property(x => x.FieldType).HasMaxLength(20).IsRequired();
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasIndex(x => new { x.ProjectId, x.Name }).IsUnique();
+    }
+}
+
+public class TaskCustomFieldValueConfiguration : IEntityTypeConfiguration<TaskCustomFieldValue>
+{
+    public void Configure(EntityTypeBuilder<TaskCustomFieldValue> b)
+    {
+        b.ToTable("TaskCustomFieldValues");
+        b.Property(x => x.Value).HasMaxLength(500);
+        b.HasOne(x => x.Task).WithMany().HasForeignKey(x => x.TaskId);
+        b.HasOne(x => x.CustomFieldDefinition).WithMany().HasForeignKey(x => x.CustomFieldDefinitionId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => new { x.TaskId, x.CustomFieldDefinitionId }).IsUnique();
+    }
+}
+
+public class AutomationRuleConfiguration : IEntityTypeConfiguration<AutomationRule>
+{
+    public void Configure(EntityTypeBuilder<AutomationRule> b)
+    {
+        b.ToTable("AutomationRules");
+        b.Property(x => x.Name).HasMaxLength(100).IsRequired();
+        b.Property(x => x.TriggerType).HasMaxLength(40).IsRequired();
+        b.Property(x => x.ActionType).HasMaxLength(40).IsRequired();
+        b.Property(x => x.TriggerConditionJson).HasColumnType("jsonb");
+        b.Property(x => x.ActionParamsJson).HasColumnType("jsonb");
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+    }
+}
+
+public class ProjectPermissionOverrideConfiguration : IEntityTypeConfiguration<ProjectPermissionOverride>
+{
+    public void Configure(EntityTypeBuilder<ProjectPermissionOverride> b)
+    {
+        b.ToTable("ProjectPermissionOverrides");
+        b.Property(x => x.PermissionKey).HasMaxLength(50).IsRequired();
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasIndex(x => new { x.ProjectId, x.PermissionKey }).IsUnique();
+    }
+}
+
+public class ProjectComponentConfiguration : IEntityTypeConfiguration<ProjectComponent>
+{
+    public void Configure(EntityTypeBuilder<ProjectComponent> b)
+    {
+        b.ToTable("ProjectComponents");
+        b.Property(x => x.Name).HasMaxLength(80).IsRequired();
+        b.Property(x => x.Description).HasMaxLength(300);
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasOne(x => x.LeadUser).WithMany().HasForeignKey(x => x.LeadUserId).OnDelete(DeleteBehavior.SetNull);
+        b.HasIndex(x => new { x.ProjectId, x.Name }).IsUnique();
+    }
+}
+
+public class TaskComponentConfiguration : IEntityTypeConfiguration<TaskComponent>
+{
+    public void Configure(EntityTypeBuilder<TaskComponent> b)
+    {
+        b.ToTable("TaskComponents");
+        b.HasOne(x => x.Task).WithMany().HasForeignKey(x => x.TaskId);
+        b.HasOne(x => x.ProjectComponent).WithMany().HasForeignKey(x => x.ProjectComponentId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => new { x.TaskId, x.ProjectComponentId }).IsUnique();
+    }
+}
+
+public class TaskLinkConfiguration : IEntityTypeConfiguration<TaskLink>
+{
+    public void Configure(EntityTypeBuilder<TaskLink> b)
+    {
+        b.ToTable("TaskLinks");
+        b.Property(x => x.LinkType).HasMaxLength(20).IsRequired();
+        b.HasOne(x => x.SourceTask).WithMany().HasForeignKey(x => x.SourceTaskId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(x => x.TargetTask).WithMany().HasForeignKey(x => x.TargetTaskId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(x => new { x.SourceTaskId, x.TargetTaskId, x.LinkType }).IsUnique();
+    }
+}
+
+public class PendingDigestEmailConfiguration : IEntityTypeConfiguration<PendingDigestEmail>
+{
+    public void Configure(EntityTypeBuilder<PendingDigestEmail> b)
+    {
+        b.ToTable("PendingDigestEmails");
+        b.Property(x => x.Title).HasMaxLength(200).IsRequired();
+        b.Property(x => x.Message).HasMaxLength(500).IsRequired();
+        b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
+    }
+}
+
+public class ProjectWorkflowStatusConfiguration : IEntityTypeConfiguration<ProjectWorkflowStatus>
+{
+    public void Configure(EntityTypeBuilder<ProjectWorkflowStatus> b)
+    {
+        b.ToTable("ProjectWorkflowStatuses");
+        b.Property(x => x.Name).HasMaxLength(50).IsRequired();
+        b.Property(x => x.Category).HasMaxLength(20).IsRequired();
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasOne(x => x.BoardColumn).WithMany().HasForeignKey(x => x.BoardColumnId).OnDelete(DeleteBehavior.SetNull);
+        b.HasIndex(x => new { x.ProjectId, x.Name }).IsUnique();
+    }
+}
+
+public class BoardColumnConfiguration : IEntityTypeConfiguration<BoardColumn>
+{
+    public void Configure(EntityTypeBuilder<BoardColumn> b)
+    {
+        b.ToTable("BoardColumns");
+        b.Property(x => x.Name).HasMaxLength(50).IsRequired();
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasIndex(x => new { x.ProjectId, x.Name }).IsUnique();
+    }
+}
+
+public class ChangelogEntryConfiguration : IEntityTypeConfiguration<ChangelogEntry>
+{
+    public void Configure(EntityTypeBuilder<ChangelogEntry> b)
+    {
+        b.ToTable("ChangelogEntries");
+        b.Property(x => x.Title).HasMaxLength(150).IsRequired();
+        b.Property(x => x.Description).HasMaxLength(1000).IsRequired();
+        b.Property(x => x.Category).HasMaxLength(30).IsRequired();
+    }
+}
+
+public class UserChangelogSeenConfiguration : IEntityTypeConfiguration<UserChangelogSeen>
+{
+    public void Configure(EntityTypeBuilder<UserChangelogSeen> b)
+    {
+        b.ToTable("UserChangelogSeen");
+        b.HasIndex(x => x.UserId).IsUnique();
+    }
+}
+
+public class DashboardWidgetConfiguration : IEntityTypeConfiguration<DashboardWidget>
+{
+    public void Configure(EntityTypeBuilder<DashboardWidget> b)
+    {
+        b.ToTable("DashboardWidgets");
+        b.Property(x => x.WidgetType).HasMaxLength(40).IsRequired();
+        b.Property(x => x.Title).HasMaxLength(80);
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasIndex(x => new { x.UserId, x.ProjectId });
+    }
+}
+
+public class IssueTemplateConfiguration : IEntityTypeConfiguration<IssueTemplate>
+{
+    public void Configure(EntityTypeBuilder<IssueTemplate> b)
+    {
+        b.ToTable("IssueTemplates");
+        b.Property(x => x.Name).HasMaxLength(80).IsRequired();
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasOne(x => x.IssueType).WithMany().HasForeignKey(x => x.IssueTypeId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => new { x.ProjectId, x.Name }).IsUnique();
+    }
+}
+
+public class ProjectGitIntegrationConfiguration : IEntityTypeConfiguration<ProjectGitIntegration>
+{
+    public void Configure(EntityTypeBuilder<ProjectGitIntegration> b)
+    {
+        b.ToTable("ProjectGitIntegrations");
+        b.Property(x => x.Provider).HasMaxLength(20).IsRequired();
+        b.Property(x => x.RepositoryUrl).HasMaxLength(300).IsRequired();
+        b.Property(x => x.WebhookSecret).HasMaxLength(200).IsRequired();
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+        b.HasOne(x => x.CloseTargetStatus).WithMany().HasForeignKey(x => x.CloseTargetStatusId).OnDelete(DeleteBehavior.SetNull);
+        b.HasIndex(x => x.ProjectId).IsUnique();
+    }
+}
+
+public class GitCommitLinkConfiguration : IEntityTypeConfiguration<GitCommitLink>
+{
+    public void Configure(EntityTypeBuilder<GitCommitLink> b)
+    {
+        b.ToTable("GitCommitLinks");
+        b.Property(x => x.CommitHash).HasMaxLength(64).IsRequired();
+        b.Property(x => x.CommitMessage).HasMaxLength(2000).IsRequired();
+        b.Property(x => x.AuthorName).HasMaxLength(150).IsRequired();
+        b.Property(x => x.CommitUrl).HasMaxLength(500);
+        b.Property(x => x.BranchName).HasMaxLength(200);
+        b.HasOne(x => x.Task).WithMany().HasForeignKey(x => x.TaskId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => new { x.TaskId, x.CommitHash }).IsUnique();
     }
 }

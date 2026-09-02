@@ -36,6 +36,13 @@ public class AddWorkLogCommandHandler : IRequestHandler<AddWorkLogCommand, Guid>
             Description = request.Description
         };
 
+        // Jira davranisi: worklog eklenince kalan tahmini otomatik dus (0'in altina inmez)
+        var task = await _db.Tasks.FirstOrDefaultAsync(t => t.Id == request.TaskId, ct);
+        if (task?.RemainingEstimateMinutes is not null)
+        {
+            task.RemainingEstimateMinutes = System.Math.Max(0, task.RemainingEstimateMinutes.Value - request.TimeSpentMinutes);
+        }
+
         _db.WorkLogs.Add(workLog);
         await _db.SaveChangesAsync(ct);
 

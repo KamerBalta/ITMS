@@ -10,6 +10,7 @@ export function useProjectDetail(projectId: string | null) {
         queryKey: ['projects', projectId],
         queryFn: () => projectsApi.getById(projectId!),
         enabled: !!projectId,
+        retry: false,
     });
 }
 
@@ -24,8 +25,12 @@ export function useCreateProject() {
 export function useUpdateProject(projectId: string) {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: { name: string; description?: string; startDate?: string | null; endDate?: string | null }) =>
-            projectsApi.update(projectId, data),
+        mutationFn: (data: {
+            name: string;
+            description?: string;
+            startDate?: string | null;
+            endDate?: string | null;
+        }) => projectsApi.update(projectId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['projects'] });
             queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
@@ -40,6 +45,7 @@ export function useArchiveProject() {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] }),
     });
 }
+
 export function useUnarchiveProject() {
     const queryClient = useQueryClient();
     return useMutation({
@@ -67,5 +73,25 @@ export function useRemoveTeamFromProject(projectId: string) {
             queryClient.invalidateQueries({ queryKey: ['projects'] });
             queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
         },
+    });
+}
+
+export function useDeleteProject() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (projectId: string) => projectsApi.delete(projectId),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    });
+}
+
+export function useRequestProjectAccess() {
+    return useMutation({
+        mutationFn: ({
+            projectId,
+            message,
+        }: {
+            projectId: string;
+            message?: string;
+        }) => projectsApi.requestAccess(projectId, message),
     });
 }

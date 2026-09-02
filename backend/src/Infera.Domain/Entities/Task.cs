@@ -17,10 +17,13 @@ public class Task : BaseEntity,ISoftDelete
     public string Title { get; set; } = default!;
     public string? Description { get; set; }
     public Guid? IssueTypeId { get; set; }
+    public int? OriginalEstimateMinutes { get; set; }
+    public int? RemainingEstimateMinutes { get; set; }
     public IssueType? IssueType { get; set; }
     public Priority Priority { get; set; }
     public int? StoryPoint { get; set; }
-    public ItemStatus Status { get; set; } = ItemStatus.ToDo;
+    public Guid StatusId { get; set; }
+    public ProjectWorkflowStatus WorkflowStatus { get; set; } = default!;
 
     public Guid? AssigneeId { get; set; }
     public User? Assignee { get; set; }
@@ -28,11 +31,12 @@ public class Task : BaseEntity,ISoftDelete
     public Guid ReporterId { get; set; }
     public User Reporter { get; set; } = default!;
 
-    public DateTime? DueDate { get; set; }
+    public DateOnly? DueDate { get; set; }
     public long Rank { get; set; }
     public int TaskNumber { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+    
     public bool IsDeleted { get; set; } = false;
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }

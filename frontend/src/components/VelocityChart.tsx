@@ -20,7 +20,8 @@ export function VelocityChart({ data }: { data: VelocityItem[] }) {
                 data={chartData}
                 layout="vertical"
                 onClick={(e) => {
-                    const point = e?.activePayload?.[0]?.payload;
+                    const event = e as { activePayload?: Array<{ payload?: { id?: string } }> } | null;
+                    const point = event?.activePayload?.[0]?.payload;
                     if (point?.id) navigate(`/sprints/${point.id}`);
                 }}
             >

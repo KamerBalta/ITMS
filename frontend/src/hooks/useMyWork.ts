@@ -9,6 +9,7 @@ export interface MyWorkItem {
     issueType: string;
     priority: string;
     status: string;
+    statusId: string; // <-- Dinamik workflow ve statü eşleştirmesi için eklendi
     storyPoint: number | null;
     projectId: string;
     projectName: string;
@@ -37,6 +38,7 @@ export function useMyWork() {
             issueType: t.issueType,
             priority: t.priority,
             status: t.status,
+            statusId: t.statusId,
             storyPoint: t.storyPoint,
             projectId: project.id,
             projectName: project.name,

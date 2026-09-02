@@ -5,8 +5,12 @@ import { useSprints, useCompleteSprint, useUpdateSprint } from '../../hooks/useS
 import { useTasks } from '../../hooks/useTasks';
 import { useBurndown } from '../../hooks/useDashboard';
 import { useAuthStore } from '../../store/authStore';
+import { useConfirm } from '../../hooks/useConfirm';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { BurndownChart } from '../../components/BurndownChart';
 import { TaskCard } from '../../components/TaskCard';
+import type { AxiosError } from 'axios';
+import type { ApiErrorResponse } from '../../types/api';
 import {
     ArrowLeft,
     Calendar,
@@ -17,10 +21,9 @@ import {
     Search,
     TrendingUp,
     UserCheck,
-    AlertCircle,
     Activity,
     Plus,
-    Pencil
+    Pencil,
 } from 'lucide-react';
 
 const STATUS_ORDER = ['ToDo', 'InProgress', 'ReadyForReview', 'ReadyForQA', 'Done', 'Closed'];
@@ -35,12 +38,12 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-    ToDo: 'bg-slate-100 text-slate-700 border-slate-200',
-    InProgress: 'bg-blue-100 text-blue-700 border-blue-200',
-    ReadyForReview: 'bg-amber-100 text-amber-800 border-amber-200',
-    ReadyForQA: 'bg-purple-100 text-purple-700 border-purple-200',
-    Done: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    Closed: 'bg-slate-200 text-slate-600 border-slate-300',
+    ToDo: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+    InProgress: 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900',
+    ReadyForReview: 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-900',
+    ReadyForQA: 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-900',
+    Done: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900',
+    Closed: 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600',
 };
 
 export function SprintDetailPage() {
@@ -57,6 +60,8 @@ export function SprintDetailPage() {
     const completeSprint = useCompleteSprint(selectedProjectId ?? '');
     const updateSprint = useUpdateSprint(selectedProjectId ?? '');
 
+    const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
+
     // Düzenleme State'leri
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({ name: '', goal: '', startDate: '', endDate: '' });
@@ -69,15 +74,48 @@ export function SprintDetailPage() {
     const [priorityFilter, setPriorityFilter] = useState<string>('all');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+    // Tüm Hook ve useMemo çağrıları Early Return'lerden ÖNCE çalıştırılır
+    const allTasks = useMemo(() => tasks ?? [], [tasks]);
+
+    const filteredTasks = useMemo(() => {
+        return allTasks.filter((t) => {
+            const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase());
+
+            let matchesAssignee = true;
+            if (assigneeFilter === 'me') {
+                matchesAssignee = t.assigneeId === user?.userId;
+            } else if (assigneeFilter === 'unassigned') {
+                matchesAssignee = !t.assigneeId;
+            }
+
+            const matchesType =
+                typeFilter === 'all' || t.issueType.toLowerCase() === typeFilter.toLowerCase();
+
+            const matchesPriority =
+                priorityFilter === 'all' || String(t.priority).toLowerCase() === priorityFilter.toLowerCase();
+
+            return matchesSearch && matchesAssignee && matchesType && matchesPriority;
+        });
+    }, [allTasks, searchQuery, assigneeFilter, typeFilter, priorityFilter, user?.userId]);
+
+    const tasksByStatus = useMemo(() => {
+        return STATUS_ORDER.map((statusKey) => ({
+            status: statusKey,
+            label: STATUS_LABELS[statusKey] ?? statusKey,
+            tasks: filteredTasks.filter((t) => t.status === statusKey || t.statusId === statusKey),
+        })).filter((group) => group.tasks.length > 0);
+    }, [filteredTasks]);
+
+    // Koşullu Erken Dönüşler (Early Returns)
     if (!selectedProjectId) {
-        return <p className="text-slate-500 text-sm p-4">Devam etmek için üstten bir proje seçin.</p>;
+        return <p className="text-secondary text-sm p-4">Devam etmek için üstten bir proje seçin.</p>;
     }
 
     if (!sprint) {
         return (
-            <div className="space-y-3 p-4 bg-white border border-slate-200 rounded-xl">
-                <p className="text-slate-500 text-sm">Sprint bulunamadı ya da seçili projeye ait değil.</p>
-                <Link to="/backlog" className="inline-flex items-center gap-1.5 text-xs text-blue-600 font-semibold hover:underline">
+            <div className="space-y-3 p-4 surface border rounded-xl">
+                <p className="text-secondary text-sm">Sprint bulunamadı ya da seçili projeye ait değil.</p>
+                <Link to="/backlog" className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline">
                     <ArrowLeft size={14} />
                     <span>Backlog'a dön</span>
                 </Link>
@@ -109,20 +147,25 @@ export function SprintDetailPage() {
                 },
             });
             setIsEditing(false);
-        } catch {
-            setEditError('Sprint güncellenemedi.');
+        } catch (err) {
+            const axiosError = err as AxiosError<ApiErrorResponse>;
+            setEditError(axiosError.response?.data?.message ?? 'Güncellenemedi.');
         }
     };
 
     const handleComplete = async () => {
-        if (!confirm(`"${sprint.name}" sprintini tamamlamak istediğinize emin misiniz? Tamamlanmamış görevler Backlog'a geri dönecek.`))
-            return;
+        if (!sprint) return;
+        const ok = await confirm(
+            "Sprint'i Tamamla",
+            `"${sprint.name}" sprintini tamamlamak istediğinize emin misiniz? Tamamlanmamış görevler Backlog'a geri dönecek.`,
+            true
+        );
+        if (!ok) return;
         await completeSprint.mutateAsync(sprint.id);
         setIsMenuOpen(false);
     };
 
-    // 1. İlerleme Hesabı & Metrikler
-    const allTasks = tasks ?? [];
+    // İlerleme ve Metrik Hesapları
     const completedTasks = allTasks.filter((t) => t.status === 'Done' || t.status === 'Closed');
     const progressPercent = allTasks.length > 0 ? Math.round((completedTasks.length / allTasks.length) * 100) : 0;
 
@@ -130,121 +173,86 @@ export function SprintDetailPage() {
     const completedStoryPoints = completedTasks.reduce((acc, t) => acc + (t.storyPoint ?? 0), 0);
     const remainingStoryPoints = totalStoryPoints - completedStoryPoints;
 
-    // Atanan benzersiz kullanıcı sayısı
     const uniqueAssigneesCount = new Set(allTasks.map((t) => t.assigneeId).filter(Boolean)).size;
 
-    // Kalan Gün Sayacı ve Sprint Sağlığı
     const endDate = new Date(sprint.endDate);
     const today = new Date();
     const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
 
-    let sprintHealth = { label: 'Healthy', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    let sprintHealth = { label: 'Healthy', color: 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' };
     if (sprint.status === 'Active') {
         if (diffDays < 0) {
-            sprintHealth = { label: 'Overdue', color: 'bg-rose-50 text-rose-700 border-rose-200' };
+            sprintHealth = { label: 'Overdue', color: 'bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800' };
         } else if (progressPercent < 40 && diffDays <= 3) {
-            sprintHealth = { label: 'At Risk', color: 'bg-amber-50 text-amber-700 border-amber-200' };
+            sprintHealth = { label: 'At Risk', color: 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' };
         }
     }
 
-    // 2. Filtrelenmiş Görevler
-    const filteredTasks = useMemo(() => {
-        return allTasks.filter((t) => {
-            const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase());
-
-            let matchesAssignee = true;
-            if (assigneeFilter === 'me') {
-                matchesAssignee = t.assigneeId === user?.userId;
-            } else if (assigneeFilter === 'unassigned') {
-                matchesAssignee = !t.assigneeId;
-            }
-
-            let matchesType = true;
-            if (typeFilter !== 'all') {
-                matchesType = t.issueType.toLowerCase() === typeFilter.toLowerCase();
-            }
-
-            let matchesPriority = true;
-            if (priorityFilter !== 'all') {
-                matchesPriority = String(t.priority).toLowerCase() === priorityFilter.toLowerCase();
-            }
-
-            return matchesSearch && matchesAssignee && matchesType && matchesPriority;
-        });
-    }, [allTasks, searchQuery, assigneeFilter, typeFilter, priorityFilter, user?.userId]);
-
-    // 3. Statülere göre Gruplama
-    const tasksByStatus = STATUS_ORDER.map((status) => ({
-        status,
-        label: STATUS_LABELS[status],
-        tasks: filteredTasks.filter((t) => t.status === status),
-    })).filter((group) => group.tasks.length > 0);
-
     return (
         <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-0 select-none">
-            {/* Üst Geri Dönüş Linki */}
+            {/* Geri Dönüş Linki */}
             <div>
-                <Link to="/backlog" className="inline-flex items-center gap-1 text-xs text-blue-600 font-semibold hover:underline">
+                <Link to="/backlog" className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline">
                     <ArrowLeft size={14} />
                     <span>Backlog'a dön</span>
                 </Link>
             </div>
 
-            {/* 1. BİLGİ VE HEADER KARTI */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-5">
+            {/* Bilgi ve Header Kartı */}
+            <div className="surface border rounded-xl p-5 shadow-2xs space-y-5">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex-1 space-y-2">
                         {isEditing ? (
-                            <div className="space-y-3 max-w-lg bg-slate-50 p-3.5 border border-slate-200 rounded-lg">
+                            <div className="space-y-3 max-w-lg surface-muted p-3.5 border border-gray-200 dark:border-gray-700 rounded-lg">
                                 <div>
-                                    <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Sprint Adı</label>
+                                    <label className="text-[10px] text-muted font-bold uppercase block mb-1">Sprint Adı</label>
                                     <input
                                         value={editForm.name}
                                         onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                                        className="text-base font-bold border border-slate-300 rounded px-2.5 py-1 w-full bg-white text-slate-800"
+                                        className="text-base font-bold input-base border rounded px-2.5 py-1 w-full"
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Sprint Hedefi</label>
+                                    <label className="text-[10px] text-muted font-bold uppercase block mb-1">Sprint Hedefi</label>
                                     <textarea
                                         value={editForm.goal}
                                         onChange={(e) => setEditForm({ ...editForm, goal: e.target.value })}
                                         placeholder="Sprint hedefi ekleyin..."
                                         rows={2}
-                                        className="w-full border border-slate-300 rounded px-2.5 py-1 text-xs bg-white text-slate-700"
+                                        className="w-full input-base border rounded px-2.5 py-1 text-xs"
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                        <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Başlangıç Tarihi</label>
+                                        <label className="text-[10px] text-muted font-bold uppercase block mb-1">Başlangıç Tarihi</label>
                                         <input
                                             type="date"
                                             value={editForm.startDate}
                                             onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
-                                            className="border border-slate-300 rounded px-2 py-1 text-xs w-full bg-white text-slate-700"
+                                            className="input-base border rounded px-2 py-1 text-xs w-full"
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Bitiş Tarihi</label>
+                                        <label className="text-[10px] text-muted font-bold uppercase block mb-1">Bitiş Tarihi</label>
                                         <input
                                             type="date"
                                             value={editForm.endDate}
                                             onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
-                                            className="border border-slate-300 rounded px-2 py-1 text-xs w-full bg-white text-slate-700"
+                                            className="input-base border rounded px-2 py-1 text-xs w-full"
                                         />
                                     </div>
                                 </div>
-                                {editError && <p className="text-rose-500 text-xs">{editError}</p>}
+                                {editError && <p className="text-rose-500 dark:text-rose-400 text-xs">{editError}</p>}
                                 <div className="flex items-center gap-2 pt-1">
                                     <button
                                         onClick={handleSaveEdit}
-                                        className="text-xs bg-blue-600 text-white font-semibold px-3 py-1.5 rounded-md hover:bg-blue-700 transition"
+                                        className="text-xs bg-blue-600 text-white font-semibold px-3 py-1.5 rounded-md hover:bg-blue-700 transition cursor-pointer"
                                     >
                                         Kaydet
                                     </button>
                                     <button
                                         onClick={() => setIsEditing(false)}
-                                        className="text-xs border border-slate-300 text-slate-600 font-semibold px-3 py-1.5 rounded-md hover:bg-slate-100 transition"
+                                        className="text-xs border border-gray-300 dark:border-gray-600 text-secondary font-semibold px-3 py-1.5 rounded-md hover-surface transition cursor-pointer"
                                     >
                                         İptal
                                     </button>
@@ -253,12 +261,12 @@ export function SprintDetailPage() {
                         ) : (
                             <>
                                 <div className="flex items-center gap-2.5 flex-wrap">
-                                    <h1 className="text-2xl font-bold text-slate-900">{sprint.name}</h1>
+                                    <h1 className="text-2xl font-bold text-primary">{sprint.name}</h1>
 
                                     <span
                                         className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider border ${sprint.status === 'Active'
-                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                                                ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                                             }`}
                                     >
                                         {sprint.status === 'Active' ? 'Active Sprint' : 'Completed'}
@@ -271,7 +279,7 @@ export function SprintDetailPage() {
                                     )}
                                 </div>
 
-                                {sprint.goal && <p className="text-xs text-slate-500 leading-relaxed max-w-2xl">{sprint.goal}</p>}
+                                {sprint.goal && <p className="text-xs text-secondary leading-relaxed max-w-2xl">{sprint.goal}</p>}
                             </>
                         )}
                     </div>
@@ -282,7 +290,7 @@ export function SprintDetailPage() {
                             {isPM && (
                                 <button
                                     onClick={startEditing}
-                                    className="text-xs bg-slate-50 border border-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer flex items-center gap-1.5"
+                                    className="text-xs surface-muted border border-gray-200 dark:border-gray-700 text-secondary font-semibold px-3 py-1.5 rounded-lg hover-surface transition cursor-pointer flex items-center gap-1.5"
                                 >
                                     <Pencil size={13} />
                                     <span>Düzenle</span>
@@ -292,7 +300,7 @@ export function SprintDetailPage() {
                             {sprint.status === 'Completed' && (
                                 <Link
                                     to={`/retrospective?sprintId=${sprint.id}`}
-                                    className="text-xs bg-slate-50 border border-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                                    className="text-xs surface-muted border border-gray-200 dark:border-gray-700 text-secondary font-semibold px-3 py-1.5 rounded-lg hover-surface transition cursor-pointer"
                                 >
                                     Retrospective'i Gör
                                 </Link>
@@ -301,7 +309,7 @@ export function SprintDetailPage() {
                             {sprint.status === 'Active' && isPM && (
                                 <button
                                     onClick={handleComplete}
-                                    className="text-xs border border-rose-200 text-rose-600 font-semibold px-3 py-1.5 rounded-lg hover:bg-rose-50 transition cursor-pointer flex items-center gap-1.5"
+                                    className="text-xs border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 font-semibold px-3 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950 transition cursor-pointer flex items-center gap-1.5"
                                 >
                                     <CheckCircle2 size={14} />
                                     <span>Sprint'i Tamamla</span>
@@ -311,15 +319,15 @@ export function SprintDetailPage() {
                             <div className="relative">
                                 <button
                                     onClick={() => setIsMenuOpen(!isMenuOpen)}
-                                    className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-500 transition cursor-pointer"
+                                    className="p-1.5 border border-gray-200 dark:border-gray-700 rounded-lg hover-surface text-muted transition cursor-pointer"
                                 >
                                     <MoreHorizontal size={18} />
                                 </button>
                                 {isMenuOpen && (
-                                    <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-20 text-xs">
+                                    <div className="absolute right-0 mt-1 w-44 surface border rounded-lg shadow-lg py-1 z-20 text-xs">
                                         <Link
                                             to="/backlog"
-                                            className="block px-3 py-2 text-slate-700 hover:bg-slate-50"
+                                            className="block px-3 py-2 text-secondary hover-surface"
                                         >
                                             Backlog'da Düzenle
                                         </Link>
@@ -330,60 +338,60 @@ export function SprintDetailPage() {
                     )}
                 </div>
 
-                {/* Grid İstatistikler */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 pt-3 border-t border-slate-100 text-xs">
-                    <div className="flex items-center gap-2 text-slate-600">
-                        <Calendar size={16} className="text-slate-400 shrink-0" />
+                {/* İstatistikler */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 pt-3 border-t border-gray-100 dark:border-gray-800 text-xs">
+                    <div className="flex items-center gap-2 text-secondary">
+                        <Calendar size={16} className="text-muted shrink-0" />
                         <div>
-                            <p className="text-[10px] text-slate-400 font-semibold uppercase">Tarih</p>
-                            <p className="font-semibold text-slate-800">
+                            <p className="text-[10px] text-muted font-semibold uppercase">Tarih</p>
+                            <p className="font-semibold text-primary">
                                 {new Date(sprint.startDate).toLocaleDateString('tr-TR')} — {new Date(sprint.endDate).toLocaleDateString('tr-TR')}
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-slate-600">
-                        <Clock size={16} className="text-slate-400 shrink-0" />
+                    <div className="flex items-center gap-2 text-secondary">
+                        <Clock size={16} className="text-muted shrink-0" />
                         <div>
-                            <p className="text-[10px] text-slate-400 font-semibold uppercase">Kalan Süre</p>
-                            <p className="font-semibold text-slate-800">
+                            <p className="text-[10px] text-muted font-semibold uppercase">Kalan Süre</p>
+                            <p className="font-semibold text-primary">
                                 {sprint.status === 'Completed' ? 'Tamamlandı' : diffDays > 0 ? `${diffDays} gün kaldı` : 'Süre doldu'}
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-slate-600">
-                        <Layers size={16} className="text-slate-400 shrink-0" />
+                    <div className="flex items-center gap-2 text-secondary">
+                        <Layers size={16} className="text-muted shrink-0" />
                         <div>
-                            <p className="text-[10px] text-slate-400 font-semibold uppercase">Görev Sayısı</p>
-                            <p className="font-semibold text-slate-800">{allTasks.length} Issues</p>
+                            <p className="text-[10px] text-muted font-semibold uppercase">Görev Sayısı</p>
+                            <p className="font-semibold text-primary">{allTasks.length} Issues</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-slate-600">
-                        <TrendingUp size={16} className="text-slate-400 shrink-0" />
+                    <div className="flex items-center gap-2 text-secondary">
+                        <TrendingUp size={16} className="text-muted shrink-0" />
                         <div>
-                            <p className="text-[10px] text-slate-400 font-semibold uppercase">Story Points</p>
-                            <p className="font-semibold text-slate-800">{totalStoryPoints} SP</p>
+                            <p className="text-[10px] text-muted font-semibold uppercase">Story Points</p>
+                            <p className="font-semibold text-primary">{totalStoryPoints} SP</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-slate-600 col-span-2 sm:col-span-1">
-                        <UserCheck size={16} className="text-slate-400 shrink-0" />
+                    <div className="flex items-center gap-2 text-secondary col-span-2 sm:col-span-1">
+                        <UserCheck size={16} className="text-muted shrink-0" />
                         <div>
-                            <p className="text-[10px] text-slate-400 font-semibold uppercase">Ekip</p>
-                            <p className="font-semibold text-slate-800">{uniqueAssigneesCount} Assignee</p>
+                            <p className="text-[10px] text-muted font-semibold uppercase">Ekip</p>
+                            <p className="font-semibold text-primary">{uniqueAssigneesCount} Assignee</p>
                         </div>
                     </div>
                 </div>
 
-                {/* Progress Bar (Jira İlerleme Çubuğu) */}
+                {/* Progress Bar */}
                 <div className="space-y-1.5 pt-2">
-                    <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
+                    <div className="flex items-center justify-between text-xs font-semibold text-secondary">
                         <span>Sprint İlerlemesi ({progressPercent}%)</span>
                         <span>{completedTasks.length} / {allTasks.length} Görev Tamamlandı</span>
                     </div>
-                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden flex border border-slate-200">
+                    <div className="w-full h-2.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden flex border border-gray-200 dark:border-gray-700">
                         <div
                             style={{ width: `${progressPercent}%` }}
                             className="h-full bg-emerald-500 transition-all duration-300 rounded-full"
@@ -392,76 +400,78 @@ export function SprintDetailPage() {
                 </div>
             </div>
 
-            {/* 2. BURNDOWN & VELOCITY YAN YANA PANEL */}
+            {/* Burndown & Velocity Paneli */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-4 shadow-2xs">
+                <div className="lg:col-span-2 surface border rounded-xl p-4 shadow-2xs">
                     <div className="flex items-center justify-between mb-3">
-                        <h2 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                            <Activity size={16} className="text-blue-600" />
+                        <h2 className="font-bold text-primary text-sm flex items-center gap-2">
+                            <Activity size={16} className="text-blue-600 dark:text-blue-400" />
                             <span>Burndown Chart</span>
                         </h2>
                     </div>
                     {burndown ? (
                         <BurndownChart data={burndown} />
                     ) : (
-                        <div className="h-48 flex items-center justify-center text-xs text-slate-400">
+                        <div className="h-48 flex items-center justify-center text-xs text-muted">
                             Grafik verisi yükleniyor...
                         </div>
                     )}
                 </div>
 
-                {/* Velocity & SP Metrik Özeti */}
-                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex flex-col justify-between space-y-4">
-                    <h2 className="font-bold text-slate-800 text-sm border-b border-slate-100 pb-2">
+                <div className="surface border rounded-xl p-4 shadow-2xs flex flex-col justify-between space-y-4">
+                    <h2 className="font-bold text-primary text-sm border-b border-gray-100 dark:border-gray-800 pb-2">
                         Sprint Velocity & SP Summary
                     </h2>
 
                     <div className="space-y-3 flex-1 justify-center flex flex-col">
-                        <div className="p-3 bg-slate-50 border border-slate-200/70 rounded-lg flex items-center justify-between">
+                        <div className="p-3 surface-muted border border-gray-200/70 dark:border-gray-700/70 rounded-lg flex items-center justify-between">
                             <div>
-                                <p className="text-[11px] text-slate-400 font-bold uppercase">Completed SP</p>
-                                <p className="text-xl font-bold text-emerald-600">{completedStoryPoints} SP</p>
+                                <p className="text-[11px] text-muted font-bold uppercase">Completed SP</p>
+                                <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{completedStoryPoints} SP</p>
                             </div>
-                            <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">Done</span>
+                            <span className="text-xs bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold px-2 py-0.5 rounded">Done</span>
                         </div>
 
-                        <div className="p-3 bg-slate-50 border border-slate-200/70 rounded-lg flex items-center justify-between">
+                        <div className="p-3 surface-muted border border-gray-200/70 dark:border-gray-700/70 rounded-lg flex items-center justify-between">
                             <div>
-                                <p className="text-[11px] text-slate-400 font-bold uppercase">Remaining SP</p>
-                                <p className="text-xl font-bold text-slate-700">{remainingStoryPoints} SP</p>
+                                <p className="text-[11px] text-muted font-bold uppercase">Remaining SP</p>
+                                <p className="text-xl font-bold text-secondary">{remainingStoryPoints} SP</p>
                             </div>
-                            <span className="text-xs bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded">In Scope</span>
+                            <span className="text-xs bg-gray-200 dark:bg-gray-700 text-secondary font-bold px-2 py-0.5 rounded">In Scope</span>
                         </div>
                     </div>
 
-                    <div className="border-t border-slate-100 pt-3 text-xs text-slate-500 flex items-center justify-between">
+                    <div className="border-t border-gray-100 dark:border-gray-800 pt-3 text-xs text-secondary flex items-center justify-between">
                         <span>Tamamlanma Oranı</span>
-                        <span className="font-bold text-slate-800">{progressPercent}%</span>
+                        <span className="font-bold text-primary">{progressPercent}%</span>
                     </div>
                 </div>
             </div>
 
-            {/* 3. CANLI FİLTRELEME TOOLBARI */}
-            <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col md:flex-row gap-3 shadow-2xs items-stretch md:items-center justify-between">
+            {/* Filtreleme Toolbarı */}
+            <div className="surface border rounded-xl p-3 flex flex-col md:flex-row gap-3 shadow-2xs items-stretch md:items-center justify-between">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
-                    {/* Arama Input */}
                     <div className="relative flex-1 min-w-[200px]">
-                        <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                        <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted" />
                         <input
                             type="text"
                             placeholder="Arama yap..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
+                            className="w-full input-base border rounded-lg pl-9 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
 
-                    {/* Filtre Dropdown'ları */}
                     <div className="flex flex-wrap items-center gap-2">
                         <select
                             value={assigneeFilter}
-                            onChange={(e) => setAssigneeFilter(e.target.value as any)}
-                            className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === 'all' || val === 'me' || val === 'unassigned') {
+                                    setAssigneeFilter(val);
+                                }
+                            }}
+                            className="input-base border rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                         >
                             <option value="all">Assignee: Tümü</option>
                             <option value="me">Yalnızca Bana Atananlar</option>
@@ -471,7 +481,7 @@ export function SprintDetailPage() {
                         <select
                             value={typeFilter}
                             onChange={(e) => setTypeFilter(e.target.value)}
-                            className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="input-base border rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                         >
                             <option value="all">Type: Tümü</option>
                             <option value="bug">Bug</option>
@@ -483,7 +493,7 @@ export function SprintDetailPage() {
                         <select
                             value={priorityFilter}
                             onChange={(e) => setPriorityFilter(e.target.value)}
-                            className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="input-base border rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                         >
                             <option value="all">Priority: Tümü</option>
                             <option value="high">High</option>
@@ -494,16 +504,16 @@ export function SprintDetailPage() {
                 </div>
             </div>
 
-            {/* 4. GÖREV LİSTESİ VEYA EMPTY STATE */}
+            {/* Görev Listesi veya Empty State */}
             <div>
                 {tasksLoading ? (
-                    <p className="text-slate-500 text-xs p-4">Görevler yükleniyor...</p>
+                    <p className="text-secondary text-xs p-4">Görevler yükleniyor...</p>
                 ) : filteredTasks.length === 0 ? (
-                    <div className="bg-white border border-slate-200 rounded-xl p-8 text-center space-y-3">
-                        <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+                    <div className="surface border rounded-xl p-8 text-center space-y-3">
+                        <div className="w-12 h-12 surface-muted text-muted rounded-full flex items-center justify-center mx-auto">
                             <Layers size={24} />
                         </div>
-                        <p className="text-xs text-slate-500 font-medium">Bu sprintte filtrelere uygun görev bulunamadı.</p>
+                        <p className="text-xs text-secondary font-medium">Bu sprintte filtrelere uygun görev bulunamadı.</p>
                         <Link
                             to="/backlog"
                             className="inline-flex items-center gap-1.5 text-xs bg-blue-600 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-700 transition"
@@ -517,10 +527,10 @@ export function SprintDetailPage() {
                         {tasksByStatus.map((group) => (
                             <div key={group.status} className="space-y-2">
                                 <div className="flex items-center gap-2">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${STATUS_STYLES[group.status]}`}>
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${STATUS_STYLES[group.status] ?? STATUS_STYLES.ToDo}`}>
                                         {group.label}
                                     </span>
-                                    <span className="text-xs text-slate-400 font-semibold">({group.tasks.length})</span>
+                                    <span className="text-xs text-muted font-semibold">({group.tasks.length})</span>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                     {group.tasks.map((task) => (
@@ -532,6 +542,16 @@ export function SprintDetailPage() {
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                isOpen={confirmState.isOpen}
+                title={confirmState.title}
+                message={confirmState.message}
+                danger={confirmState.danger}
+                confirmLabel="Tamamla"
+                onConfirm={handleConfirm}
+                onCancel={handleCancel}
+            />
         </div>
     );
 }

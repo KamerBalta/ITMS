@@ -31,7 +31,15 @@ export function useChangeMyPassword() {
 export function useUploadAvatar() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: usersApi.uploadAvatar,
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['myProfile'] }),
+        mutationFn: async (file: File) => {
+            const result = await usersApi.uploadAvatar(file);
+            return result;
+        },
+        onSuccess: (_, __, ___) => {
+            qc.invalidateQueries({ queryKey: ['myProfile'] });
+        },
     });
+}
+export function useRevokeAllSessions() {
+    return useMutation({ mutationFn: usersApi.revokeAllSessions });
 }

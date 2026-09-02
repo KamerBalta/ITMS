@@ -3,12 +3,14 @@ using Infera.Application.Features.Search.GlobalSearch;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Infera.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/search")]
 [Authorize]
+[EnableRateLimiting("SearchPolicy")]
 public class SearchController : ControllerBase
 {
     private readonly IMediator _mediator;

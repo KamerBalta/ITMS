@@ -6,6 +6,7 @@ export const projectsApi = {
 
     getById: (projectId: string) => apiClient.get<ProjectDetail>(`/projects/${projectId}`).then((res) => res.data),
 
+    delete: (projectId: string) => apiClient.delete(`/projects/${projectId}`),
     create: (data: { name: string; key: string; description?: string; ownerId?: string | null; teamIds: string[]; startDate?: string | null }) =>
         apiClient.post<{ id: string }>('/projects', data).then((res) => res.data),
 
@@ -20,4 +21,7 @@ export const projectsApi = {
 
     removeTeam: (projectId: string, teamId: string) =>
         apiClient.delete(`/projects/${projectId}/teams/${teamId}`),
+
+    requestAccess: (projectId: string, message?: string) =>
+        apiClient.post(`/projects/${projectId}/request-access`, { message }),
 };

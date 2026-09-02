@@ -4,12 +4,14 @@ using Infera.Application.Features.Export.ExportSprintReport;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Infera.Api.Controllers;
 
 [ApiController]
 [Route("api/v1")]
 [Authorize]
+[EnableRateLimiting("ExportPolicy")]
 public class ExportController : ControllerBase
 {
     private readonly IMediator _mediator;
