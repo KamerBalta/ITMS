@@ -1,6 +1,6 @@
 ﻿import { useState } from 'react';
 import { useSavedFilters, useCreateSavedFilter, useDeleteSavedFilter } from '../hooks/useSavedFilters';
-import type { SerializableFilters } from '../types/savedFilter';
+import type { SerializableFilters, SavedFilter } from '../types/savedFilter'; // <-- SavedFilter eklendi
 import type { AxiosError } from 'axios';
 import type { ApiErrorResponse } from '../types/api';
 
@@ -37,7 +37,8 @@ export function SavedFiltersBar({ projectId, currentFilters, onApply }: SavedFil
         }
     };
 
-    const handleApply = (f: (typeof filters)[number]) => {
+    // DÜZELTİLEN YER: (typeof filters)[number] yerine SavedFilter veya NonNullable kullanıldı
+    const handleApply = (f: SavedFilter) => {
         try {
             onApply(JSON.parse(f.filtersJson));
         } catch {

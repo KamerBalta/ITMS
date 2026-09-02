@@ -397,7 +397,7 @@ function BacklogGroupedList({
     onDragStart: (e: React.DragEvent, taskId: string) => void;
 }) {
     const grouped = tasks.reduce<Record<string, BacklogTaskItem[]>>((acc, t) => {
-        const key = t.parentTaskId ?? '__none__';
+        const key = t.parentTaskId ? String(t.parentTaskId) : '__none__';
         (acc[key] ??= []).push(t);
         return acc;
     }, {});
@@ -448,7 +448,7 @@ function BacklogGroupedList({
                     {/* Assignee Avatar */}
                     {task.assigneeName ? (
                         <Avatar
-                            userId={task.assigneeId}
+                            userId={task.assigneeId ?? ''}
                             name={task.assigneeName}
                             size="sm"
                         />
@@ -481,7 +481,7 @@ function BacklogGroupedList({
                     {/* Epic Header Badge */}
                     <div className="bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/60 rounded-md px-3 py-1.5 flex items-center gap-2 text-xs text-purple-900 dark:text-purple-300 font-bold">
                         <Package size={14} className="text-purple-600 dark:text-purple-400 shrink-0" />
-                        <span>{epicTasks[0].parentTaskTitle ?? 'Epic'}</span>
+                        <span>{epicTasks[0]?.parentTaskTitle ?? 'Epic'}</span>
                         <span className="text-[10px] text-purple-400 dark:text-purple-500 font-semibold">
                             ({epicTasks.length})
                         </span>

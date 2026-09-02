@@ -1,6 +1,5 @@
 ﻿import { useState } from 'react';
-import { useUpdateTaskEstimates } from '../hooks/useTaskDetail';
-import { useWorkLogs } from '../hooks/useTaskDetail';
+import { useUpdateTaskEstimates, useWorkLogs } from '../hooks/useTaskDetail';
 
 function formatMinutes(minutes: number) {
     const h = Math.floor(minutes / 60);
@@ -10,7 +9,7 @@ function formatMinutes(minutes: number) {
 }
 
 function parseToMinutes(input: string): number | null {
-    // "3h 30m", "3s 30d", "90" (dakika) gibi basit formatlari destekler
+    // "3h 30m", "3sa 30dk", "90" (dakika) gibi basit formatlari destekler
     const trimmed = input.trim();
     if (!trimmed) return null;
     if (/^\d+$/.test(trimmed)) return Number(trimmed);
@@ -52,8 +51,8 @@ export function TimeTrackingWidget({
 
     const handleSave = async () => {
         await updateEstimates.mutateAsync({
-            originalEstimateMinutes: originalDraft ? Number(originalDraft) : null,
-            remainingEstimateMinutes: remainingDraft ? Number(remainingDraft) : null,
+            originalEstimateMinutes: parseToMinutes(originalDraft),
+            remainingEstimateMinutes: parseToMinutes(remainingDraft),
         });
 
         setIsEditing(false);
@@ -77,11 +76,19 @@ export function TimeTrackingWidget({
                 <div className="space-y-2">
                     <div>
                         <label className="text-xs text-muted">Orijinal Tahmin (örn. 90 ya da "1sa 30dk")</label>
-                        <input value={originalDraft} onChange={(e) => setOriginalDraft(e.target.value)} className="w-full input-base border rounded px-2 py-1.5 text-sm mt-1" />
+                        <input
+                            value={originalDraft}
+                            onChange={(e) => setOriginalDraft(e.target.value)}
+                            className="w-full input-base border rounded px-2 py-1.5 text-sm mt-1"
+                        />
                     </div>
                     <div>
                         <label className="text-xs text-muted">Kalan Tahmin</label>
-                        <input value={remainingDraft} onChange={(e) => setRemainingDraft(e.target.value)} className="w-full input-base border rounded px-2 py-1.5 text-sm mt-1" />
+                        <input
+                            value={remainingDraft}
+                            onChange={(e) => setRemainingDraft(e.target.value)}
+                            className="w-full input-base border rounded px-2 py-1.5 text-sm mt-1"
+                        />
                     </div>
                     <div className="flex gap-2">
                         <button onClick={handleSave} className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700">

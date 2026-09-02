@@ -13,8 +13,6 @@ import {
     Plus,
     Circle,
     CheckCircle2,
-    Calendar,
-    MessageSquare,
     X
 } from 'lucide-react';
 
@@ -176,6 +174,10 @@ export function RetrospectivePage() {
                                                         .slice(0, 2)
                                                     : 'U';
 
+                                                const noteUserId = 'userId' in n && typeof (n as { userId?: unknown }).userId === 'string'
+                                                    ? ((n as { userId: string }).userId)
+                                                    : null;
+
                                                 return (
                                                     <div
                                                         key={n.id}
@@ -215,9 +217,9 @@ export function RetrospectivePage() {
                                                         <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
                                                             <div className="flex items-center gap-1.5 min-w-0">
                                                                 <div className="w-5 h-5 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700 shrink-0">
-                                                                    {n.userId ? (
+                                                                    {noteUserId ? (
                                                                         <AuthenticatedImage
-                                                                            src={`/users/${n.userId}/avatar`}
+                                                                            src={`/users/${noteUserId}/avatar`}
                                                                             refreshKey={avatarRefreshKey}
                                                                             alt={n.userName}
                                                                             className="w-full h-full object-cover"

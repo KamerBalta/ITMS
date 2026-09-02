@@ -1,5 +1,14 @@
 ﻿import { apiClient } from './client';
-import type { ProjectComponentItem } from '../types/component';
+
+export interface ProjectComponentItem {
+    id: string;
+    projectId: string;
+    name: string;
+    description?: string | null;
+    leadUserId?: string | null;
+    leadUserName?: string | null;
+    taskCount?: number;
+}
 
 export const componentsApi = {
     getAll: (projectId: string) => apiClient.get<ProjectComponentItem[]>(`/projects/${projectId}/components`).then((res) => res.data),

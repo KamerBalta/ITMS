@@ -39,6 +39,7 @@ export function LoginPage() {
             setTokens(result.accessToken, result.refreshToken);
             setUser({
                 userId: result.userId,
+                userName: result.email,
                 email: result.email,
                 roles: result.roles,
             });
