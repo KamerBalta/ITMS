@@ -1,5 +1,6 @@
 ﻿export interface RoadmapEpic {
     id: string;
+    issueKey: string;
     title: string;
     status: string;
     color: string | null;

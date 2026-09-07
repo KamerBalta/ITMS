@@ -5,17 +5,18 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
 
-
 namespace Infera.Application.Features.GitIntegration;
 
 public record SetupGitIntegrationCommand(Guid ProjectId, string Provider, string RepositoryUrl, Guid? CloseTargetStatusId) : IRequest<GitIntegrationSetupDto>;
 public record GetGitIntegrationQuery(Guid ProjectId) : IRequest<GitIntegrationDto?>;
 public record DeleteGitIntegrationCommand(Guid ProjectId) : IRequest;
 public record GetTaskGitCommitsQuery(Guid TaskId) : IRequest<List<GitCommitDto>>;
+public record GetAvailableCommitCommandsQuery(Guid ProjectId) : IRequest<List<CommitCommandDto>>;
 
 public record GitIntegrationSetupDto(string WebhookUrl, string WebhookSecret); // secret yalnizca KURULUM aninda bir kez gosterilir
 public record GitIntegrationDto(string Provider, string RepositoryUrl, bool IsActive, Guid? CloseTargetStatusId, string WebhookUrl);
 public record GitCommitDto(string CommitHash, string CommitMessage, string AuthorName, string? CommitUrl, string? BranchName, DateTime CommittedAt);
+public record CommitCommandDto(string Command, string StatusName, string Category);
 
 public class SetupGitIntegrationCommandHandler : IRequestHandler<SetupGitIntegrationCommand, GitIntegrationSetupDto>
 {
@@ -25,7 +26,9 @@ public class SetupGitIntegrationCommandHandler : IRequestHandler<SetupGitIntegra
 
     public SetupGitIntegrationCommandHandler(IAppDbContext db, IProjectManagementAuthService projectAuth, IConfiguration config)
     {
-        _db = db; _projectAuth = projectAuth; _config = config;
+        _db = db;
+        _projectAuth = projectAuth;
+        _config = config;
     }
 
     public async System.Threading.Tasks.Task<GitIntegrationSetupDto> Handle(SetupGitIntegrationCommand request, CancellationToken ct)
@@ -70,7 +73,9 @@ public class GetGitIntegrationQueryHandler : IRequestHandler<GetGitIntegrationQu
 
     public GetGitIntegrationQueryHandler(IAppDbContext db, IProjectAccessService access, IConfiguration config)
     {
-        _db = db; _access = access; _config = config;
+        _db = db;
+        _access = access;
+        _config = config;
     }
 
     public async System.Threading.Tasks.Task<GitIntegrationDto?> Handle(GetGitIntegrationQuery request, CancellationToken ct)
@@ -90,11 +95,47 @@ public class GetGitIntegrationQueryHandler : IRequestHandler<GetGitIntegrationQu
     }
 }
 
+public class GetAvailableCommitCommandsQueryHandler : IRequestHandler<GetAvailableCommitCommandsQuery, List<CommitCommandDto>>
+{
+    private readonly IAppDbContext _db;
+    private readonly IProjectAccessService _access;
+
+    public GetAvailableCommitCommandsQueryHandler(IAppDbContext db, IProjectAccessService access)
+    {
+        _db = db;
+        _access = access;
+    }
+
+    public async System.Threading.Tasks.Task<List<CommitCommandDto>> Handle(GetAvailableCommitCommandsQuery request, CancellationToken ct)
+    {
+        if (!await _access.HasProjectAccessAsync(request.ProjectId, ct))
+            throw new UnauthorizedAccessException("Bu projeye erişim yetkiniz yok.");
+
+        // #2: Kullanicinin gorebilecegi "TUM olasi hedefler" -- yani bu projede TANIMLI
+        // olan (herhangi bir kaynaktan erisilebilir) tum durumlar. Hangi komutun HANGI
+        // mevcut durumdan calisacagi, calisma aninda (webhook geldiginde) kontrol edilir --
+        // burada sadece "bu proje icin genel olarak var olan komutlar" listeleniyor.
+        var statuses = await _db.ProjectWorkflowStatuses
+            .Where(s => s.ProjectId == request.ProjectId && !s.IsDraft)
+            .OrderBy(s => s.DisplayOrder)
+            .ToListAsync(ct);
+
+        return statuses
+            .Select(s => new CommitCommandDto($"#{Infera.Application.Common.Services.SmartCommitParser.SlugifyStatusName(s.Name)}", s.Name, s.Category))
+            .ToList();
+    }
+}
+
 public class DeleteGitIntegrationCommandHandler : IRequestHandler<DeleteGitIntegrationCommand>
 {
     private readonly IAppDbContext _db;
     private readonly IProjectManagementAuthService _projectAuth;
-    public DeleteGitIntegrationCommandHandler(IAppDbContext db, IProjectManagementAuthService projectAuth) { _db = db; _projectAuth = projectAuth; }
+
+    public DeleteGitIntegrationCommandHandler(IAppDbContext db, IProjectManagementAuthService projectAuth)
+    {
+        _db = db;
+        _projectAuth = projectAuth;
+    }
 
     public async System.Threading.Tasks.Task Handle(DeleteGitIntegrationCommand request, CancellationToken ct)
     {
@@ -112,7 +153,12 @@ public class GetTaskGitCommitsQueryHandler : IRequestHandler<GetTaskGitCommitsQu
 {
     private readonly IAppDbContext _db;
     private readonly IProjectAccessService _access;
-    public GetTaskGitCommitsQueryHandler(IAppDbContext db, IProjectAccessService access) { _db = db; _access = access; }
+
+    public GetTaskGitCommitsQueryHandler(IAppDbContext db, IProjectAccessService access)
+    {
+        _db = db;
+        _access = access;
+    }
 
     public async System.Threading.Tasks.Task<List<GitCommitDto>> Handle(GetTaskGitCommitsQuery request, CancellationToken ct)
     {

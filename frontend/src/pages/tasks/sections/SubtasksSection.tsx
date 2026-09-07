@@ -23,6 +23,8 @@ const STATUS_LABELS: Record<string, string> = {
     Closed: 'CLOSED',
 };
 
+const taskDetailUrl = (issueKey: string) => `/browse/${issueKey}`;
+
 export interface SubtasksSectionHandle {
     openAddForm: () => void;
 }
@@ -141,7 +143,7 @@ export const SubtasksSection = forwardRef<SubtasksSectionHandle, SubtasksSection
                                             <CheckSquare className="w-4 h-4 text-sky-600 dark:text-sky-400" />
                                         </span>
                                         <Link
-                                            to={`/tasks/${st.id}`}
+                                            to={taskDetailUrl(st.issueKey)}
                                             className="flex items-center gap-2 text-sm font-medium text-primary hover:text-indigo-600 dark:hover:text-indigo-400 transition truncate min-w-0"
                                         >
                                             {st.issueKey && (

@@ -1,6 +1,8 @@
 ﻿import { Link } from 'react-router-dom';
 import { useRoadmap } from '../../hooks/useRoadmap';
 
+const taskDetailUrl = (issueKey: string) => `/browse/${issueKey}`;
+
 export function RoadmapProgressWidget({ projectId }: { projectId: string }) {
     const { data, isLoading } = useRoadmap(projectId);
     const epics = (data?.epics ?? []).filter((e) => e.totalTasks > 0).slice(0, 6);
@@ -15,7 +17,13 @@ export function RoadmapProgressWidget({ projectId }: { projectId: string }) {
                 return (
                     <div key={epic.id}>
                         <div className="flex items-center justify-between text-xs mb-0.5">
-                            <Link to={`/tasks/${epic.id}`} className="text-indigo-600 dark:text-indigo-400 hover:underline truncate">{epic.title}</Link>
+                            <Link
+                                to={taskDetailUrl(epic.issueKey)}
+                                className="text-indigo-600 dark:text-indigo-400 hover:underline truncate"
+                            >
+                                <span className="text-[11px] text-muted font-mono mr-1.5">{epic.issueKey}</span>
+                                {epic.title}
+                            </Link>
                             <span className="text-muted shrink-0 ml-2">{pct}%</span>
                         </div>
                         <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">

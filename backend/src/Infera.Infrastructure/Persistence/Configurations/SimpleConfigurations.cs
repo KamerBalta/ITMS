@@ -191,17 +191,6 @@ public class SprintBurndownSnapshotConfiguration : IEntityTypeConfiguration<Spri
     }
 }
 
-public class BoardColumnSettingConfiguration : IEntityTypeConfiguration<BoardColumnSetting>
-{
-    public void Configure(EntityTypeBuilder<BoardColumnSetting> b)
-    {
-        b.ToTable("BoardColumnSettings");
-        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
-        b.HasOne(x => x.BoardColumn).WithMany().HasForeignKey(x => x.BoardColumnId);
-        b.HasIndex(x => new { x.ProjectId, x.BoardColumnId }).IsUnique();
-    }
-}
-
 public class SavedFilterConfiguration : IEntityTypeConfiguration<SavedFilter>
 {
     public void Configure(EntityTypeBuilder<SavedFilter> b)
@@ -331,8 +320,18 @@ public class ProjectWorkflowStatusConfiguration : IEntityTypeConfiguration<Proje
         b.Property(x => x.Name).HasMaxLength(50).IsRequired();
         b.Property(x => x.Category).HasMaxLength(20).IsRequired();
         b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
-        b.HasOne(x => x.BoardColumn).WithMany().HasForeignKey(x => x.BoardColumnId).OnDelete(DeleteBehavior.SetNull);
         b.HasIndex(x => new { x.ProjectId, x.Name }).IsUnique();
+    }
+}
+
+public class BoardConfiguration : IEntityTypeConfiguration<Board>
+{
+    public void Configure(EntityTypeBuilder<Board> b)
+    {
+        b.ToTable("Boards");
+        b.Property(x => x.Name).HasMaxLength(80).IsRequired();
+        b.Property(x => x.BoardType).HasMaxLength(20).IsRequired();
+        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
     }
 }
 
@@ -342,8 +341,32 @@ public class BoardColumnConfiguration : IEntityTypeConfiguration<BoardColumn>
     {
         b.ToTable("BoardColumns");
         b.Property(x => x.Name).HasMaxLength(50).IsRequired();
-        b.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
-        b.HasIndex(x => new { x.ProjectId, x.Name }).IsUnique();
+        b.HasOne(x => x.Board).WithMany().HasForeignKey(x => x.BoardId);
+        b.HasIndex(x => new { x.BoardId, x.Name }).IsUnique();
+    }
+}
+
+public class BoardStatusColumnMappingConfiguration : IEntityTypeConfiguration<BoardStatusColumnMapping>
+{
+    public void Configure(EntityTypeBuilder<BoardStatusColumnMapping> b)
+    {
+        b.ToTable("BoardStatusColumnMappings");
+        b.HasOne(x => x.Board).WithMany().HasForeignKey(x => x.BoardId);
+        b.HasOne(x => x.Status).WithMany().HasForeignKey(x => x.StatusId);
+        b.HasOne(x => x.Column).WithMany().HasForeignKey(x => x.ColumnId);
+        // Bir Status, ayni Board icinde yalnizca TEK bir Column'a eslenebilir.
+        b.HasIndex(x => new { x.BoardId, x.StatusId }).IsUnique();
+    }
+}
+
+public class BoardColumnSettingConfiguration : IEntityTypeConfiguration<BoardColumnSetting>
+{
+    public void Configure(EntityTypeBuilder<BoardColumnSetting> b)
+    {
+        b.ToTable("BoardColumnSettings");
+        b.HasOne(x => x.Board).WithMany().HasForeignKey(x => x.BoardId);
+        b.HasOne(x => x.BoardColumn).WithMany().HasForeignKey(x => x.BoardColumnId);
+        b.HasIndex(x => new { x.BoardId, x.BoardColumnId }).IsUnique();
     }
 }
 

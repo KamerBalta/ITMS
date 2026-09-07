@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RouteErrorPage } from './components/RouteErrorPage';
 import { LoginPage } from './pages/auth/LoginPage';
@@ -39,6 +39,22 @@ import { ComponentsManagementPage } from './pages/projects/ComponentsManagementP
 import { BulkImportPage } from './pages/projects/BulkImportPage';
 import { IssueTemplatesManagementPage } from './pages/projects/IssueTemplatesManagementPage';
 import { GitIntegrationPage } from './pages/projects/GitIntegrationPage';
+import { useTaskDetail } from './hooks/useTaskDetail';
+
+function LegacyTaskIdRedirect() {
+    const { taskId } = useParams<{ taskId: string }>();
+    const { data: task, isLoading, isError } = useTaskDetail(taskId ?? null);
+
+    if (isLoading) {
+        return <div className="p-8 text-center text-sm text-muted">Yönlendiriliyor...</div>;
+    }
+
+    if (isError || !task) {
+        return <Navigate to="/dashboard" replace />;
+    }
+
+    return <Navigate to={`/browse/${task.issueKey}`} replace />;
+}
 
 export const router = createBrowserRouter([
     { path: '/login', element: <LoginPage />, errorElement: <RouteErrorPage /> },
@@ -73,7 +89,8 @@ export const router = createBrowserRouter([
                     { path: '/backlog', element: <BacklogPage /> },
                     { path: '/sprints/:sprintId', element: <SprintDetailPage /> },
                     { path: '/issues', element: <IssueListPage /> },
-                    { path: '/tasks/:taskId', element: <TaskDetailPage /> },
+                    { path: '/browse/:issueKey', element: <TaskDetailPage /> },
+                    { path: '/tasks/:taskId', element: <LegacyTaskIdRedirect /> },
                     { path: '/releases', element: <ReleasesPage /> },
                     { path: '/retrospective', element: <RetrospectivePage /> },
                     { path: '/reports', element: <ReportsPage /> },

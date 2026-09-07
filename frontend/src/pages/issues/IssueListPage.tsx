@@ -20,6 +20,8 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useConfirm } from '../../hooks/useConfirm';
 
+const taskDetailUrl = (issueKey: string) => `/browse/${issueKey}`;
+
 export function IssueListPage() {
     const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
     const currentUser = useAuthStore((state) => state.user);
@@ -442,7 +444,7 @@ export function IssueListPage() {
 
                                     <td className="px-3 py-2">
                                         <Link
-                                            to={`/tasks/${t.id}`}
+                                            to={taskDetailUrl(t.issueKey)}
                                             className="text-indigo-600 dark:text-indigo-400 hover:underline"
                                         >
                                             {t.issueKey ? `${t.issueKey} - ` : ''}

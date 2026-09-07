@@ -1,4 +1,5 @@
 ﻿using Infera.Application.Common.Interfaces;
+using Infera.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,7 +21,16 @@ public class GetTasksQueryHandler : IRequestHandler<GetTasksQuery, List<TaskDto>
         if (!await _access.HasProjectAccessAsync(request.ProjectId, ct))
             throw new UnauthorizedAccessException("Bu projeye erişim yetkiniz yok.");
 
-        var query = _db.Tasks.Where(t => t.ProjectId == request.ProjectId);
+        // #11: Kanban board'da Sprint kavrami zorunlu degil -- BoardId=Kanban board ise,
+        // tum "Done" olmayan gorevler (SprintId'den BAGIMSIZ) gosterilir. Scrum board'da
+        // ise mevcut SprintId filtresi aynen kullanilir.
+        Board? board = request.BoardId is not null
+            ? await _db.Boards.FirstOrDefaultAsync(b => b.Id == request.BoardId, ct)
+            : null;
+
+        var query = board?.BoardType == "Kanban"
+            ? _db.Tasks.Where(t => t.ProjectId == request.ProjectId && t.WorkflowStatus.Category != "Done")
+            : _db.Tasks.Where(t => t.ProjectId == request.ProjectId);
 
         if (request.BacklogOnly == true)
             query = query.Where(t => t.SprintId == null);

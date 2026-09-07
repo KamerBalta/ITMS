@@ -9,6 +9,7 @@ using Infera.Application.Features.Tasks.GetMyTasksBoard;
 using Infera.Application.Features.Tasks.GetTaskById;
 using Infera.Application.Features.Tasks.GetTasks;
 using Infera.Application.Features.Tasks.MoveToSprint;
+using Infera.Application.Features.Tasks.ResolveIssueKey;
 using Infera.Application.Features.Tasks.UpdateTaskField;
 using Infera.Domain.Enums;
 using MediatR;
@@ -28,19 +29,55 @@ public class TasksController : ControllerBase
 
     [HttpGet]
     public async Task<IActionResult> GetTasks(
-        [FromQuery] Guid ProjectId, [FromQuery] Guid? sprintId, [FromQuery] bool? backlogOnly,
-        [FromQuery] Guid? assigneeId, [FromQuery] string? status, [FromQuery] Guid? issueTypeId,
-        [FromQuery] Priority? priority, [FromQuery] string? search, [FromQuery] Guid? parentTaskId,
-        [FromQuery] Guid? labelId, [FromQuery] Guid? componentId, [FromQuery] bool? unassignedOnly,
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        [FromQuery] Guid ProjectId,
+        [FromQuery] Guid? boardId,
+        [FromQuery] Guid? sprintId,
+        [FromQuery] bool? backlogOnly,
+        [FromQuery] Guid? assigneeId,
+        [FromQuery] string? status,
+        [FromQuery] Guid? issueTypeId,
+        [FromQuery] Priority? priority,
+        [FromQuery] string? search,
+        [FromQuery] Guid? parentTaskId,
+        [FromQuery] Guid? labelId,
+        [FromQuery] Guid? componentId,
+        [FromQuery] bool? unassignedOnly,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
         try
         {
             var result = await _mediator.Send(new GetTasksQuery(
-                ProjectId, sprintId, backlogOnly, assigneeId, status, issueTypeId, priority, search,
-                parentTaskId, labelId, componentId, unassignedOnly, page, pageSize));
+                ProjectId: ProjectId,
+                BoardId: boardId,
+                SprintId: sprintId,
+                BacklogOnly: backlogOnly,
+                AssigneeId: assigneeId,
+                Status: status,
+                IssueTypeId: issueTypeId,
+                Priority: priority,
+                Search: search,
+                ParentTaskId: parentTaskId,
+                LabelId: labelId,
+                ComponentId: componentId,
+                UnassignedOnly: unassignedOnly,
+                Page: page,
+                PageSize: pageSize));
+
             return Ok(result);
         }
+        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+    }
+
+    [HttpGet("resolve/{issueKey}")]
+    public async Task<IActionResult> ResolveIssueKey(string issueKey)
+    {
+        try
+        {
+            var taskId = await _mediator.Send(new ResolveIssueKeyQuery(issueKey));
+            return Ok(new { taskId });
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
     }
 

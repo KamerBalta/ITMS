@@ -88,6 +88,40 @@ public class AutomationEngine : IAutomationEngine
         }
     }
 
+    public async System.Threading.Tasks.Task ProcessBranchCreatedAsync(Guid taskId, string branchName, CancellationToken ct = default)
+    {
+        await RunGitTriggerAsync(taskId, "BranchCreated", ct);
+    }
+
+    public async System.Threading.Tasks.Task ProcessPullRequestOpenedAsync(Guid taskId, string prUrl, CancellationToken ct = default)
+    {
+        await RunGitTriggerAsync(taskId, "PullRequestOpened", ct);
+    }
+
+    public async System.Threading.Tasks.Task ProcessPullRequestMergedAsync(Guid taskId, string prUrl, CancellationToken ct = default)
+    {
+        await RunGitTriggerAsync(taskId, "PullRequestMerged", ct);
+    }
+
+    // #3: uc yeni Git tetikleyicisi de ayni "kural bul -> kosul eslessin mi -> eylemi calistir"
+    // akisini paylasiyor -- kod tekrarini onlemek icin ortak bir yardimci metod.
+    private async System.Threading.Tasks.Task RunGitTriggerAsync(Guid taskId, string triggerType, CancellationToken ct)
+    {
+        var task = await _db.Tasks.Include(t => t.IssueType).FirstOrDefaultAsync(t => t.Id == taskId, ct);
+        if (task is null) return;
+
+        var rules = await _db.AutomationRules
+            .Where(r => r.ProjectId == task.ProjectId && r.IsActive && r.TriggerType == triggerType)
+            .ToListAsync(ct);
+
+        foreach (var rule in rules)
+        {
+            var context = new Dictionary<string, string?> { ["issueTypeName"] = task.IssueType?.Name };
+            if (!MatchesAllConditions(rule.TriggerConditionJson, context)) continue;
+            await ExecuteActionAsync(rule, task, ct);
+        }
+    }
+
     // #Yuksek-8: artik tek key degil, kosul JSON'undaki TUM key'ler eslesmeli (AND mantigi).
     // Onceki versiyon yalnizca bilinen tek bir anahtari kontrol ediyordu; simdi kosul objesindeki
     // her key context'teki karsiligiyla birebir eslesmezse kural atlanir.

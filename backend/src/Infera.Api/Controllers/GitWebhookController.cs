@@ -58,14 +58,19 @@ public class GitWebhookController : ControllerBase
             });
         }
 
-        var eventType =
-            Request.Headers["X-GitHub-Event"].ToString();
+        var eventType = Request.Headers["X-GitHub-Event"].ToString();
 
         if (eventType == "push")
         {
-            await _processor.ProcessGitHubPushAsync(
-                projectId,
-                payload);
+            await _processor.ProcessGitHubPushAsync(projectId, payload);
+        }
+        else if (eventType == "create")
+        {
+            await _processor.ProcessGitHubBranchCreatedAsync(projectId, payload);
+        }
+        else if (eventType == "pull_request")
+        {
+            await _processor.ProcessGitHubPullRequestAsync(projectId, payload);
         }
 
         return Ok();

@@ -15,6 +15,7 @@ public record GetTasksQuery(
     Guid? LabelId,
     Guid? ComponentId,
     bool? UnassignedOnly,
+    Guid? BoardId,
     int Page = 1,
     int PageSize = 50) : IRequest<List<TaskDto>>;
 

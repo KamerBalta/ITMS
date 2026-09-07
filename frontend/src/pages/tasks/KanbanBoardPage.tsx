@@ -14,7 +14,9 @@ import { useProjectMembers } from '../../hooks/useProjectMembers';
 import { useTaskFilters } from '../../hooks/useTaskFilters';
 import { useAllLabels } from '../../hooks/useTaskDetail';
 import { useBoardColumns, useBoardColumnSettings, useUpdateWipLimit } from '../../hooks/useBoardColumns';
+import { useBoards } from '../../hooks/useBoards';
 import { useCanManageProject } from '../../hooks/useCanManageProject';
+import { BoardSelector } from '../../components/BoardSelector';
 import { TaskCard } from '../../components/TaskCard';
 import { TaskFilterBar } from '../../components/TaskFilterBar';
 import { AssigneeAvatarFilter } from '../../components/AssigneeAvatarFilter';
@@ -32,14 +34,22 @@ export function KanbanBoardPage() {
     const isPM = currentUser?.roles.some((r) => r === 'System Admin' || r === 'Project Manager') ?? false;
     const canManageColumns = useCanManageProject(selectedProjectId);
 
+    const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
+    const { data: boards } = useBoards(selectedProjectId);
+    const currentBoard = boards?.find((b) => b.id === selectedBoardId);
+    const isKanban = currentBoard?.boardType === 'Kanban';
+
     const { activeSprint } = useActiveSprint(selectedProjectId);
-    const { data: tasks, isLoading } = useTasks(selectedProjectId, { sprintId: activeSprint?.id, backlogOnly: false });
+    const { data: tasks, isLoading } = useTasks(
+        selectedProjectId,
+        isKanban ? { boardId: selectedBoardId! } : { sprintId: activeSprint?.id, backlogOnly: false }
+    );
     const { data: members } = useProjectMembers(selectedProjectId);
     const { data: labels } = useAllLabels();
-    const { data: columns } = useBoardColumns(selectedProjectId);
-    const { data: columnSettings } = useBoardColumnSettings(selectedProjectId);
+    const { data: columns } = useBoardColumns(selectedBoardId);
+    const { data: columnSettings } = useBoardColumnSettings(selectedBoardId);
 
-    const updateWipLimit = useUpdateWipLimit(selectedProjectId ?? '');
+    const updateWipLimit = useUpdateWipLimit(selectedBoardId ?? '');
     const updateStatus = useUpdateTaskStatus(selectedProjectId ?? '');
     const filters = useTaskFilters();
 
@@ -85,10 +95,11 @@ export function KanbanBoardPage() {
     };
 
     if (!selectedProjectId) return <p className="text-muted">Devam etmek için üstten bir proje seçin.</p>;
-    if (!activeSprint) {
+
+    if (!isKanban && !activeSprint) {
         return (
             <div className="text-center py-16">
-                <p className="text-muted">Bu projede aktif bir sprint yok.</p>
+                <p className="text-muted">Bu Scrum board için aktif bir sprint yok.</p>
                 <p className="text-sm text-muted mt-1">Board'u kullanabilmek için önce Backlog sayfasından bir sprint başlatın.</p>
             </div>
         );
@@ -289,10 +300,18 @@ export function KanbanBoardPage() {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-primary">Kanban Board</h1>
-                    <p className="text-sm text-muted">{activeSprint.name}</p>
+                    <h1 className="text-2xl font-bold text-primary">{currentBoard?.name ?? 'Board'}</h1>
+                    <p className="text-sm text-muted">{isKanban ? 'Kanban — sürekli iş akışı' : activeSprint?.name}</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    {selectedProjectId && (
+                        <BoardSelector
+                            projectId={selectedProjectId}
+                            selectedBoardId={selectedBoardId}
+                            onSelect={setSelectedBoardId}
+                        />
+                    )}
+
                     <button
                         onClick={() => setSwimlaneMode((v) => !v)}
                         className={`text-sm px-3 py-2 rounded border ${swimlaneMode ? 'bg-indigo-50 dark:bg-indigo-950 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400' : 'border-gray-200 dark:border-gray-600 text-secondary'}`}
@@ -326,8 +345,8 @@ export function KanbanBoardPage() {
                 onApply={(f) => { filters.setSearch(f.search); filters.setOnlyMine(f.onlyMine); filters.setTeamId(f.teamId); filters.setPriority(f.priority); filters.setLabelId(f.labelId); }}
             />
 
-            {isEditingColumns && selectedProjectId && (
-                <BoardColumnEditBar projectId={selectedProjectId} onClose={() => setIsEditingColumns(false)} />
+            {isEditingColumns && selectedBoardId && (
+                <BoardColumnEditBar boardId={selectedBoardId} onClose={() => setIsEditingColumns(false)} />
             )}
 
             {statusError && <p className="text-red-500 text-sm">{statusError}</p>}
@@ -341,7 +360,12 @@ export function KanbanBoardPage() {
                 </div>
             )}
 
-            <CreateTaskModal projectId={selectedProjectId} sprintId={activeSprint.id} isOpen={isCreateOpen} onClose={() => setCreateOpen(false)} />
+            <CreateTaskModal
+                projectId={selectedProjectId}
+                sprintId={isKanban ? null : activeSprint?.id ?? null}
+                isOpen={isCreateOpen}
+                onClose={() => setCreateOpen(false)}
+            />
         </div>
     );
 }

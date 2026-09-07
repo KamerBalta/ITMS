@@ -7,6 +7,7 @@ export interface MyWorkItem {
     id: string;
     title: string;
     issueType: string;
+    issueKey?: string;
     priority: string;
     status: string;
     statusId: string; // <-- Dinamik workflow ve statü eşleştirmesi için eklendi

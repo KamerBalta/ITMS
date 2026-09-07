@@ -38,7 +38,10 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<ProjectIssueTypeAssignment> ProjectIssueTypeAssignments => Set<ProjectIssueTypeAssignment>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
     public DbSet<SprintBurndownSnapshot> SprintBurndownSnapshots => Set<SprintBurndownSnapshot>();
+    public DbSet<Board> Boards => Set<Board>();
+    public DbSet<BoardColumn> BoardColumns => Set<BoardColumn>();
     public DbSet<BoardColumnSetting> BoardColumnSettings => Set<BoardColumnSetting>();
+    public DbSet<BoardStatusColumnMapping> BoardStatusColumnMappings => Set<BoardStatusColumnMapping>();
     public DbSet<SavedFilter> SavedFilters => Set<SavedFilter>();
     public DbSet<WorkflowTransition> WorkflowTransitions => Set<WorkflowTransition>();
     public DbSet<CustomFieldDefinition> CustomFieldDefinitions => Set<CustomFieldDefinition>();
@@ -49,7 +52,6 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<TaskComponent> TaskComponents => Set<TaskComponent>();
     public DbSet<TaskLink> TaskLinks => Set<TaskLink>();
     public DbSet<PendingDigestEmail> PendingDigestEmails => Set<PendingDigestEmail>();
-    public DbSet<BoardColumn> BoardColumns => Set<BoardColumn>();
     public DbSet<ProjectWorkflowStatus> ProjectWorkflowStatuses => Set<ProjectWorkflowStatus>();
     public DbSet<IssueTemplate> IssueTemplates => Set<IssueTemplate>();
     public DbSet<ChangelogEntry> ChangelogEntries => Set<ChangelogEntry>();

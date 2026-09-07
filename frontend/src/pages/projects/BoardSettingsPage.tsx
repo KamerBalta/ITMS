@@ -10,18 +10,21 @@ import {
     useMapStatusToColumn,
 } from '../../hooks/useBoardColumns';
 import { useWorkflowStatuses } from '../../hooks/useWorkflow';
+import { BoardSelector } from '../../components/BoardSelector';
 
 export function BoardSettingsPage() {
     const { projectId } = useParams<{ projectId: string }>();
     const canManage = useCanManageProject(projectId ?? null);
 
-    const { data: columns, isLoading } = useBoardColumns(projectId ?? null);
+    const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
+
+    const { data: columns, isLoading } = useBoardColumns(selectedBoardId);
     const { data: statuses } = useWorkflowStatuses(projectId ?? null);
-    const createColumn = useCreateBoardColumn(projectId!);
-    const updateColumn = useUpdateBoardColumn(projectId!);
-    const deleteColumn = useDeleteBoardColumn(projectId!);
-    const reorderColumns = useReorderBoardColumns(projectId!);
-    const mapStatus = useMapStatusToColumn(projectId!);
+    const createColumn = useCreateBoardColumn(selectedBoardId ?? '');
+    const updateColumn = useUpdateBoardColumn(selectedBoardId ?? '');
+    const deleteColumn = useDeleteBoardColumn(selectedBoardId ?? '');
+    const reorderColumns = useReorderBoardColumns(selectedBoardId ?? '');
+    const mapStatus = useMapStatusToColumn(selectedBoardId ?? '');
 
     const [error, setError] = useState<string | null>(null);
     const [newColumnName, setNewColumnName] = useState('');
@@ -62,7 +65,7 @@ export function BoardSettingsPage() {
     };
 
     const handleCreate = async () => {
-        if (!newColumnName.trim()) return;
+        if (!newColumnName.trim() || !selectedBoardId) return;
         setError(null);
         try {
             await createColumn.mutateAsync(newColumnName.trim());
@@ -96,10 +99,6 @@ export function BoardSettingsPage() {
     const handleAssignStatus = async (statusId: string, columnId: string) => {
         const statusName = statuses?.find((s) => s.id === statusId)?.name ?? 'Bu durum';
         const targetColumnName = columns?.find((c) => c.id === columnId)?.name ?? columnId;
-        // #5: Status/Transition değişiklikleri Draft/Publish akışından geçiyor ama Column
-        // mapping bu korumaya dahil değil -- bilinçli bir tasarım kararı, çünkü Column'lar
-        // "görünüm" katmanı (workflow mantığını değil, sadece gruplamayı etkiler). Yine de
-        // bu farkı gizlememek için açık bir onay istiyoruz.
         const confirmed = confirm(
             `"${statusName}" durumu "${targetColumnName}" koluna taşınacak. Bu değişiklik ANINDA etkili olur ve tüm ekibin Board'unu hemen etkiler (Workflow değişikliklerinin aksine, yayınlama beklemez). Devam edilsin mi?`
         );
@@ -113,11 +112,21 @@ export function BoardSettingsPage() {
                 ← Proje Detayına Dön
             </Link>
 
-            <div>
-                <h1 className="text-2xl font-bold text-primary">Board Settings — Columns</h1>
-                <p className="text-sm text-muted">
-                    Column'lar ile Status'lar birbirinden bağımsızdır. Birden fazla Status aynı Column'da gösterilebilir.
-                </p>
+            <div className="space-y-3">
+                <div>
+                    <h1 className="text-2xl font-bold text-primary">Board Settings — Columns</h1>
+                    <p className="text-sm text-muted">
+                        Column'lar ile Status'lar birbirinden bağımsızdır. Birden fazla Status aynı Column'da gösterilebilir.
+                    </p>
+                </div>
+
+                {projectId && (
+                    <BoardSelector
+                        projectId={projectId}
+                        selectedBoardId={selectedBoardId}
+                        onSelect={setSelectedBoardId}
+                    />
+                )}
             </div>
 
             <p className="text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded px-3 py-2">
@@ -133,7 +142,9 @@ export function BoardSettingsPage() {
 
             {error && <p className="text-red-500 text-sm">{error}</p>}
 
-            {isLoading ? (
+            {!selectedBoardId ? (
+                <p className="text-muted text-sm">Lütfen düzenlemek için bir board seçin.</p>
+            ) : isLoading ? (
                 <p className="text-muted">Yükleniyor...</p>
             ) : (
                 <div className="space-y-2">
@@ -272,7 +283,7 @@ export function BoardSettingsPage() {
                 </div>
             )}
 
-            {canManage && (
+            {canManage && selectedBoardId && (
                 <div className="surface border rounded-lg p-4 space-y-2">
                     <p className="text-sm font-medium text-secondary">Yeni Column Ekle</p>
                     <div className="flex gap-2">

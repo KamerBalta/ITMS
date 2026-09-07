@@ -1,6 +1,7 @@
 ﻿import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useSearchResults, useSearchSuggestions } from "../../../hooks/useSearch";
+
 import {
     getRecentSearches,
     addRecentSearch,
@@ -8,6 +9,9 @@ import {
 } from "../../../lib/recentSearches";
 
 type TabKey = 'tasks' | 'projects' | 'users';
+
+const taskDetailUrl = (issueKey?: string, taskId?: string) =>
+    issueKey ? `/browse/${issueKey}` : `/tasks/${taskId}`;
 
 export function SearchPage() {
     const [query, setQuery] = useState('');
@@ -146,8 +150,8 @@ export function SearchPage() {
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={`px-4 py-2 rounded-md text-sm font-medium transition cursor-pointer ${activeTab === tab
-                                        ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-semibold border border-indigo-200 dark:border-indigo-800'
-                                        : 'text-muted hover-surface hover:text-primary'
+                                    ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-semibold border border-indigo-200 dark:border-indigo-800'
+                                    : 'text-muted hover-surface hover:text-primary'
                                     }`}
                             >
                                 {tab === 'tasks' ? 'Issues' : tab === 'projects' ? 'Projects' : 'Users'} ({tabCounts[tab]})
@@ -168,7 +172,7 @@ export function SearchPage() {
                                     results?.tasks.map((t) => (
                                         <Link
                                             key={t.id}
-                                            to={`/tasks/${t.id}`}
+                                            to={taskDetailUrl(t.issueKey, t.id)}
                                             className="block surface border rounded-lg p-5 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-xs transition"
                                         >
                                             {t.issueKey && (

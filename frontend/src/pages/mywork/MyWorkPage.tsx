@@ -15,6 +15,9 @@ import {
     Kanban
 } from 'lucide-react';
 
+const taskDetailUrl = (issueKey?: string, taskId?: string) =>
+    issueKey ? `/browse/${issueKey}` : `/tasks/${taskId}`;
+
 const STATUS_STYLES: Record<string, string> = {
     ToDo: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700',
     InProgress: 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900',
@@ -393,7 +396,7 @@ export function MyWorkPage() {
                                         {tasks.map((t) => (
                                             <Link
                                                 key={t.id}
-                                                to={`/tasks/${t.id}`}
+                                                to={taskDetailUrl(t.issueKey, t.id)}
                                                 className="flex items-center justify-between px-3.5 py-2.5 hover-surface hover:shadow dark:hover:shadow-black/30 transition text-sm group cursor-pointer"
                                             >
                                                 {/* Sol */}
@@ -402,9 +405,9 @@ export function MyWorkPage() {
                                                         type={t.issueType}
                                                     />
 
-                                                    {/* Task ID */}
+                                                    {/* Task ID / Issue Key */}
                                                     <span className="text-xs font-mono font-medium text-secondary shrink-0">
-                                                        #{t.id.slice(0, 5)}
+                                                        {t.issueKey ?? `#${t.id.slice(0, 5)}`}
                                                     </span>
 
                                                     {/* Priority */}

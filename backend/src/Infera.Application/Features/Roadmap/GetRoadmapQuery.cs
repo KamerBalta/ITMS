@@ -10,6 +10,7 @@ public record RoadmapDto(List<RoadmapEpicDto> Epics, List<RoadmapDependencyDto> 
 
 public record RoadmapEpicDto(
     Guid Id,
+    string IssueKey,
     string Title,
     string Status,
     Guid StatusId,
@@ -47,6 +48,7 @@ public class GetRoadmapQueryHandler : IRequestHandler<GetRoadmapQuery, RoadmapDt
                 t.IssueType.AllowsChildren)
             .Select(epic => new RoadmapEpicDto(
                 epic.Id,
+                epic.Project.Key + "-" + epic.TaskNumber,
                 epic.Title,
                 epic.WorkflowStatus.Name,
                 epic.StatusId,

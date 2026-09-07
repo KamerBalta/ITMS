@@ -6,51 +6,34 @@ using Microsoft.AspNetCore.Mvc;
 namespace Infera.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/projects/{projectId}/board-settings")]
+[Route("api/v1/boards/{boardId}/settings")]
 [Authorize]
 public class BoardSettingsController : ControllerBase
 {
     private readonly IMediator _mediator;
 
-    public BoardSettingsController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
+    public BoardSettingsController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll(Guid projectId)
+    public async Task<IActionResult> GetAll(Guid boardId)
     {
         try
         {
-            var result = await _mediator.Send(
-                new GetBoardColumnSettingsQuery(projectId));
-
-            return Ok(result);
+            return Ok(await _mediator.Send(new GetBoardColumnSettingsQuery(boardId)));
         }
         catch (UnauthorizedAccessException ex)
         {
-            return StatusCode(
-                StatusCodes.Status403Forbidden,
-                new { message = ex.Message });
+            return Forbid(ex.Message);
         }
     }
 
-    [HttpPut("{columnId:guid}/wip-limit")]
-    public async Task<IActionResult> UpdateWipLimit(
-     [FromRoute] Guid projectId,
-     [FromRoute] Guid columnId,
-     [FromBody] UpdateWipLimitRequest request)
+    [HttpPut("{columnId}/wip-limit")]
+    public async Task<IActionResult> UpdateWipLimit(Guid boardId, Guid columnId, UpdateWipLimitRequest request)
     {
         try
         {
-            var command = new UpdateWipLimitCommand(projectId, columnId, request.WipLimit);
-            await _mediator.Send(command);
-
+            await _mediator.Send(new UpdateWipLimitCommand(boardId, columnId, request.WipLimit));
             return NoContent();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
@@ -58,11 +41,9 @@ public class BoardSettingsController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            return Forbid(ex.Message);
         }
     }
 }
 
-public record UpdateWipLimitRequest(
-    Guid StatusId,
-    int? WipLimit);
+public record UpdateWipLimitRequest(int? WipLimit);
