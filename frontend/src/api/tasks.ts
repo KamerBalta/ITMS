@@ -4,6 +4,7 @@ import type { TaskListItem, TaskDetail, CreateTaskPayload, Priority } from '../t
 export const tasksApi = {
     getAll: (params: {
         projectId: string;
+        boardId?: string;
         sprintId?: string | null;
         backlogOnly?: boolean;
         assigneeId?: string;
@@ -21,6 +22,9 @@ export const tasksApi = {
     }) => apiClient.get<TaskListItem[]>('/tasks', { params }).then((res) => res.data),
 
     getById: (taskId: string) => apiClient.get<TaskDetail>(`/tasks/${taskId}`).then((res) => res.data),
+
+    resolveIssueKey: (issueKey: string) =>
+        apiClient.get<{ taskId: string }>(`/tasks/resolve/${issueKey}`).then((res) => res.data.taskId),
 
     create: (data: CreateTaskPayload) =>
         apiClient.post<{ id: string }>('/tasks', data).then((res) => res.data),

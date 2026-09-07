@@ -11,6 +11,8 @@ import { Avatar } from './Avatar';
 const PRIORITY_NAME_TO_NUM: Record<string, Priority> = { Low: 0, Medium: 1, High: 2, Critical: 3 };
 const FIBONACCI = [1, 2, 3, 5, 8, 13, 21];
 
+const taskDetailUrl = (issueKey: string) => `/browse/${issueKey}`;
+
 interface TaskCardProps {
     task: TaskListItem;
     projectId: string;
@@ -48,7 +50,7 @@ export function TaskCard({ task, projectId, subtasks, draggable, onDragStart }: 
     return (
         <div className="surface border rounded-md shadow-sm hover:shadow dark:hover:shadow-black/30">
             <Link
-                to={`/tasks/${task.id}`}
+                to={taskDetailUrl(task.issueKey)}
                 draggable={draggable}
                 onDragStart={(e) => onDragStart?.(e, task.id)}
                 className="block p-3 space-y-2"
@@ -136,7 +138,7 @@ export function TaskCard({ task, projectId, subtasks, draggable, onDragStart }: 
                     {isExpanded && (
                         <div className="pl-3 pb-2 space-y-1">
                             {subtasks!.map((st) => (
-                                <Link key={st.id} to={`/tasks/${st.id}`} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded hover-surface">
+                                <Link key={st.id} to={taskDetailUrl(st.issueKey)} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded hover-surface">
                                     <span className="truncate flex-1 text-secondary">{st.title}</span>
                                     <span className="text-muted shrink-0">{st.assigneeName ?? '-'}</span>
                                 </Link>

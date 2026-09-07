@@ -17,6 +17,7 @@ import {
     useUpdateTaskRelease,
     useUploadAttachment,
 } from '../../hooks/useTaskDetail';
+import { useResolveIssueKey } from '../../hooks/useTasks';
 import { useReleases } from '../../hooks/useReleases';
 import { useProjectMembers } from '../../hooks/useProjectMembers';
 import { useWorkflowStatuses } from '../../hooks/useWorkflow';
@@ -72,14 +73,19 @@ interface Draft {
 }
 
 export function TaskDetailPage() {
-    const { taskId } = useParams<{ taskId: string }>();
-    const { data: task, isLoading, isError } = useTaskDetail(taskId ?? null);
+    const { issueKey } = useParams<{ issueKey: string }>();
+    const { data: resolvedTaskId, isLoading: isResolving, isError: isResolveError } = useResolveIssueKey(issueKey ?? null);
+    const { data: task, isLoading, isError } = useTaskDetail(resolvedTaskId ?? null);
     const { data: members } = useProjectMembers(task?.projectId ?? null);
 
-    if (isError) {
+    if (isResolveError || isError) {
         return (
             <div className="text-center py-16">
-                <p className="text-secondary">Bu görev bulunamadı veya erişim yetkiniz yok.</p>
+                <p className="text-muted">
+                    {isResolveError
+                        ? `"${issueKey}" anahtarına sahip bir görev bulunamadı.`
+                        : 'Bu görev bulunamadı veya erişim yetkiniz yok.'}
+                </p>
                 <Link to="/dashboard" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
                     ← Dashboard'a dön
                 </Link>
@@ -87,7 +93,7 @@ export function TaskDetailPage() {
         );
     }
 
-    if (isLoading || !task) {
+    if (isResolving || isLoading || !task) {
         return <TaskDetailSkeleton />;
     }
 
@@ -118,7 +124,7 @@ function TaskDetailContent({ task, members }: { task: TaskDetailData; members: P
     const uploadAttachment = useUploadAttachment(task.id);
 
     const { data: releases } = useReleases(task.projectId);
-    const { data: workflowStatuses, isLoading: statusesLoading } = useWorkflowStatuses(task?.projectId ?? null);
+    const { data: workflowStatuses, isLoading: statusesLoading } = useWorkflowStatuses(task.projectId ?? null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const taskLinksRef = useRef<HTMLDivElement>(null);
@@ -254,8 +260,6 @@ function TaskDetailContent({ task, members }: { task: TaskDetailData; members: P
             .filter((x) => x.result.status === 'rejected');
 
         if (failures.length > 0) {
-            // #Kritik-3: 409 (concurrency çatışması) varsa, önce onu ayırt edip özel bir
-            // "sayfayı yenile" aksiyonuyla göster -- diğer hatalarla aynı genel mesaja karıştırma.
             const concurrencyFailure = failures.find((f) => {
                 const rejected = f.result as PromiseRejectedResult;
                 const axiosError = rejected.reason as AxiosError<ApiErrorResponse>;

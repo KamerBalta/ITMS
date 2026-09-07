@@ -68,10 +68,22 @@ public class DeleteProjectCommandHandler : IRequestHandler<DeleteProjectCommand>
             _db.Releases.RemoveRange(_db.Releases.Where(r => r.ProjectId == project.Id));
             await _db.SaveChangesAsync(ct);
 
+            // Board bağımlılıkları: BoardStatusColumnMappings -> BoardColumnSettings -> BoardColumns -> Boards
+            _db.BoardStatusColumnMappings.RemoveRange(
+                _db.BoardStatusColumnMappings.Where(m => _db.Boards.Any(b => b.Id == m.BoardId && b.ProjectId == project.Id))
+            );
+            _db.BoardColumnSettings.RemoveRange(
+                _db.BoardColumnSettings.Where(s => _db.Boards.Any(b => b.Id == s.BoardId && b.ProjectId == project.Id))
+            );
+            _db.BoardColumns.RemoveRange(
+                _db.BoardColumns.Where(c => _db.Boards.Any(b => b.Id == c.BoardId && b.ProjectId == project.Id))
+            );
+            _db.Boards.RemoveRange(
+                _db.Boards.Where(b => b.ProjectId == project.Id)
+            );
+
             _db.WorkflowTransitions.RemoveRange(_db.WorkflowTransitions.Where(t => t.ProjectId == project.Id));
             _db.ProjectWorkflowStatuses.RemoveRange(_db.ProjectWorkflowStatuses.Where(s => s.ProjectId == project.Id));
-            _db.BoardColumnSettings.RemoveRange(_db.BoardColumnSettings.Where(s => s.ProjectId == project.Id));
-            _db.BoardColumns.RemoveRange(_db.BoardColumns.Where(c => c.ProjectId == project.Id));
             _db.CustomFieldDefinitions.RemoveRange(_db.CustomFieldDefinitions.Where(f => f.ProjectId == project.Id));
             _db.ProjectComponents.RemoveRange(_db.ProjectComponents.Where(c => c.ProjectId == project.Id));
             _db.ProjectIssueTypeAssignments.RemoveRange(_db.ProjectIssueTypeAssignments.Where(a => a.ProjectId == project.Id));

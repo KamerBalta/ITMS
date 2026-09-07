@@ -33,7 +33,10 @@ public interface IAppDbContext
     DbSet<ProjectIssueTypeAssignment> ProjectIssueTypeAssignments { get; }
     DbSet<NotificationPreference> NotificationPreferences { get; }
     DbSet<SprintBurndownSnapshot> SprintBurndownSnapshots { get; }
+    DbSet<Board> Boards { get; }
+    DbSet<BoardColumn> BoardColumns { get; }
     DbSet<BoardColumnSetting> BoardColumnSettings { get; }
+    DbSet<BoardStatusColumnMapping> BoardStatusColumnMappings { get; }
     DbSet<SavedFilter> SavedFilters { get; }
     DbSet<WorkflowTransition> WorkflowTransitions { get; }
     DbSet<CustomFieldDefinition> CustomFieldDefinitions { get; }
@@ -44,7 +47,6 @@ public interface IAppDbContext
     DbSet<TaskComponent> TaskComponents { get; }
     DbSet<TaskLink> TaskLinks { get; }
     DbSet<PendingDigestEmail> PendingDigestEmails { get; }
-    DbSet<BoardColumn> BoardColumns { get; }
     DbSet<ProjectWorkflowStatus> ProjectWorkflowStatuses { get; }
     DbSet<IssueTemplate> IssueTemplates { get; }
     DbSet<ChangelogEntry> ChangelogEntries { get; }

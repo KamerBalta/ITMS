@@ -1,10 +1,14 @@
 ﻿import { useState } from 'react';
 import {
-    useBoardColumns, useCreateBoardColumn, useUpdateBoardColumn, useDeleteBoardColumn, useReorderBoardColumns,
+    useBoardColumns,
+    useCreateBoardColumn,
+    useUpdateBoardColumn,
+    useDeleteBoardColumn,
+    useReorderBoardColumns,
 } from '../hooks/useBoardColumns';
 
 interface BoardColumnEditBarProps {
-    projectId: string;
+    boardId: string;
     onClose: () => void;
 }
 
@@ -12,12 +16,12 @@ interface BoardColumnEditBarProps {
 // Board Settings sayfasiyla AYNI hook'lari (dolayisiyla ayni veri kaynagini) kullanir.
 // Burada yapilan her degisiklik anlik olarak alttaki Board'a (ayni sayfada, invalidate
 // sayesinde) ve diger kullanicilarin ekranina (SignalR sayesinde) yansir.
-export function BoardColumnEditBar({ projectId, onClose }: BoardColumnEditBarProps) {
-    const { data: columns } = useBoardColumns(projectId);
-    const createColumn = useCreateBoardColumn(projectId);
-    const updateColumn = useUpdateBoardColumn(projectId);
-    const deleteColumn = useDeleteBoardColumn(projectId);
-    const reorderColumns = useReorderBoardColumns(projectId);
+export function BoardColumnEditBar({ boardId, onClose }: BoardColumnEditBarProps) {
+    const { data: columns } = useBoardColumns(boardId);
+    const createColumn = useCreateBoardColumn(boardId);
+    const updateColumn = useUpdateBoardColumn(boardId);
+    const deleteColumn = useDeleteBoardColumn(boardId);
+    const reorderColumns = useReorderBoardColumns(boardId);
 
     const [newName, setNewName] = useState('');
     const [editingId, setEditingId] = useState<string | null>(null);

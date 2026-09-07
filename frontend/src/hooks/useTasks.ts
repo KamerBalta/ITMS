@@ -5,6 +5,7 @@ import type { CreateTaskPayload, TaskListItem } from '../types/task';
 export function useTasks(
     projectId: string | null,
     extraParams?: {
+        boardId?: string;
         sprintId?: string | null;
         backlogOnly?: boolean;
         assigneeId?: string;
@@ -26,10 +27,19 @@ export function useTasks(
     });
 }
 
+export function useResolveIssueKey(issueKey: string | null) {
+    return useQuery({
+        queryKey: ['resolve-issue-key', issueKey],
+        queryFn: () => tasksApi.resolveIssueKey(issueKey!),
+        enabled: !!issueKey,
+        retry: false,
+        staleTime: 5 * 60_000, // bir kere cozulen key, projenin omru boyunca degismez
+    });
+}
+
 // #Perf: Bu iki fonksiyon artık kendi useTasks çağrısı YAPMIYOR -- dışarıdan (zaten
 // çekilmiş) bir TaskListItem[] alıp filtreliyor. Böylece CreateTaskModal gibi aynı
 // anda ikisine de ihtiyaç duyan bileşenler, TEK bir network isteğini paylaşabiliyor.
-
 // SADECE Epic olan görevleri getirir
 export function filterEpicCandidates(tasks: TaskListItem[] | undefined) {
     return tasks?.filter((t) => {

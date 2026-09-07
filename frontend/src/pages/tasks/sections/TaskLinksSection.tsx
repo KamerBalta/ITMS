@@ -15,6 +15,8 @@ const STATUS_COLORS: Record<string, string> = {
     Closed: 'bg-gray-200 dark:bg-gray-700 text-muted',
 };
 
+const taskDetailUrl = (issueKey: string) => `/browse/${issueKey}`;
+
 export function TaskLinksSection({ taskId, projectId }: { taskId: string; projectId: string }) {
     const { data: links } = useTaskLinks(taskId);
     const { data: candidateTasks } = useTasks(projectId);
@@ -62,7 +64,7 @@ export function TaskLinksSection({ taskId, projectId }: { taskId: string; projec
                                 <span className="text-xs text-muted whitespace-nowrap">
                                     {LINK_TYPE_LABELS[l.linkType]?.[l.direction] ?? l.linkType}
                                 </span>
-                                <Link to={`/tasks/${l.relatedTaskId}`} className="text-indigo-600 dark:text-indigo-400 hover:underline truncate">
+                                <Link to={taskDetailUrl(l.relatedIssueKey)} className="text-indigo-600 dark:text-indigo-400 hover:underline truncate">
                                     {l.relatedIssueKey} — {l.relatedTaskTitle}
                                 </Link>
                                 <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${STATUS_COLORS[l.relatedStatus] ?? ''}`}>

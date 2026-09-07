@@ -19,7 +19,5 @@ public class ProjectWorkflowStatus : BaseEntity
     public bool IsEpicCloseTarget { get; set; } // Epic kapatma bu duruma gecirir (Category=Done icinde tek biri)
 
     public bool IsDraft { get; set; } // #Madde-4: yayinlanmamis taslak -- gercek workflow'u etkilemez
-    public Guid? BoardColumnId { get; set; }
-    public BoardColumn? BoardColumn { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

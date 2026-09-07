@@ -2,14 +2,27 @@
 import type { BoardColumnItem, BoardColumnSetting } from '../types/boardColumn';
 
 export const boardColumnsApi = {
-    getAll: (projectId: string) => apiClient.get<BoardColumnItem[]>(`/projects/${projectId}/board-columns`).then((res) => res.data),
-    create: (projectId: string, name: string) => apiClient.post<{ id: string }>(`/projects/${projectId}/board-columns`, { name }),
-    update: (projectId: string, columnId: string, name: string) => apiClient.put(`/projects/${projectId}/board-columns/${columnId}`, { name }),
-    delete: (projectId: string, columnId: string) => apiClient.delete(`/projects/${projectId}/board-columns/${columnId}`),
-    reorder: (projectId: string, orderedIds: string[]) => apiClient.put(`/projects/${projectId}/board-columns/reorder`, { orderedIds }),
-    mapStatus: (projectId: string, statusId: string, columnId: string | null) => apiClient.put(`/projects/${projectId}/board-columns/map-status`, { statusId, columnId }),
+    getAll: (boardId: string) =>
+        apiClient.get<BoardColumnItem[]>(`/boards/${boardId}/columns`).then((res) => res.data),
 
-    getSettings: (projectId: string) => apiClient.get<BoardColumnSetting[]>(`/projects/${projectId}/board-settings`).then((res) => res.data),
-    updateWipLimit: (projectId: string, columnId: string, wipLimit: number | null) =>
-        apiClient.put(`/projects/${projectId}/board-settings/${columnId}/wip-limit`, { wipLimit }),
+    create: (boardId: string, name: string) =>
+        apiClient.post<{ id: string }>(`/boards/${boardId}/columns`, { name }),
+
+    update: (boardId: string, columnId: string, name: string) =>
+        apiClient.put(`/boards/${boardId}/columns/${columnId}`, { name }),
+
+    delete: (boardId: string, columnId: string) =>
+        apiClient.delete(`/boards/${boardId}/columns/${columnId}`),
+
+    reorder: (boardId: string, orderedIds: string[]) =>
+        apiClient.put(`/boards/${boardId}/columns/reorder`, { orderedIds }),
+
+    mapStatus: (boardId: string, statusId: string, columnId: string | null) =>
+        apiClient.put(`/boards/${boardId}/columns/map-status`, { statusId, columnId }),
+
+    getSettings: (boardId: string) =>
+        apiClient.get<BoardColumnSetting[]>(`/boards/${boardId}/settings`).then((res) => res.data),
+
+    updateWipLimit: (boardId: string, columnId: string, wipLimit: number | null) =>
+        apiClient.put(`/boards/${boardId}/settings/${columnId}/wip-limit`, { wipLimit }),
 };

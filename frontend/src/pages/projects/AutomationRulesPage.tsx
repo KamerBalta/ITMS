@@ -156,7 +156,13 @@ export function AutomationRulesPage() {
                                                             ? 'Görev birine atanınca'
                                                             : r.triggerType === 'CommentAdded'
                                                                 ? 'Yorum eklenince'
-                                                                : r.triggerType}
+                                                                : r.triggerType === 'BranchCreated'
+                                                                    ? 'Git branch açılınca'
+                                                                    : r.triggerType === 'PullRequestOpened'
+                                                                        ? 'Pull Request açılınca'
+                                                                        : r.triggerType === 'PullRequestMerged'
+                                                                            ? 'Pull Request merge edilince'
+                                                                            : r.triggerType}
                                             </span>
 
                                             <span className="text-muted">→</span>
@@ -253,12 +259,15 @@ export function AutomationRulesPage() {
                             <select
                                 value={triggerType}
                                 onChange={(e) => setTriggerType(e.target.value)}
-                                className="input-base w-full cursor-pointer rounded-lg border px-3 py-2.5 text-sm"
+                                className="w-full input-base border rounded px-3 py-2 text-sm mt-1"
                             >
                                 <option value="TaskCreated">Görev oluşturulunca</option>
                                 <option value="StatusChangedTo">Durum şuna değişince</option>
                                 <option value="TaskAssigned">Görev birine atanınca</option>
                                 <option value="CommentAdded">Yorum eklenince</option>
+                                <option value="BranchCreated">Git branch açılınca</option>
+                                <option value="PullRequestOpened">Pull Request açılınca</option>
+                                <option value="PullRequestMerged">Pull Request merge edilince</option>
                             </select>
                         </div>
 

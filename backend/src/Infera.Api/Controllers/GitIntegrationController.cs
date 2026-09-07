@@ -20,6 +20,13 @@ public class GitIntegrationController : ControllerBase
         catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
     }
 
+    [HttpGet("available-commands")]
+    public async Task<IActionResult> GetAvailableCommands(Guid projectId)
+    {
+        try { return Ok(await _mediator.Send(new GetAvailableCommitCommandsQuery(projectId))); }
+        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+    }
+
     [HttpPost]
     public async Task<IActionResult> Setup(Guid projectId, SetupGitIntegrationRequest request)
     {

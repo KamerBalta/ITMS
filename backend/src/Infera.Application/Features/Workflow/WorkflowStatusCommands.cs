@@ -21,8 +21,7 @@ public record WorkflowStatusDto(
     int DisplayOrder,
     bool IsInitial,
     bool IsEpicCloseTarget,
-    bool IsDraft,
-    Guid? BoardColumnId);
+    bool IsDraft);
 
 public class CreateWorkflowStatusCommandHandler : IRequestHandler<CreateWorkflowStatusCommand, Guid>
 {
@@ -231,8 +230,7 @@ public class GetWorkflowStatusesQueryHandler : IRequestHandler<GetWorkflowStatus
                 s.DisplayOrder,
                 s.IsInitial,
                 s.IsEpicCloseTarget,
-                s.IsDraft,
-                s.BoardColumnId))
+                s.IsDraft))
             .ToListAsync(ct);
     }
 }

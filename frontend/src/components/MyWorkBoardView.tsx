@@ -2,7 +2,12 @@
 import { useMyTasksBoard } from '../hooks/useMyTasksBoard';
 import type { MyTaskBoardItem } from '../types/myTasksBoard';
 
-const CATEGORY_LABELS: Record<string, string> = { ToDo: 'Yapılacak', InProgress: 'Devam Ediyor', Done: 'Tamamlandı' };
+const CATEGORY_LABELS: Record<string, string> = {
+    ToDo: 'Yapılacak',
+    InProgress: 'Devam Ediyor',
+    Done: 'Tamamlandı',
+};
+
 const CATEGORY_ORDER = ['ToDo', 'InProgress', 'Done'];
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -12,11 +17,14 @@ const PRIORITY_COLORS: Record<string, string> = {
     Critical: 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300',
 };
 
+const taskDetailUrl = (issueKey: string) => `/browse/${issueKey}`;
+
 export function MyWorkBoardView() {
     const { data: tasks, isLoading } = useMyTasksBoard();
 
     if (isLoading) return <p className="text-muted">Yükleniyor...</p>;
-    if (!tasks || tasks.length === 0) return <p className="text-sm text-muted">Şu anda size atanmış açık bir görev yok.</p>;
+    if (!tasks || tasks.length === 0)
+        return <p className="text-sm text-muted">Şu anda size atanmış açık bir görev yok.</p>;
 
     const grouped = tasks.reduce<Record<string, MyTaskBoardItem[]>>((acc, t) => {
         (acc[t.statusCategory] ??= []).push(t);
@@ -39,17 +47,30 @@ export function MyWorkBoardView() {
                             </div>
                             <div className="space-y-2">
                                 {colTasks.map((task) => (
-                                    <Link key={task.id} to={`/tasks/${task.id}`} className="block surface border rounded-md p-3 hover:shadow dark:hover:shadow-black/30">
+                                    <Link
+                                        key={task.id}
+                                        to={taskDetailUrl(task.issueKey)}
+                                        className="block surface border rounded-md p-3 hover:shadow dark:hover:shadow-black/30"
+                                    >
                                         <p className="text-xs text-muted font-mono">{task.issueKey}</p>
                                         <p className="text-sm font-medium text-primary line-clamp-2 my-1">{task.title}</p>
                                         <div className="flex items-center justify-between mt-2">
-                                            <span className="text-xs text-indigo-600 dark:text-indigo-400 truncate">{task.projectName}</span>
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${PRIORITY_COLORS[task.priority] ?? ''}`}>{task.priority}</span>
+                                            <span className="text-xs text-indigo-600 dark:text-indigo-400 truncate">
+                                                {task.projectName}
+                                            </span>
+                                            <span
+                                                className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${PRIORITY_COLORS[task.priority] ?? ''
+                                                    }`}
+                                            >
+                                                {task.priority}
+                                            </span>
                                         </div>
                                         <p className="text-[10px] text-muted mt-1">{task.statusName}</p>
                                     </Link>
                                 ))}
-                                {colTasks.length === 0 && <p className="text-xs text-muted text-center py-4">Görev yok</p>}
+                                {colTasks.length === 0 && (
+                                    <p className="text-xs text-muted text-center py-4">Görev yok</p>
+                                )}
                             </div>
                         </div>
                     );

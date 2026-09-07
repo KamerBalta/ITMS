@@ -9,6 +9,8 @@ const PRIORITY_COLORS: Record<string, string> = {
     Critical: 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300',
 };
 
+const taskDetailUrl = (issueKey: string) => `/browse/${issueKey}`;
+
 export function MyOpenTasksWidget({ projectId }: { projectId: string }) {
     const currentUser = useAuthStore((state) => state.user);
     const { data: tasks, isLoading } = useTasks(projectId, { assigneeId: currentUser?.userId });
@@ -22,7 +24,7 @@ export function MyOpenTasksWidget({ projectId }: { projectId: string }) {
         <ul className="space-y-1.5">
             {openTasks.map((t) => (
                 <li key={t.id} className="flex items-center justify-between text-sm">
-                    <Link to={`/tasks/${t.id}`} className="text-indigo-600 dark:text-indigo-400 hover:underline truncate flex-1">
+                    <Link to={taskDetailUrl(t.issueKey)} className="text-indigo-600 dark:text-indigo-400 hover:underline truncate flex-1">
                         <span className="text-xs text-muted font-mono mr-1.5">{t.issueKey}</span>
                         {t.title}
                     </Link>

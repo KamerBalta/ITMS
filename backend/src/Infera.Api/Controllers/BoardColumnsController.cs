@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Infera.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/projects/{projectId}/board-columns")]
+[Route("api/v1/boards/{boardId}/columns")]
 [Authorize]
 public class BoardColumnsController : ControllerBase
 {
@@ -14,22 +14,22 @@ public class BoardColumnsController : ControllerBase
     public BoardColumnsController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll(Guid projectId)
+    public async Task<IActionResult> GetAll(Guid boardId)
     {
-        try { return Ok(await _mediator.Send(new GetBoardColumnsQuery(projectId))); }
+        try { return Ok(await _mediator.Send(new GetBoardColumnsQuery(boardId))); }
         catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(Guid projectId, BoardColumnRequest request)
+    public async Task<IActionResult> Create(Guid boardId, BoardColumnRequest request)
     {
-        try { return Ok(new { id = await _mediator.Send(new CreateBoardColumnCommand(projectId, request.Name)) }); }
+        try { return Ok(new { id = await _mediator.Send(new CreateBoardColumnCommand(boardId, request.Name)) }); }
         catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
         catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
     }
 
     [HttpPut("{columnId}")]
-    public async Task<IActionResult> Update(Guid projectId, Guid columnId, BoardColumnRequest request)
+    public async Task<IActionResult> Update(Guid boardId, Guid columnId, BoardColumnRequest request)
     {
         try { await _mediator.Send(new UpdateBoardColumnCommand(columnId, request.Name)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
@@ -37,7 +37,7 @@ public class BoardColumnsController : ControllerBase
     }
 
     [HttpDelete("{columnId}")]
-    public async Task<IActionResult> Delete(Guid projectId, Guid columnId)
+    public async Task<IActionResult> Delete(Guid boardId, Guid columnId)
     {
         try { await _mediator.Send(new DeleteBoardColumnCommand(columnId)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
@@ -46,17 +46,17 @@ public class BoardColumnsController : ControllerBase
     }
 
     [HttpPut("reorder")]
-    public async Task<IActionResult> Reorder(Guid projectId, ReorderColumnsRequest request)
+    public async Task<IActionResult> Reorder(Guid boardId, ReorderColumnsRequest request)
     {
-        try { await _mediator.Send(new ReorderBoardColumnsCommand(projectId, request.OrderedIds)); return NoContent(); }
+        try { await _mediator.Send(new ReorderBoardColumnsCommand(boardId, request.OrderedIds)); return NoContent(); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
         catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
     }
 
     [HttpPut("map-status")]
-    public async Task<IActionResult> MapStatus(Guid projectId, MapStatusRequest request)
+    public async Task<IActionResult> MapStatus(Guid boardId, MapStatusRequest request)
     {
-        try { await _mediator.Send(new MapStatusToColumnCommand(projectId, request.StatusId, request.ColumnId)); return NoContent(); }
+        try { await _mediator.Send(new MapStatusToColumnCommand(boardId, request.StatusId, request.ColumnId)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
     }

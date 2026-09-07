@@ -2,10 +2,13 @@
 import { Link } from 'react-router-dom';
 import { useProjectStore } from '../../store/projectStore';
 import { useRoadmap } from '../../hooks/useRoadmap';
+import { Lock, Ban, Calendar, GitBranch } from 'lucide-react';
 
 function daysBetween(a: Date, b: Date) {
     return Math.max(1, Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24)));
 }
+
+const taskDetailUrl = (issueKey: string) => `/browse/${issueKey}`;
 
 export function RoadmapPage() {
     const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
@@ -19,7 +22,7 @@ export function RoadmapPage() {
     const epicsWithDates = epics.filter((e) => e.earliestSprintStart && e.latestSprintEnd);
     const epicsWithoutDates = epics.filter((e) => !e.earliestSprintStart || !e.latestSprintEnd);
 
-    // #1: Bagimlilik oklarinin gercek piksel koordinatlarini hesapla
+    // #1: Bağımlılık oklarının gerçek piksel koordinatlarını hesapla
     useEffect(() => {
         if (!containerRef.current || dependencies.length === 0) {
             setArrowPaths([]);
@@ -51,7 +54,6 @@ export function RoadmapPage() {
         setArrowPaths(paths);
     }, [dependencies, epicsWithDates.length]);
 
-    // Erken dönüşler (Early returns) Hook tanımlamalarından SONRA yapılmalıdır
     if (!selectedProjectId) return <p className="text-muted">Devam etmek için üstten bir proje seçin.</p>;
     if (isLoading) return <p className="text-muted">Yükleniyor...</p>;
 
@@ -75,15 +77,26 @@ export function RoadmapPage() {
         <div className="space-y-4">
             <div>
                 <h1 className="text-2xl font-bold text-primary">Roadmap</h1>
-                <p className="text-sm text-muted">
-                    {minDate?.toLocaleDateString('tr-TR')} — {maxDate?.toLocaleDateString('tr-TR')}
-                    {dependencies.length > 0 && <span> · {dependencies.length} bağımlılık</span>}
-                </p>
+                <div className="flex items-center gap-2 text-sm text-muted mt-1">
+                    <Calendar size={15} className="shrink-0" />
+                    <span>
+                        {minDate?.toLocaleDateString('tr-TR')} — {maxDate?.toLocaleDateString('tr-TR')}
+                    </span>
+                    {dependencies.length > 0 && (
+                        <>
+                            <span>·</span>
+                            <span className="flex items-center gap-1">
+                                <GitBranch size={14} />
+                                {dependencies.length} bağımlılık
+                            </span>
+                        </>
+                    )}
+                </div>
             </div>
 
             <div className="surface border rounded-lg p-4 overflow-x-auto">
                 <div ref={containerRef} className="relative min-w-[600px] space-y-3">
-                    {/* #1: Bagimlilik oklari, tum satirlarin USTUNDE, absolute pozisyonlu bir SVG katmani */}
+                    {/* SVG Bağımlılık Okları */}
                     {arrowPaths.length > 0 && (
                         <svg className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
                             <defs>
@@ -122,22 +135,37 @@ export function RoadmapPage() {
                                 }}
                                 className="flex items-center gap-3 relative"
                             >
-                                <Link to={`/tasks/${epic.id}`} className="w-40 shrink-0 text-sm text-indigo-600 dark:text-indigo-400 hover:underline truncate flex items-center gap-1">
-                                    {isBlocked && <span title="Bu Epic başka bir Epic tarafından engelleniyor">🔒</span>}
-                                    {epic.title}
+                                <Link
+                                    to={taskDetailUrl(epic.issueKey)}
+                                    className="w-48 shrink-0 text-sm text-indigo-600 dark:text-indigo-400 hover:underline truncate flex items-center gap-1.5"
+                                    title={`${epic.issueKey ? `${epic.issueKey} — ` : ''}${epic.title}`}
+                                >
+                                    {isBlocked && (
+                                        <span title="Bu Epic başka bir Epic tarafından engelleniyor" className="shrink-0 text-amber-500">
+                                            <Lock size={14} />
+                                        </span>
+                                    )}
+                                    <span className="font-mono text-xs text-muted shrink-0">
+                                        {epic.issueKey}
+                                    </span>
+                                    <span className="truncate">{epic.title}</span>
                                 </Link>
                                 <div className="flex-1 relative h-6 bg-gray-50 dark:bg-gray-900 rounded">
                                     <div
-                                        className="absolute top-0 h-6 rounded flex items-center px-2 overflow-hidden"
+                                        className="absolute top-0 h-6 rounded flex items-center px-2 overflow-hidden shadow-xs"
                                         style={{ left: `${offsetPct}%`, width: `${widthPct}%`, backgroundColor: epic.color ?? '#c7d2fe' }}
                                     >
                                         <div className="absolute top-0 left-0 h-full bg-black/20 rounded-l" style={{ width: `${progressPct}%` }} />
-                                        <span className="text-[10px] text-white font-medium relative z-10 whitespace-nowrap">
+                                        <span className="text-[10px] text-white font-medium relative z-10 whitespace-nowrap drop-shadow-xs">
                                             {epic.doneTasks}/{epic.totalTasks} ({progressPct}%)
                                         </span>
                                     </div>
                                 </div>
-                                {isBlocking && <span className="text-xs text-muted shrink-0" title="Bu Epic başka bir Epic'i engelliyor">⛔</span>}
+                                {isBlocking && (
+                                    <span className="text-rose-500 shrink-0" title="Bu Epic başka bir Epic'i engelliyor">
+                                        <Ban size={14} />
+                                    </span>
+                                )}
                             </div>
                         );
                     })}
@@ -145,16 +173,37 @@ export function RoadmapPage() {
             </div>
 
             {dependencies.length > 0 && (
-                <p className="text-xs text-muted">🔒 = başka bir Epic tarafından engelleniyor · ⛔ = başka bir Epic'i engelliyor (kırmızı kesikli çizgi: bağımlılık yönü)</p>
+                <div className="flex items-center gap-4 text-xs text-muted flex-wrap">
+                    <span className="inline-flex items-center gap-1">
+                        <Lock size={13} className="text-amber-500" />
+                        Başka bir Epic tarafından engelleniyor
+                    </span>
+                    <span>·</span>
+                    <span className="inline-flex items-center gap-1">
+                        <Ban size={13} className="text-rose-500" />
+                        Başka bir Epic'i engelliyor
+                    </span>
+                    <span>·</span>
+                    <span className="text-red-400 dark:text-red-500 font-medium">
+                        Kırmızı kesikli çizgi: bağımlılık akışı
+                    </span>
+                </div>
             )}
 
             {epicsWithoutDates.length > 0 && (
-                <div>
-                    <p className="text-sm text-muted mb-2">Sprint'e bağlanmamış Epic'ler</p>
+                <div className="pt-2">
+                    <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                        Sprint'e bağlanmamış Epic'ler
+                    </p>
                     <div className="flex flex-wrap gap-2">
                         {epicsWithoutDates.map((e) => (
-                            <Link key={e.id} to={`/tasks/${e.id}`} className="text-xs bg-gray-100 dark:bg-gray-700 text-secondary px-2 py-1 rounded-full hover:underline">
-                                {e.title}
+                            <Link
+                                key={e.id}
+                                to={taskDetailUrl(e.issueKey)}
+                                className="inline-flex items-center gap-1.5 text-xs bg-gray-100 dark:bg-gray-800 text-secondary px-2.5 py-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                            >
+                                {e.issueKey && <span className="font-mono text-[11px] text-muted">{e.issueKey}</span>}
+                                <span>{e.title}</span>
                             </Link>
                         ))}
                     </div>
