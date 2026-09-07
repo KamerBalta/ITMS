@@ -43,7 +43,7 @@ import { useTaskDetail } from './hooks/useTaskDetail';
 
 function LegacyTaskIdRedirect() {
     const { taskId } = useParams<{ taskId: string }>();
-    const { data: task, isLoading, isError } = useTaskDetail(taskId);
+    const { data: task, isLoading, isError } = useTaskDetail(taskId ?? null);
 
     if (isLoading) {
         return <div className="p-8 text-center text-sm text-muted">Yönlendiriliyor...</div>;
