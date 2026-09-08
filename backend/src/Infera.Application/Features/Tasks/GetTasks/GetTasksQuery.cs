@@ -7,6 +7,7 @@ public record GetTasksQuery(
     Guid? SprintId,
     bool? BacklogOnly,
     Guid? AssigneeId,
+    Guid? ReporterId,
     string? Status,
     Guid? IssueTypeId,
     Infera.Domain.Enums.Priority? Priority,
@@ -16,8 +17,19 @@ public record GetTasksQuery(
     Guid? ComponentId,
     bool? UnassignedOnly,
     Guid? BoardId,
+
+    DateTime? CreatedAfter,
+    DateTime? CreatedBefore,
+
+    DateOnly? DueDateAfter,
+    DateOnly? DueDateBefore,
+
+    DateTime? UpdatedAfter,
+    DateTime? UpdatedBefore,
+    bool? OverdueOnly,
     int Page = 1,
-    int PageSize = 50) : IRequest<List<TaskDto>>;
+    int PageSize = 50
+) : IRequest<List<TaskDto>>;
 
 public record TaskDto(
     Guid Id,
@@ -29,11 +41,15 @@ public record TaskDto(
     bool AllowsChildren,
     bool RequiresParent,
     string Priority,
-    string Status, Guid StatusId,
+    string Status,
+    Guid StatusId,
     int? StoryPoint,
     Guid? AssigneeId,
     string? AssigneeName,
+    Guid ReporterId,
+    string ReporterName,
     Guid? SprintId,
     long Rank,
     Guid? ParentTaskId,
-    List<string> Labels);
+    List<string> Labels,
+    DateOnly? DueDate);

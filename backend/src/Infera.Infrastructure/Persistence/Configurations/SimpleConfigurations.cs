@@ -283,7 +283,7 @@ public class TaskComponentConfiguration : IEntityTypeConfiguration<TaskComponent
     public void Configure(EntityTypeBuilder<TaskComponent> b)
     {
         b.ToTable("TaskComponents");
-        b.HasOne(x => x.Task).WithMany().HasForeignKey(x => x.TaskId);
+        b.HasOne(x => x.Task).WithMany(x => x.TaskComponents).HasForeignKey(x => x.TaskId);
         b.HasOne(x => x.ProjectComponent).WithMany().HasForeignKey(x => x.ProjectComponentId).OnDelete(DeleteBehavior.Cascade);
         b.HasIndex(x => new { x.TaskId, x.ProjectComponentId }).IsUnique();
     }
@@ -438,7 +438,23 @@ public class GitCommitLinkConfiguration : IEntityTypeConfiguration<GitCommitLink
         b.Property(x => x.AuthorName).HasMaxLength(150).IsRequired();
         b.Property(x => x.CommitUrl).HasMaxLength(500);
         b.Property(x => x.BranchName).HasMaxLength(200);
+        b.Property(x => x.SourceType).HasMaxLength(10).IsRequired();
+        b.Property(x => x.ChangedFilesJson).HasColumnType("jsonb");
         b.HasOne(x => x.Task).WithMany().HasForeignKey(x => x.TaskId).OnDelete(DeleteBehavior.Cascade);
         b.HasIndex(x => new { x.TaskId, x.CommitHash }).IsUnique();
+    }
+}
+
+public class PipelineRunConfiguration : IEntityTypeConfiguration<PipelineRun>
+{
+    public void Configure(EntityTypeBuilder<PipelineRun> b)
+    {
+        b.ToTable("PipelineRuns");
+        b.Property(x => x.PipelineName).HasMaxLength(200).IsRequired();
+        b.Property(x => x.Result).HasMaxLength(20).IsRequired();
+        b.Property(x => x.PipelineUrl).HasMaxLength(500);
+        b.Property(x => x.Environment).HasMaxLength(50);
+        b.Property(x => x.Version).HasMaxLength(50);
+        b.HasOne(x => x.Task).WithMany().HasForeignKey(x => x.TaskId).OnDelete(DeleteBehavior.Cascade);
     }
 }

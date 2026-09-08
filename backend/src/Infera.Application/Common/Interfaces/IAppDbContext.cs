@@ -54,6 +54,7 @@ public interface IAppDbContext
     DbSet<DashboardWidget> DashboardWidgets { get; }
     DbSet<ProjectGitIntegration> ProjectGitIntegrations { get; }
     DbSet<GitCommitLink> GitCommitLinks { get; }
+    DbSet<PipelineRun> PipelineRuns { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

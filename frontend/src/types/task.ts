@@ -36,6 +36,7 @@ export interface TaskListItem {
     rank: number;
     parentTaskId: string | null;
     labels: string[];
+    dueDate?: string | null;
 }
 
 export interface TaskDetail {
@@ -91,8 +92,8 @@ export interface CreateTaskPayload {
     priority: Priority;
     storyPoint?: number | null;
     assigneeId?: string | null;
-    dueDate?: string | null;
     componentIds?: string[];
     labelIds?: string[];
+    dueDate?: string | null;
     customFieldValues?: Record<string, string | null>;
 }

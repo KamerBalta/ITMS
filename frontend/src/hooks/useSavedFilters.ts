@@ -3,8 +3,8 @@ import { savedFiltersApi } from '../api/savedFilters';
 
 export function useSavedFilters(projectId: string | null) {
     return useQuery({
-        queryKey: ['saved-filters', projectId],
-        queryFn: () => savedFiltersApi.getAll(projectId!),
+        queryKey: ['saved-filters', projectId, 'board'],
+        queryFn: () => savedFiltersApi.getAll(projectId!, 'board'),
         enabled: !!projectId,
     });
 }
@@ -12,7 +12,15 @@ export function useSavedFilters(projectId: string | null) {
 export function useCreateSavedFilter(projectId: string) {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: { name: string; filtersJson: string; isShared: boolean }) => savedFiltersApi.create(projectId, data),
+        mutationFn: (data: {
+            name: string;
+            filtersJson: string;
+            isShared: boolean;
+        }) =>
+            savedFiltersApi.create(projectId, {
+                ...data,
+                scope: 'board',
+            }),
         onSuccess: () => qc.invalidateQueries({ queryKey: ['saved-filters', projectId] }),
     });
 }

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RouteErrorPage } from './components/RouteErrorPage';
@@ -27,6 +28,7 @@ import { ReleasesPage } from './pages/releases/ReleasesPage';
 import { SearchPage } from './pages/teams/search/SearchPage';
 import { RetrospectivePage } from './pages/retrospective/RetrospectivePage';
 import { IssueListPage } from './pages/issues/IssueListPage';
+import { OverdueTasksPage } from './pages/issues/OverdueTasksPage';
 import { MyWorkPage } from './pages/mywork/MyWorkPage';
 import { SprintDetailPage } from './pages/sprints/SprintDetailPage';
 import { ReportsPage } from './pages/reports/ReportsPage';
@@ -89,6 +91,7 @@ export const router = createBrowserRouter([
                     { path: '/backlog', element: <BacklogPage /> },
                     { path: '/sprints/:sprintId', element: <SprintDetailPage /> },
                     { path: '/issues', element: <IssueListPage /> },
+                    { path: '/overdue', element: <OverdueTasksPage /> },
                     { path: '/browse/:issueKey', element: <TaskDetailPage /> },
                     { path: '/tasks/:taskId', element: <LegacyTaskIdRedirect /> },
                     { path: '/releases', element: <ReleasesPage /> },

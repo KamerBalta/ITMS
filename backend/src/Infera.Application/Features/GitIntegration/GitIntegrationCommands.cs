@@ -7,15 +7,25 @@ using Microsoft.Extensions.Configuration;
 
 namespace Infera.Application.Features.GitIntegration;
 
-public record SetupGitIntegrationCommand(Guid ProjectId, string Provider, string RepositoryUrl, Guid? CloseTargetStatusId) : IRequest<GitIntegrationSetupDto>;
+public record SetupGitIntegrationCommand(
+    Guid ProjectId,
+    string Provider,
+    string RepositoryUrl,
+    Guid? CloseTargetStatusId,
+    string? AzureDevOpsOrgUrl,
+    string? AzureDevOpsProjectName,
+    string? AzureDevOpsPersonalAccessToken) : IRequest<GitIntegrationSetupDto>;
+
 public record GetGitIntegrationQuery(Guid ProjectId) : IRequest<GitIntegrationDto?>;
 public record DeleteGitIntegrationCommand(Guid ProjectId) : IRequest;
 public record GetTaskGitCommitsQuery(Guid TaskId) : IRequest<List<GitCommitDto>>;
+public record GetTaskPipelineRunsQuery(Guid TaskId) : IRequest<List<PipelineRunDto>>;
 public record GetAvailableCommitCommandsQuery(Guid ProjectId) : IRequest<List<CommitCommandDto>>;
 
 public record GitIntegrationSetupDto(string WebhookUrl, string WebhookSecret); // secret yalnizca KURULUM aninda bir kez gosterilir
 public record GitIntegrationDto(string Provider, string RepositoryUrl, bool IsActive, Guid? CloseTargetStatusId, string WebhookUrl);
-public record GitCommitDto(string CommitHash, string CommitMessage, string AuthorName, string? CommitUrl, string? BranchName, DateTime CommittedAt);
+public record GitCommitDto(string CommitHash, string CommitMessage, string AuthorName, string? CommitUrl, string? BranchName, DateTime CommittedAt, string SourceType);
+public record PipelineRunDto(string PipelineName, string Result, string? PipelineUrl, string? Environment, string? Version, DateTime? DeployedAt, DateTime RunAt);
 public record CommitCommandDto(string Command, string StatusName, string Category);
 
 public class SetupGitIntegrationCommandHandler : IRequestHandler<SetupGitIntegrationCommand, GitIntegrationSetupDto>
@@ -35,8 +45,8 @@ public class SetupGitIntegrationCommandHandler : IRequestHandler<SetupGitIntegra
     {
         await _projectAuth.EnsureProjectManagerOrAdminAsync(request.ProjectId, ct);
 
-        if (request.Provider is not ("GitHub" or "GitLab"))
-            throw new InvalidOperationException("Yalnızca GitHub ve GitLab destekleniyor.");
+        if (request.Provider is not ("GitHub" or "GitLab" or "AzureDevOpsTFVC" or "AzureDevOpsGit"))
+            throw new InvalidOperationException("Desteklenmeyen provider.");
 
         var existing = await _db.ProjectGitIntegrations.FirstOrDefaultAsync(g => g.ProjectId == request.ProjectId, ct);
 
@@ -52,6 +62,14 @@ public class SetupGitIntegrationCommandHandler : IRequestHandler<SetupGitIntegra
 
         existing.Provider = request.Provider;
         existing.RepositoryUrl = request.RepositoryUrl;
+        existing.AzureDevOpsOrgUrl = request.AzureDevOpsOrgUrl;
+        existing.AzureDevOpsProjectName = request.AzureDevOpsProjectName;
+
+        // #TFVC-Real: PAT bos gonderilirse (kullanici sadece webhook secret'i yenilemek istiyorsa)
+        // mevcut PAT DEGISTIRILMEZ -- boylece kullanici her guncellemede PAT'i yeniden girmek zorunda kalmaz.
+        if (!string.IsNullOrEmpty(request.AzureDevOpsPersonalAccessToken))
+            existing.AzureDevOpsPersonalAccessToken = request.AzureDevOpsPersonalAccessToken;
+
         existing.WebhookSecret = secret;
         existing.CloseTargetStatusId = request.CloseTargetStatusId;
         existing.IsActive = true;
@@ -59,7 +77,9 @@ public class SetupGitIntegrationCommandHandler : IRequestHandler<SetupGitIntegra
         await _db.SaveChangesAsync(ct);
 
         var baseUrl = _config["Backend:PublicBaseUrl"] ?? "https://your-api-domain.com";
-        var webhookUrl = $"{baseUrl.TrimEnd('/')}/api/v1/webhooks/git/{request.ProjectId}";
+        var webhookUrl = request.Provider.StartsWith("AzureDevOps")
+            ? $"{baseUrl.TrimEnd('/')}/api/v1/webhooks/git/azure-devops/{request.ProjectId}/{secret}"
+            : $"{baseUrl.TrimEnd('/')}/api/v1/webhooks/git/{request.ProjectId}";
 
         return new GitIntegrationSetupDto(webhookUrl, secret);
     }
@@ -169,7 +189,32 @@ public class GetTaskGitCommitsQueryHandler : IRequestHandler<GetTaskGitCommitsQu
         return await _db.GitCommitLinks
             .Where(l => l.TaskId == request.TaskId)
             .OrderByDescending(l => l.CommittedAt)
-            .Select(l => new GitCommitDto(l.CommitHash, l.CommitMessage, l.AuthorName, l.CommitUrl, l.BranchName, l.CommittedAt))
+            .Select(l => new GitCommitDto(l.CommitHash, l.CommitMessage, l.AuthorName, l.CommitUrl, l.BranchName, l.CommittedAt, l.SourceType))
+            .ToListAsync(ct);
+    }
+}
+
+public class GetTaskPipelineRunsQueryHandler : IRequestHandler<GetTaskPipelineRunsQuery, List<PipelineRunDto>>
+{
+    private readonly IAppDbContext _db;
+    private readonly IProjectAccessService _access;
+
+    public GetTaskPipelineRunsQueryHandler(IAppDbContext db, IProjectAccessService access)
+    {
+        _db = db;
+        _access = access;
+    }
+
+    public async System.Threading.Tasks.Task<List<PipelineRunDto>> Handle(GetTaskPipelineRunsQuery request, CancellationToken ct)
+    {
+        var task = await _db.Tasks.FirstOrDefaultAsync(t => t.Id == request.TaskId, ct) ?? throw new KeyNotFoundException("Görev bulunamadı.");
+        if (!await _access.HasProjectAccessAsync(task.ProjectId, ct))
+            throw new UnauthorizedAccessException("Bu göreve erişim yetkiniz yok.");
+
+        return await _db.PipelineRuns
+            .Where(p => p.TaskId == request.TaskId)
+            .OrderByDescending(p => p.RunAt)
+            .Select(p => new PipelineRunDto(p.PipelineName, p.Result, p.PipelineUrl, p.Environment, p.Version, p.DeployedAt, p.RunAt))
             .ToListAsync(ct);
     }
 }

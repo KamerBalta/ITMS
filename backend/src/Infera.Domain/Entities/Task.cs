@@ -49,4 +49,5 @@ public class Task : BaseEntity,ISoftDelete
     public ICollection<Watcher> Watchers { get; set; } = new List<Watcher>();
     public ICollection<ChecklistItem> ChecklistItems { get; set; } = new List<ChecklistItem>();
     public ICollection<WorkLog> WorkLogs { get; set; } = new List<WorkLog>();
+    public ICollection<TaskComponent> TaskComponents { get; set; } = new List<TaskComponent>();
 }

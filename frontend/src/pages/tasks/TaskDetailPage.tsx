@@ -31,6 +31,7 @@ import { LabelsSection } from './sections/LabelsSection';
 import { ComponentsSection } from './sections/ComponentsSection';
 import { TaskLinksSection } from './sections/TaskLinksSection';
 import { GitActivitySection } from './sections/GitActivitySection';
+import { PipelineRunsSection } from './sections/PipelineRunsSection';
 import { SubtasksSection, type SubtasksSectionHandle } from './sections/SubtasksSection';
 import { HistorySection } from './sections/HistorySection';
 import { TaskBreadcrumb } from '../../components/TaskBreadcrumb';
@@ -75,10 +76,10 @@ interface Draft {
 export function TaskDetailPage() {
     const { issueKey } = useParams<{ issueKey: string }>();
     const { data: resolvedTaskId, isLoading: isResolving, isError: isResolveError } = useResolveIssueKey(issueKey ?? null);
-    const { data: task, isLoading, isError } = useTaskDetail(resolvedTaskId ?? null);
-    const { data: members } = useProjectMembers(task?.projectId ?? null);
+    const { data: task, isLoading: isTaskLoading, isError: isTaskError } = useTaskDetail(resolvedTaskId ?? null);
+    const { data: members, isLoading: isMembersLoading } = useProjectMembers(task?.projectId ?? null);
 
-    if (isResolveError || isError) {
+    if (isResolveError || isTaskError) {
         return (
             <div className="text-center py-16">
                 <p className="text-muted">
@@ -93,15 +94,15 @@ export function TaskDetailPage() {
         );
     }
 
-    if (isResolving || isLoading || !task) {
+    if (isResolving || isTaskLoading || isMembersLoading || !task || !members) {
         return <TaskDetailSkeleton />;
     }
 
     return (
         <TaskDetailContent
-            key={`${task.id}-${task.updatedAt ?? task.createdAt}-${task.statusId}`}
+            key={`${task.id}-${task.updatedAt ?? task.createdAt}-${task.statusId}-${members.length}`}
             task={task}
-            members={members ?? []}
+            members={members}
         />
     );
 }
@@ -131,6 +132,9 @@ function TaskDetailContent({ task, members }: { task: TaskDetailData; members: P
     const subtasksSectionRef = useRef<SubtasksSectionHandle>(null);
     const subtasksContainerRef = useRef<HTMLDivElement>(null);
 
+    const originalAssigneeId =
+        members.find((m) => m.userName === task.assigneeName)?.userId ?? '';
+
     const [draft, setDraft] = useState<Draft>(() => ({
         title: task.title,
         description: task.description ?? '',
@@ -138,7 +142,7 @@ function TaskDetailContent({ task, members }: { task: TaskDetailData; members: P
         storyPoint: task.storyPoint?.toString() ?? '',
         dueDate: task.dueDate ? task.dueDate.slice(0, 10) : '',
         status: task.statusId,
-        assigneeId: members.find((m) => m.userName === task.assigneeName)?.userId ?? '',
+        assigneeId: originalAssigneeId,
         releaseId: task.releaseId ?? '',
     }));
 
@@ -170,7 +174,7 @@ function TaskDetailContent({ task, members }: { task: TaskDetailData; members: P
         draft.storyPoint !== (task.storyPoint?.toString() ?? '') ||
         draft.dueDate !== (task.dueDate ? task.dueDate.slice(0, 10) : '') ||
         draft.status !== task.statusId ||
-        draft.assigneeId !== (members.find((m) => m.userName === task.assigneeName)?.userId ?? '') ||
+        draft.assigneeId !== originalAssigneeId ||
         draft.releaseId !== (task.releaseId ?? '');
 
     const handleAttachClick = () => {
@@ -214,7 +218,7 @@ function TaskDetailContent({ task, members }: { task: TaskDetailData; members: P
             storyPoint: task.storyPoint?.toString() ?? '',
             dueDate: task.dueDate ? task.dueDate.slice(0, 10) : '',
             status: task.statusId,
-            assigneeId: members.find((m) => m.userName === task.assigneeName)?.userId ?? '',
+            assigneeId: originalAssigneeId,
             releaseId: task.releaseId ?? '',
         });
         setSaveError(null);
@@ -247,7 +251,7 @@ function TaskDetailContent({ task, members }: { task: TaskDetailData; members: P
                 }),
             });
         }
-        if (canReassign && draft.assigneeId !== (members.find((m) => m.userName === task.assigneeName)?.userId ?? ''))
+        if (canReassign && draft.assigneeId !== originalAssigneeId)
             jobs.push({ label: 'Atanan Kişi', promise: reassign.mutateAsync(draft.assigneeId || null) });
         if (canEditRelease && draft.releaseId !== (task.releaseId ?? ''))
             jobs.push({ label: 'Release', promise: updateRelease.mutateAsync(draft.releaseId || null) });
@@ -520,6 +524,7 @@ function TaskDetailContent({ task, members }: { task: TaskDetailData; members: P
                     </div>
 
                     <GitActivitySection taskId={task.id} issueKey={task.issueKey} />
+                    <PipelineRunsSection taskId={task.id} />
 
                     <div ref={subtasksContainerRef} className="scroll-mt-6">
                         <SubtasksSection

@@ -25,14 +25,14 @@ public class GetDashboardQueryHandler : IRequestHandler<GetDashboardQuery, Dashb
         if (!await _access.HasProjectAccessAsync(request.ProjectId, ct))
             throw new UnauthorizedAccessException("Bu projeye erişim yetkiniz yok.");
 
-        // Cache anahtari kullaniciya ozel -- kartlar artik yalnizca kendi gorevlerini gosteriyordu (#4 fix),
-        // bu yuzden proje + kullanici kombinasyonu bazinda cache'lemek gerekiyor.
         var cacheKey = $"dashboard:{request.ProjectId}:{_currentUser.UserId}";
         var cached = await _cache.GetAsync<DashboardDto>(cacheKey, ct);
         if (cached is not null) return cached;
 
         var tasks = await _db.Tasks
-            .Where(t => t.ProjectId == request.ProjectId && t.AssigneeId == _currentUser.UserId)
+            .Where(t =>
+                t.ProjectId == request.ProjectId &&
+                t.AssigneeId == _currentUser.UserId)
             .Select(t => new
             {
                 StatusName = t.WorkflowStatus.Name,
@@ -50,11 +50,19 @@ public class GetDashboardQueryHandler : IRequestHandler<GetDashboardQuery, Dashb
 
         var result = new DashboardDto(
             TotalTasks: tasks.Count,
-            ToDoCount: tasks.Count(t => t.StatusCategory == "ToDo"),
-            InProgressCount: tasks.Count(t => t.StatusCategory == "InProgress"),
-            ReadyForReviewCount: tasks.Count(t => t.StatusName == ItemStatus.ReadyForReview.ToString()),
-            ReadyForQACount: tasks.Count(t => t.StatusName == ItemStatus.ReadyForQA.ToString()),
-            DoneCount: tasks.Count(t => t.StatusCategory == "Done"),
+            ToDoCount: tasks.Count(t =>
+                t.StatusName == "To Do"),
+            InProgressCount: tasks.Count(t =>
+                t.StatusName == "In Progress"),
+            ReadyForReviewCount: tasks.Count(t =>
+                t.StatusName == "Ready for Review"),
+            ReadyForQACount: tasks.Count(t =>
+                t.StatusName == "Ready for QA"),
+            DoneCount: tasks.Count(t =>
+                t.StatusName == "Done" ||
+                t.StatusName == "Closed"),
+            // #A: Dashboard'daki OverdueCount, Geciken Görevler sayfasındaki (overdueOnly=true)
+            // mantığıyla birebir aynı olmalıdır: "Done kategorisinde olmayan ve teslim tarihi geçmiş".
             OverdueCount: tasks.Count(t =>
                 t.DueDate != null &&
                 t.DueDate < now &&
@@ -63,8 +71,6 @@ public class GetDashboardQueryHandler : IRequestHandler<GetDashboardQuery, Dashb
             ActiveSprintEndDate: activeSprint?.EndDate,
             ActiveSprintTaskCount: activeSprint?.TaskCount ?? 0);
 
-        // Kisa TTL (60sn) -- veri sik degisebiliyor (yeni gorev, durum degisimi vb.), taze kalmasi
-        // icin uzun tutmuyoruz, sadece ayni saniyeler icindeki tekrar cagrilar icin fayda sagliyor.
         await _cache.SetAsync(cacheKey, result, TimeSpan.FromSeconds(60), ct);
 
         return result;

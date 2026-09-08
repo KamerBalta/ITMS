@@ -15,11 +15,15 @@ public class SavedFiltersController : ControllerBase
     public SavedFiltersController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll(Guid projectId)
+    public async Task<IActionResult> GetAll(
+        Guid projectId,
+        [FromQuery] string scope)
     {
         try
         {
-            var result = await _mediator.Send(new GetSavedFiltersQuery(projectId));
+            var result = await _mediator.Send(
+                new GetSavedFiltersQuery(projectId, scope));
+
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -33,10 +37,20 @@ public class SavedFiltersController : ControllerBase
     {
         try
         {
-            var id = await _mediator.Send(new CreateSavedFilterCommand(projectId, request.Name, request.FiltersJson, request.IsShared));
+            var id = await _mediator.Send(
+                new CreateSavedFilterCommand(
+                    projectId,
+                    request.Name,
+                    request.FiltersJson,
+                    request.IsShared,
+                    request.Scope));
+
             return Ok(new { id });
         }
-        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
         catch (UnauthorizedAccessException ex)
         {
             return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
@@ -51,7 +65,10 @@ public class SavedFiltersController : ControllerBase
             await _mediator.Send(new DeleteSavedFilterCommand(filterId));
             return NoContent();
         }
-        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
         catch (UnauthorizedAccessException ex)
         {
             return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
@@ -59,4 +76,8 @@ public class SavedFiltersController : ControllerBase
     }
 }
 
-public record CreateSavedFilterRequest(string Name, string FiltersJson, bool IsShared);
+public record CreateSavedFilterRequest(
+    string Name,
+    string FiltersJson,
+    bool IsShared,
+    string Scope);

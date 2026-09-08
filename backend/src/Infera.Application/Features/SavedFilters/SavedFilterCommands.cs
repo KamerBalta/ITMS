@@ -5,11 +5,27 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infera.Application.Features.SavedFilters;
 
-public record CreateSavedFilterCommand(Guid ProjectId, string Name, string FiltersJson, bool IsShared) : IRequest<Guid>;
-public record DeleteSavedFilterCommand(Guid Id) : IRequest;
-public record GetSavedFiltersQuery(Guid ProjectId) : IRequest<List<SavedFilterDto>>;
+public record CreateSavedFilterCommand(
+    Guid ProjectId,
+    string Name,
+    string FiltersJson,
+    bool IsShared,
+    string Scope) : IRequest<Guid>;
 
-public record SavedFilterDto(Guid Id, string Name, string FiltersJson, bool IsShared, bool IsOwner, string CreatedByName);
+public record DeleteSavedFilterCommand(Guid Id) : IRequest;
+
+public record GetSavedFiltersQuery(
+    Guid ProjectId,
+    string Scope) : IRequest<List<SavedFilterDto>>;
+
+public record SavedFilterDto(
+    Guid Id,
+    string Name,
+    string FiltersJson,
+    bool IsShared,
+    bool IsOwner,
+    string CreatedByName,
+    string Scope);
 
 public class CreateSavedFilterCommandHandler : IRequestHandler<CreateSavedFilterCommand, Guid>
 {
@@ -32,6 +48,9 @@ public class CreateSavedFilterCommandHandler : IRequestHandler<CreateSavedFilter
         if (string.IsNullOrWhiteSpace(request.Name))
             throw new InvalidOperationException("Filtre adı boş olamaz.");
 
+        if (request.Scope is not ("board" or "issue-list"))
+            throw new InvalidOperationException("Geçersiz filtre kapsamı.");
+
         var nameConflict = await _db.SavedFilters
             .AnyAsync(f => f.ProjectId == request.ProjectId && f.CreatedByUserId == _currentUser.UserId && f.Name == request.Name, ct);
         if (nameConflict)
@@ -44,6 +63,7 @@ public class CreateSavedFilterCommandHandler : IRequestHandler<CreateSavedFilter
             Name = request.Name,
             FiltersJson = request.FiltersJson,
             IsShared = request.IsShared,
+            Scope = request.Scope,
         };
         _db.SavedFilters.Add(filter);
         await _db.SaveChangesAsync(ct);
@@ -96,11 +116,20 @@ public class GetSavedFiltersQueryHandler : IRequestHandler<GetSavedFiltersQuery,
 
         var currentUserId = _currentUser.UserId;
 
-        // Kendi filtrelerin + paylasilmis (IsShared=true) olan tum filtreler
+        // İlgili Scope'a ait: Kendi filtrelerin + paylaşılan (IsShared=true) filtreler
         return await _db.SavedFilters
-            .Where(f => f.ProjectId == request.ProjectId && (f.CreatedByUserId == currentUserId || f.IsShared))
+            .Where(f => f.ProjectId == request.ProjectId &&
+                        f.Scope == request.Scope &&
+                        (f.CreatedByUserId == currentUserId || f.IsShared))
             .OrderByDescending(f => f.CreatedAt)
-            .Select(f => new SavedFilterDto(f.Id, f.Name, f.FiltersJson, f.IsShared, f.CreatedByUserId == currentUserId, f.CreatedByUser.Name))
+            .Select(f => new SavedFilterDto(
+                f.Id,
+                f.Name,
+                f.FiltersJson,
+                f.IsShared,
+                f.CreatedByUserId == currentUserId,
+                f.CreatedByUser.Name,
+                f.Scope))
             .ToListAsync(ct);
     }
 }

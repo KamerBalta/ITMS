@@ -42,6 +42,9 @@ public class GetTasksQueryHandler : IRequestHandler<GetTasksQuery, List<TaskDto>
         else if (request.AssigneeId is not null)
             query = query.Where(t => t.AssigneeId == request.AssigneeId);
 
+        if (request.ReporterId is not null)
+            query = query.Where(t => t.ReporterId == request.ReporterId);
+
         if (!string.IsNullOrWhiteSpace(request.Status))
             query = query.Where(t => t.WorkflowStatus.Name == request.Status);
 
@@ -57,7 +60,35 @@ public class GetTasksQueryHandler : IRequestHandler<GetTasksQuery, List<TaskDto>
         if (request.ParentTaskId is not null)
             query = query.Where(t => t.ParentTaskId == request.ParentTaskId);
 
-        // #4: etikete gore filtreleme
+        // Tarih filtreleri
+        if (request.CreatedAfter is not null)
+            query = query.Where(t => t.CreatedAt >= request.CreatedAfter);
+
+        if (request.CreatedBefore is not null)
+            query = query.Where(t => t.CreatedAt <= request.CreatedBefore);
+
+        if (request.DueDateAfter is not null)
+            query = query.Where(t => t.DueDate >= request.DueDateAfter);
+
+        if (request.DueDateBefore is not null)
+            query = query.Where(t => t.DueDate <= request.DueDateBefore);
+
+        // #A: "Geciken" = teslim tarihi gecmis VE henuz tamamlanmamis (Done kategorisinde degil).
+        // Yalnizca DueDateBefore=now vermek, zaten Done olan ama eskiden gec kalmis gorevleri de
+        // yanlislikla dahil ederdi -- bu yuzden ayri, net bir parametre kullaniyoruz.
+        if (request.OverdueOnly == true)
+        {
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            query = query.Where(t => t.DueDate != null && t.DueDate < today && t.WorkflowStatus.Category != "Done");
+        }
+
+        if (request.UpdatedAfter is not null)
+            query = query.Where(t => t.UpdatedAt >= request.UpdatedAfter);
+
+        if (request.UpdatedBefore is not null)
+            query = query.Where(t => t.UpdatedAt <= request.UpdatedBefore);
+
+        // #4: Etikete gore filtreleme
         if (request.LabelId is not null)
             query = query.Where(t => t.TaskLabels.Any(tl => tl.LabelId == request.LabelId));
 
@@ -84,10 +115,12 @@ public class GetTasksQueryHandler : IRequestHandler<GetTasksQuery, List<TaskDto>
                 t.StoryPoint,
                 t.AssigneeId,
                 t.Assignee != null ? t.Assignee.Name : null,
+                t.ReporterId,
+                t.Reporter.Name,
                 t.SprintId,
                 t.Rank,
                 t.ParentTaskId,
-                t.TaskLabels.Select(tl => tl.Label.Name).ToList()))
+                t.TaskLabels.Select(tl => tl.Label.Name).ToList(), t.DueDate))
             .ToListAsync(ct);
     }
 }

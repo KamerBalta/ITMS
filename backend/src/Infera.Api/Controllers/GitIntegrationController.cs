@@ -11,36 +11,78 @@ namespace Infera.Api.Controllers;
 public class GitIntegrationController : ControllerBase
 {
     private readonly IMediator _mediator;
+
     public GitIntegrationController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
     public async Task<IActionResult> Get(Guid projectId)
     {
-        try { return Ok(await _mediator.Send(new GetGitIntegrationQuery(projectId))); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        try
+        {
+            return Ok(await _mediator.Send(new GetGitIntegrationQuery(projectId)));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
     }
 
     [HttpGet("available-commands")]
     public async Task<IActionResult> GetAvailableCommands(Guid projectId)
     {
-        try { return Ok(await _mediator.Send(new GetAvailableCommitCommandsQuery(projectId))); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        try
+        {
+            return Ok(await _mediator.Send(new GetAvailableCommitCommandsQuery(projectId)));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
     }
 
     [HttpPost]
     public async Task<IActionResult> Setup(Guid projectId, SetupGitIntegrationRequest request)
     {
-        try { return Ok(await _mediator.Send(new SetupGitIntegrationCommand(projectId, request.Provider, request.RepositoryUrl, request.CloseTargetStatusId))); }
-        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        try
+        {
+            return Ok(await _mediator.Send(new SetupGitIntegrationCommand(
+                projectId,
+                request.Provider,
+                request.RepositoryUrl,
+                request.CloseTargetStatusId,
+                request.AzureDevOpsOrgUrl,
+                request.AzureDevOpsProjectName,
+                request.AzureDevOpsPersonalAccessToken)));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
     }
 
     [HttpDelete]
     public async Task<IActionResult> Delete(Guid projectId)
     {
-        try { await _mediator.Send(new DeleteGitIntegrationCommand(projectId)); return NoContent(); }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        try
+        {
+            await _mediator.Send(new DeleteGitIntegrationCommand(projectId));
+            return NoContent();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
     }
 }
 
-public record SetupGitIntegrationRequest(string Provider, string RepositoryUrl, Guid? CloseTargetStatusId);
+public record SetupGitIntegrationRequest(
+    string Provider,
+    string RepositoryUrl,
+    Guid? CloseTargetStatusId,
+    string? AzureDevOpsOrgUrl,
+    string? AzureDevOpsProjectName,
+    string? AzureDevOpsPersonalAccessToken);

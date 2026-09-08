@@ -15,6 +15,8 @@ public class SavedFilter : BaseEntity
    
     public string FiltersJson { get; set; } = "{}";
 
+    public string Scope { get; set; } = default!;
+
     public bool IsShared { get; set; } // false = yalnizca olusturan gorur, true = tum proje uyeleri gorur
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

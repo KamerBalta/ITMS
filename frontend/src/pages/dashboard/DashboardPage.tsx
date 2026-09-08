@@ -202,20 +202,28 @@ export function DashboardPage() {
                             </p>
                         </div>
 
-                        <div className="surface border border-slate-200 dark:border-gray-800 rounded-lg p-5">
-                            <div className="flex items-center gap-2 text-muted text-sm">
-                                <AlertCircle className="w-4 h-4" />
-                                Geciken Görev
-                            </div>
+                        <Link
+                            to="/overdue"
+                            className={`border border-gray-100 dark:border-gray-800 rounded-lg p-3 block transition-colors ${summary.overdueCount > 0
+                                    ? 'hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer'
+                                    : 'hover-surface'
+                                }`}
+                        >
+                            <p className="text-xs text-muted">Geciken Görev</p>
                             <p
-                                className={`text-3xl font-semibold mt-3 ${summary.overdueCount > 0
+                                className={`text-xl font-bold ${summary.overdueCount > 0
                                         ? 'text-red-600 dark:text-red-400'
                                         : 'text-primary'
                                     }`}
                             >
                                 {summary.overdueCount}
                             </p>
-                        </div>
+                            {summary.overdueCount > 0 && (
+                                <p className="text-[10px] text-red-400 dark:text-red-500 mt-0.5">
+                                    → Detayları gör
+                                </p>
+                            )}
+                        </Link>
 
                         <div className="surface border border-slate-200 dark:border-gray-800 rounded-lg p-5">
                             <div className="flex items-center gap-2 text-muted text-sm">

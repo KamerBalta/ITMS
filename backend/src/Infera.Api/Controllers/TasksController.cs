@@ -29,11 +29,11 @@ public class TasksController : ControllerBase
 
     [HttpGet]
     public async Task<IActionResult> GetTasks(
-        [FromQuery] Guid ProjectId,
-        [FromQuery] Guid? boardId,
+        [FromQuery] Guid projectId,
         [FromQuery] Guid? sprintId,
         [FromQuery] bool? backlogOnly,
         [FromQuery] Guid? assigneeId,
+        [FromQuery] Guid? reporterId,
         [FromQuery] string? status,
         [FromQuery] Guid? issueTypeId,
         [FromQuery] Priority? priority,
@@ -42,31 +42,50 @@ public class TasksController : ControllerBase
         [FromQuery] Guid? labelId,
         [FromQuery] Guid? componentId,
         [FromQuery] bool? unassignedOnly,
+        [FromQuery] Guid? boardId,
+        [FromQuery] DateTime? createdAfter,
+        [FromQuery] DateTime? createdBefore,
+        [FromQuery] DateOnly? dueDateAfter,
+        [FromQuery] DateOnly? dueDateBefore,
+        [FromQuery] DateTime? updatedAfter,
+        [FromQuery] DateTime? updatedBefore,
+        [FromQuery] bool? overdueOnly,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
         try
         {
             var result = await _mediator.Send(new GetTasksQuery(
-                ProjectId: ProjectId,
-                BoardId: boardId,
-                SprintId: sprintId,
-                BacklogOnly: backlogOnly,
-                AssigneeId: assigneeId,
-                Status: status,
-                IssueTypeId: issueTypeId,
-                Priority: priority,
-                Search: search,
-                ParentTaskId: parentTaskId,
-                LabelId: labelId,
-                ComponentId: componentId,
-                UnassignedOnly: unassignedOnly,
-                Page: page,
-                PageSize: pageSize));
+                projectId,
+                sprintId,
+                backlogOnly,
+                assigneeId,
+                reporterId,
+                status,
+                issueTypeId,
+                priority,
+                search,
+                parentTaskId,
+                labelId,
+                componentId,
+                unassignedOnly,
+                boardId,
+                createdAfter,
+                createdBefore,
+                dueDateAfter,
+                dueDateBefore,
+                updatedAfter,
+                updatedBefore,
+                overdueOnly,
+                page,
+                pageSize));
 
             return Ok(result);
         }
-        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
     }
 
     [HttpGet("resolve/{issueKey}")]
@@ -114,7 +133,7 @@ public class TasksController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateTaskRequest request)
     {
-        var reporterId = Guid.Parse(User.FindFirstValue("sub")!);
+        var reporterId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub")!);
         try
         {
             var id = await _mediator.Send(new CreateTaskCommand(
@@ -136,7 +155,7 @@ public class TasksController : ControllerBase
     [HttpPost("{taskId}/subtasks")]
     public async Task<IActionResult> CreateSubtask(Guid taskId, CreateSubtaskRequest request)
     {
-        var reporterId = Guid.Parse(User.FindFirstValue("sub")!);
+        var reporterId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub")!);
         try
         {
             var id = await _mediator.Send(new CreateSubtaskCommand(taskId, request.Title, reporterId, request.AssigneeId));
@@ -355,6 +374,17 @@ public class TasksController : ControllerBase
         try
         {
             return Ok(await _mediator.Send(new GetTaskGitCommitsQuery(taskId)));
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+    }
+
+    [HttpGet("{taskId}/pipeline-runs")]
+    public async Task<IActionResult> GetPipelineRuns(Guid taskId)
+    {
+        try
+        {
+            return Ok(await _mediator.Send(new GetTaskPipelineRunsQuery(taskId)));
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }

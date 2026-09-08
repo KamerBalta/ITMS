@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Text.Json;
 using Infera.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,40 @@ public class GitWebhookController : ControllerBase
         _db = db;
         _processor = processor;
         _signatureValidator = signatureValidator;
+    }
+
+    [HttpPost("azure-devops/{projectId}/{secret}")]
+    public async Task<IActionResult> ReceiveAzureDevOpsWebhook(Guid projectId, string secret)
+    {
+        var integration = await _db.ProjectGitIntegrations.FirstOrDefaultAsync(g => g.ProjectId == projectId && g.IsActive);
+        if (integration is null) return NotFound();
+
+        // #TFVC: Azure DevOps webhook'lari HMAC imzasi GONDERMEZ -- guvenlik, URL'in kendisine
+        // gomulu, tahmin edilemez (32 byte rastgele) secret ile saglanir. Bu, GitHub'dan daha
+        // az saglam bir yontem ama Azure DevOps'un servis kancalarinin (Service Hooks) desteklediği
+        // tek pratik dogrulama sekli budur.
+        if (secret != integration.WebhookSecret) return Unauthorized(new { message = "Geçersiz webhook secret." });
+
+        using var reader = new StreamReader(Request.Body, Encoding.UTF8);
+        var payload = await reader.ReadToEndAsync();
+
+        using var doc = JsonDocument.Parse(payload);
+        var eventType = doc.RootElement.TryGetProperty("eventType", out var eventTypeEl) ? eventTypeEl.GetString() : null;
+
+        switch (eventType)
+        {
+            case "tfvc.checkin":
+                await _processor.ProcessAzureDevOpsCheckinAsync(projectId, payload);
+                break;
+            case "build.complete":
+                await _processor.ProcessAzureDevOpsBuildAsync(projectId, payload);
+                break;
+            case "ms.vss-release.deployment-completed-event":
+                await _processor.ProcessAzureDevOpsReleaseAsync(projectId, payload);
+                break;
+        }
+
+        return Ok();
     }
 
     [HttpPost("{projectId}")]

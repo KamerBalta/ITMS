@@ -29,7 +29,6 @@ import {
     ChevronRight,
     FileText,
     GitBranch,
-    MoreHorizontal,
     Pencil,
     Plus,
     Settings2,
@@ -84,7 +83,15 @@ export function ProjectDetailPage() {
         return <AccessDeniedProjectView projectId={projectId!} />;
     }
 
-    if (isLoading || !project) return <p className="text-muted">Yükleniyor...</p>;
+    if (isLoading || !project) {
+        return (
+            <div className="flex h-full min-h-0 items-center justify-center bg-[#f7f8fa] dark:bg-gray-950">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                    Proje yükleniyor...
+                </div>
+            </div>
+        );
+    }
 
     const projectTeamIds = allTeams?.filter((t) => project.teamNames.includes(t.name)).map((t) => t.id) ?? [];
 
@@ -196,176 +203,176 @@ export function ProjectDetailPage() {
     const availableTeamsToAdd = allTeams?.filter((t) => !project.teamNames.includes(t.name)) ?? [];
 
     return (
-        <div className="mx-auto max-w-[1400px] space-y-6 p-6">
+        <div className="mx-auto flex h-full min-h-0 w-full max-w-[1400px] flex-col overflow-auto bg-[#f7f8fa] dark:bg-gray-950">
             {/* Hata Bildirimi */}
             {(error || deleteError) && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between text-sm">
-                    <span>❌ {error || deleteError}</span>
-                    <button onClick={() => { setError(null); setDeleteError(null); }} className="text-red-500 font-bold hover:text-red-700">
-                        ✕
+                <div className="mx-4 mt-3 flex items-center justify-between rounded-md border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300 sm:mx-5">
+                    <span>{error || deleteError}</span>
+
+                    <button
+                        onClick={() => {
+                            setError(null);
+                            setDeleteError(null);
+                        }}
+                        className="ml-4 shrink-0 rounded p-1 text-red-500 transition-colors hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950"
+                        aria-label="Kapat"
+                    >
+                        <X className="h-4 w-4" />
                     </button>
                 </div>
             )}
 
             {/* Header */}
-            <div className="border-b border-border pb-5">
-                <Link
-                    to="/projects"
-                    className="mb-5 inline-flex items-center gap-2 text-sm text-secondary hover:text-primary"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Projeler
-                </Link>
+            <div className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+                <div className="px-4 py-4 sm:px-5">
+                    <Link
+                        to="/projects"
+                        className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 transition-colors hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
+                    >
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                        Projeler
+                    </Link>
 
-                <div className="flex items-start justify-between gap-6">
-                    <div className="flex min-w-0 items-start gap-4">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                            <Settings2 className="h-6 w-6" />
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="flex min-w-0 items-start gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+                                <Settings2 className="h-5 w-5" />
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                                {isEditing ? (
+                                    <div className="max-w-2xl space-y-2">
+                                        <input
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            className="input-base w-full rounded-md border border-gray-300 px-3 py-2 text-lg font-semibold text-gray-900 dark:border-gray-700 dark:text-gray-100"
+                                        />
+
+                                        <textarea
+                                            value={description}
+                                            onChange={(e) => setDescription(e.target.value)}
+                                            rows={3}
+                                            className="input-base w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700"
+                                            placeholder="Açıklama ekleyin..."
+                                        />
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h1 className="truncate text-xl font-semibold text-gray-900 dark:text-gray-100">
+                                                {project.name}
+                                            </h1>
+
+                                            <span
+                                                className={`rounded px-2 py-0.5 text-[11px] font-medium ${project.status === 'Archived'
+                                                        ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
+                                                        : 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300'
+                                                    }`}
+                                            >
+                                                {project.status === 'Archived' ? 'Arşivlenmiş' : 'Aktif'}
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-1 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                            <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
+                                                {project.key}
+                                            </span>
+                                            <span>·</span>
+                                            <span>Proje</span>
+                                        </div>
+
+                                        <p className="mt-2 max-w-3xl text-sm leading-5 text-gray-600 dark:text-gray-400">
+                                            {project.description || 'Açıklama bulunmuyor.'}
+                                        </p>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
-                        <div className="min-w-0 flex-1">
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
                             {isEditing ? (
-                                <div className="space-y-2">
-                                    <input
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        className="text-2xl font-bold text-primary input-base border rounded px-2 py-1 w-full"
-                                    />
-                                    <textarea
-                                        value={description}
-                                        onChange={(e) => setDescription(e.target.value)}
-                                        rows={3}
-                                        className="w-full input-base border rounded px-3 py-2 text-sm"
-                                        placeholder="Açıklama ekleyin..."
-                                    />
-                                </div>
+                                <>
+                                    <button
+                                        onClick={handleSave}
+                                        disabled={updateProject.isPending}
+                                        className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                                    >
+                                        <Check className="h-3.5 w-3.5" />
+                                        Kaydet
+                                    </button>
+
+                                    <button
+                                        onClick={() => setIsEditing(false)}
+                                        className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                        İptal
+                                    </button>
+                                </>
                             ) : (
                                 <>
-                                    <div className="flex items-center gap-3">
-                                        <h1 className="text-2xl font-semibold text-primary">
-                                            {project.name}
-                                        </h1>
-
-                                        <span
-                                            className={`rounded-full px-2.5 py-1 text-xs font-medium ${project.status === 'Archived'
-                                                ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
-                                                : 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
-                                                }`}
+                                    {canManage && (
+                                        <button
+                                            onClick={startEditing}
+                                            className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
                                         >
-                                            {project.status === 'Archived'
-                                                ? 'Arşivlenmiş'
-                                                : 'Aktif'}
-                                        </span>
-                                    </div>
+                                            <Pencil className="h-3.5 w-3.5" />
+                                            Düzenle
+                                        </button>
+                                    )}
 
-                                    <div className="mt-1 flex items-center gap-2 text-sm text-secondary">
-                                        <span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
-                                            {project.key}
-                                        </span>
-                                        <span>·</span>
-                                        <span>Proje</span>
-                                    </div>
+                                    {canManage &&
+                                        (project.status !== 'Archived' ? (
+                                            <button
+                                                onClick={handleArchive}
+                                                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                                            >
+                                                <Archive className="h-3.5 w-3.5" />
+                                                Arşivle
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={handleUnarchive}
+                                                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:border-green-200 hover:bg-green-50 hover:text-green-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-green-950/30 dark:hover:text-green-400"
+                                            >
+                                                <Archive className="h-3.5 w-3.5" />
+                                                Arşivden Çıkar
+                                            </button>
+                                        ))}
 
-                                    <p className="mt-3 max-w-3xl text-sm text-secondary">
-                                        {project.description || 'Açıklama bulunmuyor.'}
-                                    </p>
+                                    {canDelete && (
+                                        <button
+                                            onClick={() => setDeleteConfirmOpen(true)}
+                                            className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900 dark:bg-gray-900 dark:text-red-400 dark:hover:bg-red-950/30"
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                            Projeyi Sil
+                                        </button>
+                                    )}
                                 </>
                             )}
                         </div>
-                    </div>
-
-                    <div className="flex shrink-0 items-center gap-2">
-                        {isEditing ? (
-                            <>
-                                <button
-                                    onClick={handleSave}
-                                    disabled={updateProject.isPending}
-                                    className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
-                                >
-                                    <Check className="h-4 w-4" />
-                                    Kaydet
-                                </button>
-
-                                <button
-                                    onClick={() => setIsEditing(false)}
-                                    className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-secondary hover:bg-surface-muted cursor-pointer"
-                                >
-                                    <X className="h-4 w-4" />
-                                    İptal
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                {canManage && (
-                                    <button
-                                        onClick={startEditing}
-                                        className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-secondary hover:bg-surface-muted cursor-pointer"
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                        Düzenle
-                                    </button>
-                                )}
-
-                                {canManage && (
-                                    project.status !== 'Archived' ? (
-                                        <button
-                                            onClick={handleArchive}
-                                            className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950 cursor-pointer"
-                                        >
-                                            <Archive className="h-4 w-4" />
-                                            Arşivle
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={handleUnarchive}
-                                            className="inline-flex items-center gap-2 rounded-md border border-green-200 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50 dark:border-green-900 dark:text-green-400 dark:hover:bg-green-950 cursor-pointer"
-                                        >
-                                            <Archive className="h-4 w-4" />
-                                            Arşivden Çıkar
-                                        </button>
-                                    )
-                                )}
-
-                                {canDelete && (
-                                    <button
-                                        onClick={() => setDeleteConfirmOpen(true)}
-                                        className="inline-flex items-center gap-2 rounded-md border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-4 py-2 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-950 cursor-pointer"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                        Projeyi Sil
-                                    </button>
-                                )}
-
-                                <button
-                                    type="button"
-                                    className="rounded-md border border-border p-2 text-secondary hover:bg-surface-muted"
-                                    title="Diğer seçenekler"
-                                >
-                                    <MoreHorizontal className="h-5 w-5" />
-                                </button>
-                            </>
-                        )}
                     </div>
                 </div>
             </div>
 
             {/* İstatistik Kartları */}
-            <div className="grid grid-cols-2 border-y border-border md:grid-cols-4 bg-surface rounded-lg overflow-hidden border">
-                <div className="border-r border-border px-5 py-4">
-                    <p className="text-xs font-medium text-secondary">Sorumlu</p>
-                    <p className="mt-1 truncate text-sm font-semibold text-primary">{project.ownerName}</p>
+            <div className="mx-4 mt-4 grid grid-cols-2 overflow-hidden rounded-md border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 sm:mx-5 md:grid-cols-4">
+                <div className="border-r border-gray-200 px-4 py-3.5 dark:border-gray-800">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Sorumlu</p>
+                    <p className="mt-1 truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{project.ownerName}</p>
                 </div>
-                <div className="border-r border-border px-5 py-4">
-                    <p className="text-xs font-medium text-secondary">Proje Üyeleri</p>
-                    <p className="mt-1 text-sm font-semibold text-primary">{project.memberCount}</p>
+                <div className="border-r border-gray-200 px-4 py-3.5 dark:border-gray-800">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Proje Üyeleri</p>
+                    <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{project.memberCount}</p>
                 </div>
-                <div className="border-r border-border px-5 py-4">
-                    <p className="text-xs font-medium text-secondary">Görevler</p>
-                    <p className="mt-1 text-sm font-semibold text-primary">{project.taskCount}</p>
+                <div className="border-r border-gray-200 px-4 py-3.5 dark:border-gray-800">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Görevler</p>
+                    <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{project.taskCount}</p>
                 </div>
-                <div className="px-5 py-4">
-                    <p className="text-xs font-medium text-secondary">Durum</p>
-                    <p className="mt-1 text-sm font-semibold text-primary">
+                <div className="px-4 py-3.5">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Durum</p>
+                    <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
                         {project.status === 'Archived' ? 'Arşivlenmiş' : 'Aktif'}
                     </p>
                 </div>
@@ -373,164 +380,170 @@ export function ProjectDetailPage() {
 
             {/* Proje Ayarları Listesi */}
             {canManage && (
-                <section className="space-y-3">
-                    <div className="flex items-center justify-between">
+                <section className="mx-4 mt-5 space-y-3 sm:mx-5">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                         <div>
-                            <h2 className="text-lg font-semibold text-primary">Proje ayarları</h2>
-                            <p className="mt-1 text-sm text-secondary">Projenizin işleyişini ve yapılandırmasını yönetin.</p>
+                            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Proje ayarları</h2>
+                            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Projenizin işleyişini ve yapılandırmasını yönetin.</p>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                             <Link
                                 to={`/projects/${projectId}/git-integration`}
-                                className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                                target="_self"
+                                className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
                             >
-                                <GitBranch className="h-4 w-4" />
-                                Git Entegrasyonu →
+                                <GitBranch className="h-3.5 w-3.5" />
+                                Git Entegrasyonu
+                                <ChevronRight className="h-3.5 w-3.5" />
                             </Link>
                             <Link
                                 to={`/projects/${projectId}/issue-templates`}
-                                className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                                target="_self"
+                                className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
                             >
-                                <FileText className="h-4 w-4" />
-                                Issue Şablonları →
+                                <FileText className="h-3.5 w-3.5" />
+                                Issue Şablonları
+                                <ChevronRight className="h-3.5 w-3.5" />
                             </Link>
                             <Link
                                 to={`/projects/${projectId}/bulk-import`}
-                                className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                                target="_self"
+                                className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
                             >
-                                <UploadCloud className="h-4 w-4" />
-                                Toplu Görev İçe Aktar (CSV) →
+                                <UploadCloud className="h-3.5 w-3.5" />
+                                Toplu Görev İçe Aktar (CSV)
+                                <ChevronRight className="h-3.5 w-3.5" />
                             </Link>
                         </div>
                     </div>
 
-                    <div className="overflow-hidden rounded-lg border border-border bg-surface">
+                    <div className="overflow-hidden rounded-md border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
                         <Link
                             to={`/projects/${projectId}/git-integration`}
-                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
+                            className="group flex items-center justify-between border-b border-gray-200 px-4 py-3.5 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
                         >
                             <div>
-                                <p className="text-sm font-medium text-primary">Git Entegrasyonu</p>
-                                <p className="mt-1 text-xs text-secondary">GitHub webhook ve otomatik commit bağlama ayarlarını yapılandırın.</p>
+                                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Git Entegrasyonu</p>
+                                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">GitHub webhook ve otomatik commit bağlama ayarlarını yapılandırın.</p>
                             </div>
-                            <ChevronRight className="h-5 w-5 text-muted" />
+                            <ChevronRight className="h-4 w-4 text-gray-400 transition-transform group-hover:translate-x-0.5 dark:text-gray-500" />
                         </Link>
 
                         <Link
                             to={`/projects/${projectId}/issue-types`}
-                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
+                            className="group flex items-center justify-between border-b border-gray-200 px-4 py-3.5 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
                         >
                             <div>
-                                <p className="text-sm font-medium text-primary">Issue Types</p>
-                                <p className="mt-1 text-xs text-secondary">Projede kullanılabilecek iş türlerini yönetin.</p>
+                                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Issue Types</p>
+                                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Projede kullanılabilecek iş türlerini yönetin.</p>
                             </div>
-                            <ChevronRight className="h-5 w-5 text-muted" />
+                            <ChevronRight className="h-4 w-4 text-gray-400 transition-transform group-hover:translate-x-0.5 dark:text-gray-500" />
                         </Link>
 
                         <Link
                             to={`/projects/${projectId}/workflow`}
-                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
+                            className="group flex items-center justify-between border-b border-gray-200 px-4 py-3.5 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
                         >
                             <div>
-                                <p className="text-sm font-medium text-primary">Workflow</p>
-                                <p className="mt-1 text-xs text-secondary">İş akışı ve durum geçişlerini yapılandırın.</p>
+                                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Workflow</p>
+                                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">İş akışı ve durum geçişlerini yapılandırın.</p>
                             </div>
-                            <ChevronRight className="h-5 w-5 text-muted" />
+                            <ChevronRight className="h-4 w-4 text-gray-400 transition-transform group-hover:translate-x-0.5 dark:text-gray-500" />
                         </Link>
 
                         <Link
                             to={`/projects/${projectId}/board-settings`}
-                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
+                            className="group flex items-center justify-between border-b border-gray-200 px-4 py-3.5 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
                         >
                             <div>
-                                <p className="text-sm font-medium text-primary">Board Settings (Columns)</p>
-                                <p className="mt-1 text-xs text-secondary">Board sütunlarını, durum eşleştirmelerini ve WIP limitlerini yapılandırın.</p>
+                                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Board Settings (Columns)</p>
+                                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Board sütunlarını, durum eşleştirmelerini ve WIP limitlerini yapılandırın.</p>
                             </div>
-                            <ChevronRight className="h-5 w-5 text-muted" />
+                            <ChevronRight className="h-4 w-4 text-gray-400 transition-transform group-hover:translate-x-0.5 dark:text-gray-500" />
                         </Link>
 
                         <Link
                             to={`/projects/${projectId}/custom-fields`}
-                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
+                            className="group flex items-center justify-between border-b border-gray-200 px-4 py-3.5 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
                         >
                             <div>
-                                <p className="text-sm font-medium text-primary">Özel Alanlar</p>
-                                <p className="mt-1 text-xs text-secondary">Projeye özel alanları yönetin.</p>
+                                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Özel Alanlar</p>
+                                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Projeye özel alanları yönetin.</p>
                             </div>
-                            <ChevronRight className="h-5 w-5 text-muted" />
+                            <ChevronRight className="h-4 w-4 text-gray-400 transition-transform group-hover:translate-x-0.5 dark:text-gray-500" />
                         </Link>
 
                         <Link
                             to={`/projects/${projectId}/automation`}
-                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
+                            className="group flex items-center justify-between border-b border-gray-200 px-4 py-3.5 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
                         >
                             <div>
-                                <p className="text-sm font-medium text-primary">Otomasyon</p>
-                                <p className="mt-1 text-xs text-secondary">Otomatik çalışan proje kurallarını yönetin.</p>
+                                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Otomasyon</p>
+                                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Otomatik çalışan proje kurallarını yönetin.</p>
                             </div>
-                            <ChevronRight className="h-5 w-5 text-muted" />
+                            <ChevronRight className="h-4 w-4 text-gray-400 transition-transform group-hover:translate-x-0.5 dark:text-gray-500" />
                         </Link>
 
                         <Link
                             to={`/projects/${projectId}/permissions`}
-                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
+                            className="group flex items-center justify-between border-b border-gray-200 px-4 py-3.5 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
                         >
                             <div>
-                                <p className="text-sm font-medium text-primary">Yetkiler</p>
-                                <p className="mt-1 text-xs text-secondary">Proje erişim ve yetki ayarlarını yönetin.</p>
+                                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Yetkiler</p>
+                                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Proje erişim ve yetki ayarlarını yönetin.</p>
                             </div>
-                            <ChevronRight className="h-5 w-5 text-muted" />
+                            <ChevronRight className="h-4 w-4 text-gray-400 transition-transform group-hover:translate-x-0.5 dark:text-gray-500" />
                         </Link>
 
                         <Link
                             to={`/projects/${projectId}/components`}
-                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
+                            className="group flex items-center justify-between border-b border-gray-200 px-4 py-3.5 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
                         >
                             <div>
-                                <p className="text-sm font-medium text-primary">Component'ler</p>
-                                <p className="mt-1 text-xs text-secondary">Projeye ait modül ve bileşenleri yönetin.</p>
+                                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Component'ler</p>
+                                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Projeye ait modül ve bileşenleri yönetin.</p>
                             </div>
-                            <ChevronRight className="h-5 w-5 text-muted" />
+                            <ChevronRight className="h-4 w-4 text-gray-400 transition-transform group-hover:translate-x-0.5 dark:text-gray-500" />
                         </Link>
 
                         <Link
                             to={`/projects/${projectId}/issue-templates`}
-                            className="flex items-center justify-between border-b border-border px-5 py-4 hover:bg-surface-muted"
+                            className="group flex items-center justify-between border-b border-gray-200 px-4 py-3.5 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
                         >
                             <div>
-                                <p className="text-sm font-medium text-primary">Issue Şablonları</p>
-                                <p className="mt-1 text-xs text-secondary">Görev oluştururken kullanılabilecek hazır açıklama şablonlarını yönetin.</p>
+                                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Issue Şablonları</p>
+                                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Görev oluştururken kullanılabilecek hazır açıklama şablonlarını yönetin.</p>
                             </div>
-                            <ChevronRight className="h-5 w-5 text-muted" />
+                            <ChevronRight className="h-4 w-4 text-gray-400 transition-transform group-hover:translate-x-0.5 dark:text-gray-500" />
                         </Link>
 
                         <Link
                             to={`/projects/${projectId}/bulk-import`}
-                            className="flex items-center justify-between px-5 py-4 hover:bg-surface-muted"
+                            className="group flex items-center justify-between px-4 py-3.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
                         >
                             <div>
-                                <p className="text-sm font-medium text-primary">Toplu Görev İçe Aktarma</p>
-                                <p className="mt-1 text-xs text-secondary">CSV dosyası üzerinden toplu görev ve hiyerarşi aktarımı yapın.</p>
+                                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Toplu Görev İçe Aktarma</p>
+                                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">CSV dosyası üzerinden toplu görev ve hiyerarşi aktarımı yapın.</p>
                             </div>
-                            <ChevronRight className="h-5 w-5 text-muted" />
+                            <ChevronRight className="h-4 w-4 text-gray-400 transition-transform group-hover:translate-x-0.5 dark:text-gray-500" />
                         </Link>
                     </div>
                 </section>
             )}
 
             {/* Takımlar & Üyeler */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="mx-4 mt-5 grid grid-cols-1 gap-4 pb-5 sm:mx-5 md:grid-cols-2">
                 {/* SOL KOLON: TAKIMLAR */}
-                <div className="surface border rounded-lg p-5 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="space-y-3 rounded-md border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                    <div className="flex items-center justify-between border-b border-gray-200 pb-3 dark:border-gray-800">
                         <div>
-                            <h2 className="text-base font-semibold text-primary">Takımlar</h2>
-                            <p className="mt-1 text-xs text-secondary">Bu projede çalışan takımlar</p>
+                            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Takımlar</h2>
+                            <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">Bu projede çalışan takımlar</p>
                         </div>
                         {canManage && availableTeamsToAdd.length > 0 && (
                             <button
                                 onClick={() => setIsAddTeamModalOpen(true)}
-                                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-secondary hover:bg-surface-muted cursor-pointer"
+                                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
                             >
                                 <Plus className="h-3.5 w-3.5" />
                                 Takım Ekle
@@ -539,22 +552,24 @@ export function ProjectDetailPage() {
                     </div>
 
                     {project.teamNames.length === 0 ? (
-                        <p className="text-sm text-muted">Projeye henüz takım atanmamış.</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Projeye henüz takım atanmamış.</p>
                     ) : (
                         <div className="space-y-2">
                             {project.teamNames.map((teamName) => (
                                 <div
                                     key={teamName}
-                                    className="flex items-center justify-between p-3 border rounded-lg surface-muted"
+                                    className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 transition-colors hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-800/60 dark:hover:bg-gray-800"
                                 >
                                     <div className="flex items-center gap-2">
-                                        <span className="text-lg">👥</span>
-                                        <p className="font-semibold text-primary text-sm">{teamName}</p>
+                                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-blue-50 text-xs font-semibold text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+                                            {teamName.slice(0, 1).toUpperCase()}
+                                        </div>
+                                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{teamName}</p>
                                     </div>
                                     {canManage && (
                                         <button
                                             onClick={() => handleRemoveTeam(teamName)}
-                                            className="text-red-500 text-xs font-medium hover:underline cursor-pointer"
+                                            className="shrink-0 rounded px-2 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-950/30 dark:hover:text-red-400"
                                         >
                                             Çıkar
                                         </button>
@@ -566,16 +581,16 @@ export function ProjectDetailPage() {
                 </div>
 
                 {/* SAĞ KOLON: PROJE ÜYELERİ */}
-                <div className="surface border rounded-lg p-5 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="space-y-3 rounded-md border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                    <div className="flex items-center justify-between border-b border-gray-200 pb-3 dark:border-gray-800">
                         <div>
-                            <h2 className="text-base font-semibold text-primary">Proje Üyeleri</h2>
-                            <p className="mt-1 text-xs text-secondary">Projede yer alan üyeler</p>
+                            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Proje Üyeleri</h2>
+                            <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">Projede yer alan üyeler</p>
                         </div>
                         {canManage && projectTeamIds.length > 0 && (
                             <button
                                 onClick={() => setIsAddMemberModalOpen(true)}
-                                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-secondary hover:bg-surface-muted cursor-pointer"
+                                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
                             >
                                 <Plus className="h-3.5 w-3.5" />
                                 Üye Ekle
@@ -584,18 +599,24 @@ export function ProjectDetailPage() {
                     </div>
 
                     {!projectMembers || projectMembers.length === 0 ? (
-                        <p className="text-sm text-muted">Bu projede henüz üye yok.</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Bu projede henüz üye yok.</p>
                     ) : (
                         <ul className="space-y-2">
                             {projectMembers.map((m) => (
-                                <li key={m.memberId} className="flex items-center gap-2 text-sm surface border rounded px-3 py-2">
+                                <li
+                                    key={m.memberId}
+                                    className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2.5 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800/60"
+                                >
                                     <Avatar userId={m.userId} name={m.userName} size="sm" />
-                                    <span className="flex-1 truncate">
-                                        {m.userName} {m.title && <span className="text-muted">· {m.title}</span>}
-                                        <span className="text-muted"> — {m.teamName} — {m.projectRole}</span>
+                                    <span className="flex-1 truncate text-sm">
+                                        {m.userName} {m.title && <span className="text-gray-500 dark:text-gray-400">· {m.title}</span>}
+                                        <span className="text-gray-500 dark:text-gray-400"> — {m.teamName} — {m.projectRole}</span>
                                     </span>
                                     {canManage && (
-                                        <button onClick={() => removeProjectMember.mutate(m.memberId)} className="text-red-500 text-xs hover:underline shrink-0 cursor-pointer">
+                                        <button
+                                            onClick={() => removeProjectMember.mutate(m.memberId)}
+                                            className="shrink-0 rounded px-2 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                                        >
                                             Çıkar
                                         </button>
                                     )}
@@ -608,21 +629,22 @@ export function ProjectDetailPage() {
 
             {/* MODAL: Takım Ekle */}
             {isAddTeamModalOpen && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-                    <div className="surface rounded-lg shadow-lg p-6 max-w-md w-full space-y-4">
-                        <div className="flex justify-between items-center border-b border-border pb-2">
-                            <h3 className="font-bold text-lg text-primary">Takım Ekle</h3>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[1px]">
+                    <div className="w-full max-w-md space-y-4 rounded-lg border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-900">
+                        <div className="flex items-center justify-between border-b border-gray-200 pb-3 dark:border-gray-800">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Takım Ekle</h3>
                             <button
                                 onClick={() => setIsAddTeamModalOpen(false)}
-                                className="text-muted hover:text-secondary font-bold cursor-pointer"
+                                className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                                aria-label="Kapat"
                             >
-                                ✕
+                                <X className="h-4 w-4" />
                             </button>
                         </div>
                         <select
                             value={selectedNewTeamId}
                             onChange={(e) => setSelectedNewTeamId(e.target.value)}
-                            className="w-full input-base border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                            className="input-base w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
                         >
                             <option value="">Takım seçin...</option>
                             {availableTeamsToAdd.map((t) => (
@@ -631,17 +653,17 @@ export function ProjectDetailPage() {
                                 </option>
                             ))}
                         </select>
-                        <div className="flex justify-end gap-2 pt-2">
+                        <div className="flex justify-end gap-2 border-t border-gray-200 pt-3 dark:border-gray-800">
                             <button
                                 onClick={() => setIsAddTeamModalOpen(false)}
-                                className="px-4 py-2 text-sm border rounded hover-surface cursor-pointer"
+                                className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
                             >
                                 İptal
                             </button>
                             <button
                                 onClick={handleAddTeam}
                                 disabled={!selectedNewTeamId}
-                                className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
+                                className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 Ekle
                             </button>
@@ -652,31 +674,32 @@ export function ProjectDetailPage() {
 
             {/* MODAL: Üye Ekle */}
             {isAddMemberModalOpen && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-                    <div className="surface rounded-lg shadow-lg p-6 max-w-md w-full space-y-4">
-                        <div className="flex justify-between items-center border-b border-border pb-2">
-                            <h3 className="font-bold text-lg text-primary">Proje Üyesi Ekle</h3>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[1px]">
+                    <div className="w-full max-w-md space-y-4 rounded-lg border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-900">
+                        <div className="flex items-center justify-between border-b border-gray-200 pb-3 dark:border-gray-800">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Proje Üyesi Ekle</h3>
                             <button
                                 onClick={() => setIsAddMemberModalOpen(false)}
-                                className="text-muted hover:text-secondary font-bold cursor-pointer"
+                                className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                                aria-label="Kapat"
                             >
-                                ✕
+                                <X className="h-4 w-4" />
                             </button>
                         </div>
-                        <p className="text-xs text-muted">
+                        <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">
                             Kademeli seçim: Önce Takım, sonra o takımın üyesi, sonra Proje Rolü seçin.
                         </p>
 
                         <div className="space-y-3">
                             <div>
-                                <label className="block text-xs font-semibold text-secondary mb-1">Takım</label>
+                                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Takım</label>
                                 <select
                                     value={selectedMemberTeamId}
                                     onChange={(e) => {
                                         setSelectedMemberTeamId(e.target.value);
                                         setSelectedMemberUserId('');
                                     }}
-                                    className="w-full input-base border rounded px-3 py-2 text-sm cursor-pointer"
+                                    className="input-base w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
                                 >
                                     <option value="">Takım seçin...</option>
                                     {allTeams?.filter((t) => projectTeamIds.includes(t.id)).map((t) => (
@@ -689,11 +712,11 @@ export function ProjectDetailPage() {
 
                             {selectedMemberTeamId && (
                                 <div>
-                                    <label className="block text-xs font-semibold text-secondary mb-1">Kullanıcı</label>
+                                    <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Kullanıcı</label>
                                     <select
                                         value={selectedMemberUserId}
                                         onChange={(e) => setSelectedMemberUserId(e.target.value)}
-                                        className="w-full input-base border rounded px-3 py-2 text-sm cursor-pointer"
+                                        className="input-base w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
                                     >
                                         <option value="">Kullanıcı seçin...</option>
                                         {availableTeamMembers.map((m) => (
@@ -706,11 +729,11 @@ export function ProjectDetailPage() {
                             )}
 
                             <div>
-                                <label className="block text-xs font-semibold text-secondary mb-1">Proje Rolü</label>
+                                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Proje Rolü</label>
                                 <select
                                     value={selectedProjectRole}
                                     onChange={(e) => setSelectedProjectRole(e.target.value)}
-                                    className="w-full input-base border rounded px-3 py-2 text-sm cursor-pointer"
+                                    className="input-base w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
                                 >
                                     <option value="0">Project Manager</option>
                                     <option value="1">Developer</option>
@@ -720,17 +743,17 @@ export function ProjectDetailPage() {
                             </div>
                         </div>
 
-                        <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                        <div className="flex justify-end gap-2 border-t border-gray-200 pt-3 dark:border-gray-800">
                             <button
                                 onClick={() => setIsAddMemberModalOpen(false)}
-                                className="px-4 py-2 text-sm border rounded hover-surface cursor-pointer"
+                                className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
                             >
                                 İptal
                             </button>
                             <button
                                 onClick={handleAddProjectMember}
                                 disabled={!selectedMemberUserId}
-                                className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 disabled:opacity-50 font-medium cursor-pointer"
+                                className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 Projeye Ekle
                             </button>
@@ -782,32 +805,44 @@ function AccessDeniedProjectView({ projectId }: { projectId: string }) {
     };
 
     return (
-        <div className="text-center py-16 max-w-sm mx-auto">
-            <p className="text-muted mb-4">Bu projeye erişim yetkiniz yok.</p>
-            {sent ? (
-                <p className="text-sm text-green-600 dark:text-green-400">✓ Erişim talebiniz proje sahibine iletildi.</p>
-            ) : (
-                <div className="space-y-2 text-left">
-                    <textarea
-                        placeholder="Talebinize kısa bir not ekleyin (opsiyonel)"
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        rows={2}
-                        className="w-full input-base border rounded px-3 py-2 text-sm"
-                    />
-                    {error && <p className="text-red-500 text-xs">{error}</p>}
-                    <button
-                        onClick={handleRequest}
-                        disabled={requestAccess.isPending}
-                        className="w-full bg-indigo-600 text-white py-2 rounded text-sm hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
-                    >
-                        {requestAccess.isPending ? 'Gönderiliyor...' : 'Erişim Talep Et'}
-                    </button>
-                </div>
-            )}
-            <Link to="/projects" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline mt-4 inline-block">
-                ← Projelere dön
-            </Link>
+        <div className="flex h-full min-h-0 items-center justify-center bg-[#f7f8fa] px-4 py-10 dark:bg-gray-950">
+            <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 text-center dark:border-gray-800 dark:bg-gray-900">
+                <p className="mb-1 text-base font-semibold text-gray-900 dark:text-gray-100">Bu projeye erişim yetkiniz yok.</p>
+                {sent ? (
+                    <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2.5 text-sm text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300">
+                        Erişim talebiniz proje sahibine iletildi.
+                    </div>
+                ) : (
+                    <div className="space-y-2 text-left">
+                        <textarea
+                            placeholder="Talebinize kısa bir not ekleyin (opsiyonel)"
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            rows={2}
+                            className="input-base w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900"
+                        />
+                        {error && (
+                            <p className="text-xs text-red-600 dark:text-red-400">
+                                {error}
+                            </p>
+                        )}
+                        <button
+                            onClick={handleRequest}
+                            disabled={requestAccess.isPending}
+                            className="w-full rounded-md bg-blue-600 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {requestAccess.isPending ? 'Gönderiliyor...' : 'Erişim Talep Et'}
+                        </button>
+                    </div>
+                )}
+                <Link
+                    to="/projects"
+                    className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Projelere dön
+                </Link>
+            </div>
         </div>
     );
 }

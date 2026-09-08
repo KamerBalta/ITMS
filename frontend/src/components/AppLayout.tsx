@@ -1,6 +1,15 @@
-import { NavLink, Link, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
-import { Search, Menu, X, Plus, LogOut, ChevronDown, User } from 'lucide-react';
+import {
+    Search,
+    Menu,
+    X,
+    Plus,
+    LogOut,
+    ChevronDown,
+    ChevronRight,
+    User,
+} from 'lucide-react';
 
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
@@ -9,6 +18,7 @@ import { authApi } from '../api/auth';
 import { navItems } from '../lib/navigation';
 
 import { useNotifications } from '../hooks/useNotifications';
+import { useIssueListSavedFilters } from '../hooks/useIssueListSavedFilters';
 import { ProjectSelector } from './ProjectSelector';
 import { CreateTaskModal } from './CreateTaskModal';
 import { NotificationDropdown } from './NotificationDropdown';
@@ -39,6 +49,7 @@ const SECTION_ORDER = [
 
 export function AppLayout() {
     const navigate = useNavigate();
+    const location = useLocation();
 
     const user = useAuthStore((state) => state.user);
     const refreshToken = useAuthStore((state) => state.refreshToken);
@@ -56,6 +67,9 @@ export function AppLayout() {
         (state) => state.selectedProjectId
     );
 
+    const { data: issueListSavedFilters } =
+        useIssueListSavedFilters(selectedProjectId);
+
     const isAdmin = user?.roles.includes('System Admin') ?? false;
 
     const unreadCount =
@@ -65,6 +79,10 @@ export function AppLayout() {
     const [isHelpOpen, setHelpOpen] = useState(false);
     const [isProfileOpen, setProfileOpen] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
+
+    const [isIssueListOpen, setIssueListOpen] = useState(
+        () => location.pathname === '/issues'
+    );
 
     // Global Search
     const [isSearchOpen, setSearchOpen] = useState(false);
@@ -363,8 +381,7 @@ export function AppLayout() {
                                 {/* Navigation Items */}
                                 <div className="space-y-0.5">
                                     {itemsInSection.map((item) => {
-                                        const IconComponent =
-                                            item.icon;
+                                        const IconComponent = item.icon;
 
                                         const tourId =
                                             item.path === '/board'
@@ -373,14 +390,149 @@ export function AppLayout() {
                                                     ? 'sidebar-backlog'
                                                     : undefined;
 
+                                        if (item.path === '/issues') {
+                                            const isIssueListActive = location.pathname === '/issues';
+
+                                            return (
+                                                <div key={item.path}>
+                                                    {/* Issue Listesi parent */}
+                                                    <div className="flex items-center">
+                                                        <NavLink
+                                                            to="/issues"
+                                                            data-tour={tourId}
+                                                            onClick={() => {
+                                                                setIssueListOpen(true);
+
+                                                                if (isMobileSidebarOpen) {
+                                                                    closeMobileSidebar();
+                                                                }
+                                                            }}
+                                                            className={`
+                                                                flex-1
+                                                                flex
+                                                                items-center
+                                                                justify-between
+                                                                px-3
+                                                                py-2
+                                                                rounded-md
+                                                                text-sm
+                                                                transition-colors
+                                                                duration-150
+
+                                                                ${isIssueListActive
+                                                                    ? 'text-blue-700 dark:text-blue-300 font-semibold'
+                                                                    : 'text-secondary hover-surface hover:text-primary'
+                                                                }
+                                                            `}
+                                                        >
+                                                            <span className="flex items-center gap-3 min-w-0">
+                                                                <span className="shrink-0 flex items-center justify-center">
+                                                                    <IconComponent
+                                                                        size={17}
+                                                                        strokeWidth={2}
+                                                                    />
+                                                                </span>
+
+                                                                <span className="truncate">
+                                                                    {item.label}
+                                                                </span>
+                                                            </span>
+                                                        </NavLink>
+
+                                                        {/* Aç / Kapat */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setIssueListOpen((prev) => !prev)
+                                                            }
+                                                            className="
+                                                                w-7
+                                                                h-7
+                                                                mr-1
+                                                                flex
+                                                                items-center
+                                                                justify-center
+                                                                rounded-md
+                                                                text-muted
+                                                                hover:text-primary
+                                                                hover-surface
+                                                                transition
+                                                                cursor-pointer
+                                                            "
+                                                            aria-label={
+                                                                isIssueListOpen
+                                                                    ? 'Issue Listesi menüsünü kapat'
+                                                                    : 'Issue Listesi menüsünü aç'
+                                                            }
+                                                        >
+                                                            <ChevronRight
+                                                                className={`
+                                                                    w-4
+                                                                    h-4
+                                                                    transition-transform
+                                                                    duration-150
+                                                                    ${isIssueListOpen
+                                                                        ? 'rotate-90'
+                                                                        : ''
+                                                                    }
+                                                                `}
+                                                            />
+                                                        </button>
+                                                    </div>
+
+                                                    {/* Saved filters */}
+                                                    {isIssueListOpen &&
+                                                        issueListSavedFilters &&
+                                                        issueListSavedFilters.length > 0 && (
+                                                            <div className="ml-9 mt-0.5 space-y-0.5">
+                                                                {issueListSavedFilters.map((filter) => {
+                                                                    const queryParams = new URLSearchParams(location.search);
+                                                                    const isFilterActive =
+                                                                        location.pathname === '/issues' &&
+                                                                        queryParams.get('filterId') === filter.id;
+
+                                                                    return (
+                                                                        <Link
+                                                                            key={filter.id}
+                                                                            to={`/issues?filterId=${filter.id}`}
+                                                                            onClick={() => {
+                                                                                if (isMobileSidebarOpen) {
+                                                                                    closeMobileSidebar();
+                                                                                }
+                                                                            }}
+                                                                            className={`
+                                                                                block
+                                                                                px-3
+                                                                                py-1.5
+                                                                                rounded-md
+                                                                                text-xs
+                                                                                truncate
+                                                                                transition-colors
+                                                                                duration-150
+
+                                                                                ${isFilterActive
+                                                                                    ? 'text-blue-700 dark:text-blue-300 font-medium'
+                                                                                    : 'text-secondary hover-surface hover:text-primary'
+                                                                                }
+                                                                            `}
+                                                                            title={filter.name}
+                                                                        >
+                                                                            {filter.name}
+                                                                        </Link>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                </div>
+                                            );
+                                        }
+
                                         return (
                                             <NavLink
                                                 key={item.path}
                                                 to={item.path}
                                                 data-tour={tourId}
-                                                className={({
-                                                    isActive,
-                                                }) =>
+                                                className={({ isActive }) =>
                                                     `
                                                     flex
                                                     items-center
@@ -394,43 +546,25 @@ export function AppLayout() {
 
                                                     ${isActive
                                                         ? `
-                                                            bg-blue-50
-                                                            dark:bg-blue-950/60
-                                                            text-blue-700
-                                                            dark:text-blue-300
-                                                            font-semibold
-                                                        `
+                                                                text-blue-700
+                                                                dark:text-blue-300
+                                                                font-semibold
+                                                            `
                                                         : `
-                                                            text-secondary
-                                                            hover-surface
-                                                            hover:text-primary
-                                                        `
+                                                                text-secondary
+                                                                hover-surface
+                                                                hover:text-primary
+                                                            `
                                                     }
                                                     `
                                                 }
                                             >
-                                                <span
-                                                    className="
-                                                        flex
-                                                        items-center
-                                                        gap-3
-                                                        min-w-0
-                                                    "
-                                                >
+                                                <span className="flex items-center gap-3 min-w-0">
                                                     {IconComponent && (
-                                                        <span
-                                                            className="
-                                                                shrink-0
-                                                                flex
-                                                                items-center
-                                                                justify-center
-                                                            "
-                                                        >
+                                                        <span className="shrink-0 flex items-center justify-center">
                                                             <IconComponent
                                                                 size={17}
-                                                                strokeWidth={
-                                                                    2
-                                                                }
+                                                                strokeWidth={2}
                                                             />
                                                         </span>
                                                     )}
@@ -440,11 +574,8 @@ export function AppLayout() {
                                                     </span>
                                                 </span>
 
-                                                {/* Notification Badge */}
-                                                {item.path ===
-                                                    '/notifications' &&
-                                                    unreadCount >
-                                                    0 && (
+                                                {item.path === '/notifications' &&
+                                                    unreadCount > 0 && (
                                                         <span
                                                             className="
                                                                 bg-red-500
@@ -461,8 +592,7 @@ export function AppLayout() {
                                                                 shrink-0
                                                             "
                                                         >
-                                                            {unreadCount >
-                                                                99
+                                                            {unreadCount > 99
                                                                 ? '99+'
                                                                 : unreadCount}
                                                         </span>

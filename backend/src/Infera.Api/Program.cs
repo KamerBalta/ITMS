@@ -127,6 +127,10 @@ builder.Services.AddScoped<Infera.Application.Common.Interfaces.IFieldAuditLogge
 // Git Integration & Webhook Services
 builder.Services.AddScoped<Infera.Application.Common.Interfaces.IGitWebhookProcessor, Infera.Application.Common.Services.GitWebhookProcessor>();
 builder.Services.AddScoped<Infera.Application.Common.Interfaces.IWebhookSignatureValidator, Infera.Infrastructure.Services.WebhookSignatureValidator>();
+builder.Services.AddHttpClient<Infera.Application.Common.Interfaces.IAzureDevOpsApiClient, Infera.Infrastructure.Services.AzureDevOpsApiClient>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
 
 // Dynamic Email Service Registration
 var smtpHost = builder.Configuration["Smtp:Host"];
