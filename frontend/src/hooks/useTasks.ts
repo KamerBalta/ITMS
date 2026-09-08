@@ -18,6 +18,13 @@ export function useTasks(
         parentTaskId?: string;
         unassignedOnly?: boolean;
         componentId?: string;
+        reporterId?: string;
+        createdAfter?: string; createdBefore?: string;
+        dueDateAfter?: string; dueDateBefore?: string;
+        updatedAfter?: string; updatedBefore?: string;
+        overdueOnly?: boolean;
+        page?: number;
+        pageSize?: number;
     }
 ) {
     return useQuery({

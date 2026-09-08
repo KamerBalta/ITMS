@@ -8,12 +8,19 @@ namespace Infera.Infrastructure.BackgroundJobs;
 public class BurndownSnapshotService : IBurndownSnapshotJob
 {
     private readonly IAppDbContext _db;
-    public BurndownSnapshotService(IAppDbContext db) => _db = db;
+
+    public BurndownSnapshotService(IAppDbContext db)
+    {
+        _db = db;
+    }
 
     public async System.Threading.Tasks.Task RunAsync(CancellationToken ct)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var activeSprints = await _db.Sprints.Where(s => s.Status == SprintStatus.Active).ToListAsync(ct);
+
+        var activeSprints = await _db.Sprints
+            .Where(s => s.Status == SprintStatus.Active)
+            .ToListAsync(ct);
 
         foreach (var sprint in activeSprints)
         {
@@ -23,19 +30,37 @@ public class BurndownSnapshotService : IBurndownSnapshotJob
                           sn.SnapshotDate == today,
                     ct);
 
-            if (alreadyExists) continue;
+            if (alreadyExists)
+                continue;
 
-            var remaining = await _db.Tasks
-                .Where(t => t.SprintId == sprint.Id &&
-                            t.WorkflowStatus.Category != "Done")
-                .SumAsync(t => t.StoryPoint ?? 0, ct);
+            var tasks = await _db.Tasks
+                .Where(t => t.SprintId == sprint.Id)
+                .Select(t => new
+                {
+                    t.StoryPoint,
+                    StatusCategory = t.WorkflowStatus.Category
+                })
+                .ToListAsync(ct);
 
-            _db.SprintBurndownSnapshots.Add(new SprintBurndownSnapshot
-            {
-                SprintId = sprint.Id,
-                SnapshotDate = today,
-                RemainingStoryPoints = remaining,
-            });
+            var currentScope = tasks.Sum(t => t.StoryPoint ?? 0);
+
+            var completed = tasks
+                .Where(t => t.StatusCategory == "Done")
+                .Sum(t => t.StoryPoint ?? 0);
+
+            var remaining = tasks
+                .Where(t => t.StatusCategory != "Done")
+                .Sum(t => t.StoryPoint ?? 0);
+
+            _db.SprintBurndownSnapshots.Add(
+                new SprintBurndownSnapshot
+                {
+                    SprintId = sprint.Id,
+                    SnapshotDate = today,
+                    ScopeStoryPoints = currentScope,
+                    CompletedStoryPoints = completed,
+                    RemainingStoryPoints = remaining,
+                });
         }
 
         await _db.SaveChangesAsync(ct);

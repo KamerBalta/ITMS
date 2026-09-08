@@ -19,6 +19,14 @@ export const tasksApi = {
         componentId?: string;
         unassignedOnly?: boolean;
         pageSize?: number;
+        reporterId?: string;
+        createdAfter?: string;
+        createdBefore?: string;
+        dueDateAfter?: string;
+        dueDateBefore?: string;
+        updatedAfter?: string;
+        updatedBefore?: string;
+        overdueOnly?: boolean;
     }) => apiClient.get<TaskListItem[]>('/tasks', { params }).then((res) => res.data),
 
     getById: (taskId: string) => apiClient.get<TaskDetail>(`/tasks/${taskId}`).then((res) => res.data),

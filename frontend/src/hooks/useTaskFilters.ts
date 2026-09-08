@@ -8,16 +8,19 @@ export interface TaskFilters {
     priority: string;
     labelId: string;
     componentId: string;
+    dueDate: string;
 }
 
 export function useTaskFilters() {
     const currentUser = useAuthStore((state) => state.user);
+
     const [search, setSearch] = useState('');
     const [onlyMine, setOnlyMine] = useState(false);
     const [teamId, setTeamId] = useState('');
     const [priority, setPriority] = useState('');
     const [labelId, setLabelId] = useState('');
     const [componentId, setComponentId] = useState('');
+    const [dueDate, setDueDate] = useState('');
 
     const reset = () => {
         setSearch('');
@@ -26,11 +29,33 @@ export function useTaskFilters() {
         setPriority('');
         setLabelId('');
         setComponentId('');
+        setDueDate('');
     };
 
     return {
-        search, setSearch, onlyMine, setOnlyMine, teamId, setTeamId,
-        priority, setPriority, labelId, setLabelId, componentId, setComponentId, reset,
+        search,
+        setSearch,
+
+        onlyMine,
+        setOnlyMine,
+
+        teamId,
+        setTeamId,
+
+        priority,
+        setPriority,
+
+        labelId,
+        setLabelId,
+
+        componentId,
+        setComponentId,
+
+        dueDate,
+        setDueDate,
+
+        reset,
+
         currentUserId: currentUser?.userId,
     };
 }

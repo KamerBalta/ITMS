@@ -8,5 +8,10 @@ public class SprintBurndownSnapshot : BaseEntity
     public Sprint Sprint { get; set; } = default!;
 
     public DateOnly SnapshotDate { get; set; }
+
+    public int ScopeStoryPoints { get; set; }
+
+    public int CompletedStoryPoints { get; set; }
+
     public int RemainingStoryPoints { get; set; }
 }

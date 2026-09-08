@@ -59,6 +59,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<DashboardWidget> DashboardWidgets => Set<DashboardWidget>();
     public DbSet<ProjectGitIntegration> ProjectGitIntegrations => Set<ProjectGitIntegration>();
     public DbSet<GitCommitLink> GitCommitLinks => Set<GitCommitLink>();
+    public DbSet<PipelineRun> PipelineRuns => Set<PipelineRun>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

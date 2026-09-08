@@ -140,39 +140,46 @@ export function UsersManagementPage() {
     }, [filteredUsers, currentPage]);
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 relative px-2 sm:px-4">
+        <div className="mx-auto flex h-full min-h-0 w-full max-w-[1400px] flex-col overflow-auto bg-[#f7f8fa] px-0 dark:bg-gray-950">
             {/* Toast Bildirimi */}
             {toastMessage && (
-                <div className="fixed top-5 right-5 z-[100000] bg-emerald-900 text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300 max-w-sm sm:max-w-md">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                    <span className="text-sm font-medium">{toastMessage}</span>
-                    <button onClick={() => setToastMessage(null)} className="text-emerald-300 hover:text-white ml-auto cursor-pointer">
+                <div className="fixed right-5 top-5 z-[100000] flex max-w-sm items-center gap-3 rounded-md border border-emerald-200 bg-white px-3.5 py-2.5 text-emerald-700 shadow-lg animate-in fade-in slide-in-from-top-2 duration-300 dark:border-emerald-900 dark:bg-gray-900 dark:text-emerald-300 sm:max-w-md">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 dark:text-emerald-400" />
+                    <span className="text-xs font-medium">{toastMessage}</span>
+                    <button
+                        onClick={() => setToastMessage(null)}
+                        className="ml-auto rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-200 cursor-pointer"
+                    >
                         <X className="w-4 h-4" />
                     </button>
                 </div>
             )}
 
             {/* Üst Başlık & Eylem Butonu */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-800 pb-4">
+            <div className="flex min-h-[64px] shrink-0 flex-col justify-center gap-3 border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div>
-                    <h1 className="text-2xl font-bold text-primary">Kullanıcılar</h1>
-                    <p className="text-sm text-secondary">Sistemdeki tüm kullanıcıları yönetin ve yeni üyeler davet edin.</p>
+                    <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                        Kullanıcılar
+                    </h1>
+                    <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+                        Sistemdeki kullanıcıları yönetin ve yeni üyeler davet edin.
+                    </p>
                 </div>
 
                 <button
                     onClick={() => setCreateOpen(true)}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition flex items-center justify-center gap-2 shrink-0 shadow-sm w-full sm:w-auto cursor-pointer"
+                    className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700 cursor-pointer dark:bg-blue-500 dark:hover:bg-blue-600 sm:w-auto"
                 >
-                    <UserPlus className="w-4 h-4" />
-                    + Kullanıcı Davet Et
+                    <UserPlus className="h-4 w-4" />
+                    Kullanıcı Davet Et
                 </button>
             </div>
 
-            {/* Arama Barı ve Filtreler */}
-            <div className="surface p-4 border rounded-xl shadow-sm flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center">
+            {/* Arama Barı ve Filtreler Toolbar */}
+            <div className="flex flex-col items-stretch justify-between gap-2 border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900 sm:px-5 md:flex-row md:items-center">
                 {/* Arama Input */}
                 <div className="relative w-full md:w-80">
-                    <Search className="w-4 h-4 absolute left-3 top-3 text-muted" />
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <input
                         type="text"
                         placeholder="Ad veya e-posta ara..."
@@ -181,13 +188,13 @@ export function UsersManagementPage() {
                             setSearchQuery(e.target.value);
                             setCurrentPage(1);
                         }}
-                        className="w-full input-base border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 dark:border-gray-600"
+                        className="w-full input-base rounded-md border border-gray-300 bg-white py-1.5 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900"
                     />
                 </div>
 
                 {/* Filtre Dropdown'ları */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
-                    <div className="flex items-center gap-1 text-xs text-muted font-semibold mr-1">
+                    <div className="mr-1 flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
                         <Filter className="w-3.5 h-3.5" /> Filtrele:
                     </div>
 
@@ -198,7 +205,7 @@ export function UsersManagementPage() {
                                 setSelectedRoleFilter(e.target.value);
                                 setCurrentPage(1);
                             }}
-                            className="input-base border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full border-gray-300 dark:border-gray-600 cursor-pointer"
+                            className="input-base w-full cursor-pointer rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                         >
                             <option value="">Tüm Roller</option>
                             <option value="System Admin">System Admin</option>
@@ -213,7 +220,7 @@ export function UsersManagementPage() {
                                 setSelectedStatusFilter(e.target.value);
                                 setCurrentPage(1);
                             }}
-                            className="input-base border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full border-gray-300 dark:border-gray-600 cursor-pointer"
+                            className="input-base w-full cursor-pointer rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                         >
                             <option value="">Tüm Durumlar</option>
                             <option value="active">Aktif</option>
@@ -229,7 +236,7 @@ export function UsersManagementPage() {
                                 setSelectedStatusFilter('');
                                 setCurrentPage(1);
                             }}
-                            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline px-2 text-center sm:text-left py-1 cursor-pointer"
+                            className="cursor-pointer px-2 py-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
                         >
                             Temizle
                         </button>
@@ -238,22 +245,26 @@ export function UsersManagementPage() {
             </div>
 
             {/* Kullanıcılar Tablosu */}
-            <div className="surface border rounded-xl shadow-sm overflow-hidden">
+            <div className="mx-4 mt-4 overflow-hidden rounded-md border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 sm:mx-5">
                 {isLoading ? (
-                    <div className="p-8 text-center text-secondary text-sm">Yükleniyor...</div>
+                    <div className="flex min-h-[300px] items-center justify-center px-4 py-10 text-xs text-gray-500 dark:text-gray-400">
+                        Yükleniyor...
+                    </div>
                 ) : paginatedUsers.length === 0 ? (
-                    <div className="p-8 text-center text-muted text-sm">Kullanıcı bulunamadı.</div>
+                    <div className="flex min-h-[300px] items-center justify-center px-4 py-10 text-center text-xs text-gray-500 dark:text-gray-400">
+                        Kullanıcı bulunamadı.
+                    </div>
                 ) : (
                     <div className="overflow-x-auto min-h-[300px]">
                         <table className="w-full text-sm text-left">
-                            <thead className="surface-muted border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-secondary uppercase tracking-wider sticky top-0">
+                            <thead className="sticky top-0 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/70 dark:text-gray-400">
                                 <tr>
-                                    <th className="px-3 sm:px-5 py-3.5 whitespace-nowrap">Kullanıcı</th>
-                                    <th className="px-3 sm:px-5 py-3.5 whitespace-nowrap">E-posta</th>
-                                    <th className="px-3 sm:px-5 py-3.5 whitespace-nowrap">Ünvan</th>
-                                    <th className="px-3 sm:px-5 py-3.5 whitespace-nowrap">Sistem Rolü</th>
-                                    <th className="px-3 sm:px-5 py-3.5 whitespace-nowrap">Durum</th>
-                                    <th className="px-3 sm:px-5 py-3.5 text-right whitespace-nowrap">Eylemler</th>
+                                    <th className="px-3 py-2.5 whitespace-nowrap sm:px-4">Kullanıcı</th>
+                                    <th className="px-3 py-2.5 whitespace-nowrap sm:px-4">E-posta</th>
+                                    <th className="px-3 py-2.5 whitespace-nowrap sm:px-4">Ünvan</th>
+                                    <th className="px-3 py-2.5 whitespace-nowrap sm:px-4">Sistem Rolü</th>
+                                    <th className="px-3 py-2.5 whitespace-nowrap sm:px-4">Durum</th>
+                                    <th className="px-3 py-2.5 text-right whitespace-nowrap sm:px-4">Eylemler</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -269,33 +280,39 @@ export function UsersManagementPage() {
                                         <tr
                                             key={u.id}
                                             onClick={() => navigate(`/admin/users/${u.id}`)}
-                                            className="hover-surface transition cursor-pointer"
+                                            className="group cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60"
                                         >
                                             {/* Avatar & İsim */}
-                                            <td className="px-3 sm:px-5 py-3.5 whitespace-nowrap">
+                                            <td className="px-3 py-2.5 whitespace-nowrap sm:px-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-9 w-9 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-xs border border-indigo-200 dark:border-indigo-800 shrink-0">
+                                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
                                                         {initials}
                                                     </div>
                                                     <div>
-                                                        <p className="font-semibold text-primary">{u.name}</p>
+                                                        <p className="text-[13px] font-medium text-gray-800 transition-colors group-hover:text-blue-600 dark:text-gray-100 dark:group-hover:text-blue-400">
+                                                            {u.name}
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </td>
 
                                             {/* E-posta */}
-                                            <td className="px-3 sm:px-5 py-3.5 text-secondary whitespace-nowrap">{u.email}</td>
+                                            <td className="px-3 py-2.5 text-xs text-gray-600 whitespace-nowrap dark:text-gray-400 sm:px-4">
+                                                {u.email}
+                                            </td>
 
                                             {/* Ünvan */}
-                                            <td className="px-3 sm:px-5 py-3.5 text-secondary whitespace-nowrap">{u.title ?? '-'}</td>
+                                            <td className="px-3 py-2.5 text-xs text-gray-600 whitespace-nowrap dark:text-gray-400 sm:px-4">
+                                                {u.title ?? '-'}
+                                            </td>
 
                                             {/* Roller */}
-                                            <td className="px-3 sm:px-5 py-3.5">
+                                            <td className="px-3 py-2.5 sm:px-4">
                                                 <div className="flex flex-wrap gap-1 min-w-[120px]">
                                                     {u.roles.map((r) => (
                                                         <span
                                                             key={r}
-                                                            className={`text-[11px] px-2 py-0.5 rounded-full font-semibold border whitespace-nowrap ${ROLE_BADGE_COLORS[r] ??
+                                                            className={`whitespace-nowrap rounded px-2 py-0.5 text-[10px] font-semibold border ${ROLE_BADGE_COLORS[r] ??
                                                                 'surface-muted text-secondary border-gray-200 dark:border-gray-700'
                                                                 }`}
                                                         >
@@ -306,11 +323,11 @@ export function UsersManagementPage() {
                                             </td>
 
                                             {/* Durum Badge */}
-                                            <td className="px-3 sm:px-5 py-3.5 whitespace-nowrap">
+                                            <td className="px-3 py-2.5 whitespace-nowrap sm:px-4">
                                                 <span
-                                                    className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full font-semibold border ${u.isActive
-                                                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+                                                    className={`inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide border ${u.isActive
+                                                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
                                                         }`}
                                                 >
                                                     <span
@@ -323,24 +340,24 @@ export function UsersManagementPage() {
 
                                             {/* 3 Nokta Eylem Menüsü (⋮) */}
                                             <td
-                                                className="px-3 sm:px-5 py-3.5 text-right relative whitespace-nowrap"
+                                                className="px-3 py-2.5 text-right relative whitespace-nowrap sm:px-4"
                                                 onClick={(e) => e.stopPropagation()}
                                             >
                                                 <button
                                                     onClick={() => setActiveMenuUserId(activeMenuUserId === u.id ? null : u.id)}
-                                                    className="p-1.5 text-muted hover:text-primary rounded-lg hover-surface transition cursor-pointer"
+                                                    className="cursor-pointer rounded p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-200"
                                                 >
                                                     <MoreVertical className="w-4 h-4" />
                                                 </button>
 
                                                 {activeMenuUserId === u.id && (
-                                                    <div className="absolute right-5 mt-1 w-44 surface border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 z-30 text-xs text-left">
+                                                    <div className="absolute right-4 z-30 mt-1 w-44 overflow-hidden rounded-md border border-gray-200 bg-white py-1 text-left text-xs shadow-lg dark:border-gray-700 dark:bg-gray-900">
                                                         <button
                                                             onClick={() => {
                                                                 setEditingUser(u);
                                                                 setActiveMenuUserId(null);
                                                             }}
-                                                            className="w-full px-4 py-2 hover-surface text-secondary cursor-pointer text-left"
+                                                            className="w-full cursor-pointer px-3 py-2 text-left text-xs text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
                                                         >
                                                             Düzenle
                                                         </button>
@@ -349,7 +366,7 @@ export function UsersManagementPage() {
                                                                 showToast(`${u.name} için davet bağlantısı tekrar gönderildi.`);
                                                                 setActiveMenuUserId(null);
                                                             }}
-                                                            className="w-full px-4 py-2 hover-surface text-indigo-600 dark:text-indigo-400 font-medium cursor-pointer text-left"
+                                                            className="w-full cursor-pointer px-3 py-2 text-left text-xs font-medium text-blue-600 transition-colors hover:bg-gray-50 dark:text-blue-400 dark:hover:bg-gray-800"
                                                         >
                                                             Yeniden Davet Gönder
                                                         </button>
@@ -372,7 +389,7 @@ export function UsersManagementPage() {
                                                                 }
                                                                 setActiveMenuUserId(null);
                                                             }}
-                                                            className="w-full px-4 py-2 hover-surface text-amber-600 dark:text-amber-400 cursor-pointer text-left"
+                                                            className="w-full cursor-pointer px-3 py-2 text-left text-xs text-amber-600 transition-colors hover:bg-gray-50 dark:text-amber-400 dark:hover:bg-gray-800"
                                                         >
                                                             {u.isActive ? 'Pasifleştir' : 'Aktifleştir'}
                                                         </button>
@@ -388,26 +405,26 @@ export function UsersManagementPage() {
                 )}
 
                 {/* Tablo Altı / Pagination */}
-                <div className="p-4 surface-muted border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-secondary">
+                <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-200 bg-gray-50 px-4 py-3 text-[11px] text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400 sm:flex-row">
                     <div>
-                        Toplam <span className="font-semibold text-primary">{filteredUsers.length}</span> kullanıcı gösteriliyor
+                        Toplam <span className="font-semibold text-gray-800 dark:text-gray-200">{filteredUsers.length}</span> kullanıcı
                     </div>
 
                     <div className="flex items-center gap-1">
                         <button
                             disabled={currentPage === 1}
                             onClick={() => setCurrentPage((p) => p - 1)}
-                            className="px-2.5 py-1 border border-gray-300 dark:border-gray-600 rounded surface hover-surface disabled:opacity-40 transition cursor-pointer"
+                            className="cursor-pointer rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-default disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
                         >
                             Önceki
                         </button>
-                        <span className="px-2 font-medium">
+                        <span className="px-2 text-[11px] font-medium text-gray-600 dark:text-gray-300">
                             {currentPage} / {totalPages}
                         </span>
                         <button
                             disabled={currentPage === totalPages}
                             onClick={() => setCurrentPage((p) => p + 1)}
-                            className="px-2.5 py-1 border border-gray-300 dark:border-gray-600 rounded surface hover-surface disabled:opacity-40 transition cursor-pointer"
+                            className="cursor-pointer rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-default disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
                         >
                             Sonraki
                         </button>
@@ -486,39 +503,39 @@ function CreateUserModal({
     return (
         <div className="relative z-[9999]">
             <Modal title="Kullanıcı Davet Et" isOpen={isOpen} onClose={onClose}>
-                <form onSubmit={handleSubmit} className="space-y-4 max-w-lg w-full">
+                <form onSubmit={handleSubmit} className="w-full max-w-lg space-y-4">
                     <div className="space-y-3">
-                        <p className="text-xs font-bold text-muted uppercase tracking-wider">Temel Bilgiler</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Temel Bilgiler</p>
                         <div>
-                            <label className="block text-xs font-semibold text-secondary mb-1">Ad Soyad</label>
+                            <label className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-300">Ad Soyad</label>
                             <input
                                 type="text"
                                 placeholder="Örn: Ahmet Yılmaz"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 required
-                                className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full input-base rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-secondary mb-1">E-posta</label>
+                            <label className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-300">E-posta</label>
                             <input
                                 type="email"
                                 placeholder="ahmet@sirket.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full input-base rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-secondary mb-1">Ünvan</label>
+                            <label className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-300">Ünvan</label>
                             <select
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                                className="w-full input-base cursor-pointer rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900"
                             >
                                 <option value="">Ünvan seçin...</option>
                                 {TITLE_OPTIONS.map((t) => (
@@ -533,14 +550,14 @@ function CreateUserModal({
                     <hr className="border-gray-200 dark:border-gray-700" />
 
                     <div className="space-y-3">
-                        <p className="text-xs font-bold text-muted uppercase tracking-wider">Proje Ataması (Opsiyonel)</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Proje Ataması (Opsiyonel)</p>
 
                         <div>
-                            <label className="block text-xs font-semibold text-secondary mb-1">Proje</label>
+                            <label className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-300">Proje</label>
                             <select
                                 value={projectId}
                                 onChange={(e) => setProjectId(e.target.value)}
-                                className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                                className="w-full input-base cursor-pointer rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900"
                             >
                                 <option value="">Atama yapma</option>
                                 {projects.map((p) => (
@@ -552,20 +569,24 @@ function CreateUserModal({
                         </div>
                     </div>
 
-                    {error && <p className="text-red-500 dark:text-red-400 text-xs font-medium">{error}</p>}
+                    {error && (
+                        <p className="text-xs font-medium text-red-600 dark:text-red-400">
+                            {error}
+                        </p>
+                    )}
 
-                    <div className="flex justify-end gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex justify-end gap-2 border-t border-gray-200 pt-3 dark:border-gray-800">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover-surface text-secondary cursor-pointer"
+                            className="cursor-pointer rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
                         >
                             İptal
                         </button>
                         <button
                             type="submit"
                             disabled={createUser.isPending}
-                            className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer"
+                            className="cursor-pointer rounded-md bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-default disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
                         >
                             {createUser.isPending ? 'Davet Ediliyor...' : 'Davet Gönder'}
                         </button>
@@ -628,24 +649,24 @@ function EditUserModal({
     return (
         <div className="relative z-[9999]">
             <Modal title="Kullanıcı Düzenle" isOpen onClose={onClose}>
-                <form onSubmit={handleSubmit} className="space-y-4 max-w-md w-full">
+                <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
                     <div>
-                        <label className="block text-xs font-semibold text-secondary mb-1">Ad Soyad</label>
+                        <label className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-300">Ad Soyad</label>
                         <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             required
-                            className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-full input-base rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-secondary mb-1">Ünvan</label>
+                        <label className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-300">Ünvan</label>
                         <select
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                            className="w-full input-base cursor-pointer rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900"
                         >
                             <option value="">Ünvan seçiniz...</option>
                             {TITLE_OPTIONS.map((t) => (
@@ -657,11 +678,11 @@ function EditUserModal({
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-secondary mb-1">Sistem Rolü</label>
+                        <label className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-300">Sistem Rolü</label>
                         <select
                             value={role}
                             onChange={(e) => setRole(e.target.value)}
-                            className="w-full input-base border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                            className="w-full input-base cursor-pointer rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900"
                         >
                             {SYSTEM_ROLES.map((r) => (
                                 <option key={r} value={r}>
@@ -671,20 +692,24 @@ function EditUserModal({
                         </select>
                     </div>
 
-                    {error && <p className="text-red-500 dark:text-red-400 text-xs font-medium">{error}</p>}
+                    {error && (
+                        <p className="text-xs font-medium text-red-600 dark:text-red-400">
+                            {error}
+                        </p>
+                    )}
 
-                    <div className="flex justify-end gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex justify-end gap-2 border-t border-gray-200 pt-3 dark:border-gray-800">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover-surface text-secondary cursor-pointer"
+                            className="cursor-pointer rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
                         >
                             İptal
                         </button>
                         <button
                             type="submit"
                             disabled={isPending}
-                            className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer"
+                            className="cursor-pointer rounded-md bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-default disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
                         >
                             {isPending ? 'Kaydediliyor...' : 'Kaydet'}
                         </button>

@@ -28,13 +28,14 @@ public class GetBurndownQueryHandler : IRequestHandler<GetBurndownQuery, Burndow
             throw new UnauthorizedAccessException("Bu sprinte erişim yetkiniz yok.");
 
         var tasks = await _db.Tasks
-     .Where(t => t.SprintId == request.SprintId)
-     .Select(t => new
-     {
-         t.StoryPoint,
-         StatusCategory = t.WorkflowStatus.Category
-     })
-     .ToListAsync(ct);
+            .Where(t => t.SprintId == request.SprintId)
+            .Select(t => new
+            {
+                t.StoryPoint,
+                StatusCategory = t.WorkflowStatus.Category
+            })
+            .ToListAsync(ct);
+
         // Sprint başındaki toplam:
         // Sprint henüz tamamlanmadıysa mevcut atanmış görevlerin toplamı,
         // tamamlandıysa kaydedilmiş CommittedStoryPoints kullanılır.
@@ -43,8 +44,8 @@ public class GetBurndownQueryHandler : IRequestHandler<GetBurndownQuery, Burndow
             ?? tasks.Sum(t => t.StoryPoint ?? 0);
 
         var remainingPoints = tasks
-        .Where(t => t.StatusCategory != "Done")
-        .Sum(t => t.StoryPoint ?? 0);
+            .Where(t => t.StatusCategory != "Done")
+            .Sum(t => t.StoryPoint ?? 0);
 
         var totalDays = Math.Max(
             1,
@@ -75,6 +76,36 @@ public class GetBurndownQueryHandler : IRequestHandler<GetBurndownQuery, Burndow
                 sn.RemainingStoryPoints))
             .ToListAsync(ct);
 
+        var actualLine = new List<BurndownPointDto>();
+        var sprintStartDate =
+            sprint.StartDate.ToDateTime(TimeOnly.MinValue);
+        var startSnapshot = snapshots.FirstOrDefault(
+            s => DateOnly.FromDateTime(s.Date) == sprint.StartDate);
+
+        if (startSnapshot is not null)
+        {
+            actualLine.Add(startSnapshot);
+        }
+        else
+        {
+            var startScope =
+                sprint.CommittedStoryPoints
+                ?? tasks.Sum(t => t.StoryPoint ?? 0);
+
+            actualLine.Add(
+                new BurndownPointDto(
+                    sprintStartDate,
+                    startScope));
+        }
+
+        foreach (var snapshot in snapshots)
+        {
+            if (DateOnly.FromDateTime(snapshot.Date) == sprint.StartDate)
+                continue;
+
+            actualLine.Add(snapshot);
+        }
+
         return new BurndownDto(
             sprint.Name,
             sprint.StartDate,
@@ -82,6 +113,6 @@ public class GetBurndownQueryHandler : IRequestHandler<GetBurndownQuery, Burndow
             totalPoints,
             remainingPoints,
             idealLine,
-            snapshots);
+            actualLine);
     }
 }

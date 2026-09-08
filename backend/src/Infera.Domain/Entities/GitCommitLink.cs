@@ -13,6 +13,12 @@ public class GitCommitLink : BaseEntity
     public string AuthorName { get; set; } = default!;
     public string? CommitUrl { get; set; }
     public string? BranchName { get; set; }
+    public string SourceType { get; set; } = "Git";
+
+    
+    public string? ChangedFilesJson { get; set; }
+
     public DateTime CommittedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
 }

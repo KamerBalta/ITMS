@@ -115,7 +115,7 @@ export function SprintDetailPage() {
         return (
             <div className="space-y-3 p-4 surface border rounded-xl">
                 <p className="text-secondary text-sm">Sprint bulunamadı ya da seçili projeye ait değil.</p>
-                <Link to="/backlog" className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline">
+                <Link to="/backlog" className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400">
                     <ArrowLeft size={14} />
                     <span>Backlog'a dön</span>
                 </Link>
@@ -179,31 +179,43 @@ export function SprintDetailPage() {
     const today = new Date();
     const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
 
-    let sprintHealth = { label: 'Healthy', color: 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' };
+    let sprintHealth = {
+        label: 'Yolunda',
+        color: 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+    };
     if (sprint.status === 'Active') {
         if (diffDays < 0) {
-            sprintHealth = { label: 'Overdue', color: 'bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800' };
+            sprintHealth = {
+                label: 'Süresi Geçti',
+                color: 'bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+            };
         } else if (progressPercent < 40 && diffDays <= 3) {
-            sprintHealth = { label: 'At Risk', color: 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' };
+            sprintHealth = {
+                label: 'Dikkat Gerekiyor',
+                color: 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+            };
         }
     }
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-0 select-none">
+        <div className="mx-auto flex h-full min-h-0 w-full max-w-[1400px] flex-col overflow-auto bg-[#f7f8fa] px-4 py-4 dark:bg-gray-950 sm:px-5 select-none space-y-5">
             {/* Geri Dönüş Linki */}
-            <div>
-                <Link to="/backlog" className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline">
+            <div className="shrink-0">
+                <Link
+                    to="/backlog"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                >
                     <ArrowLeft size={14} />
                     <span>Backlog'a dön</span>
                 </Link>
             </div>
 
             {/* Bilgi ve Header Kartı */}
-            <div className="surface border rounded-xl p-5 shadow-2xs space-y-5">
+            <div className="space-y-4 rounded-md border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:p-5">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex-1 space-y-2">
                         {isEditing ? (
-                            <div className="space-y-3 max-w-lg surface-muted p-3.5 border border-gray-200 dark:border-gray-700 rounded-lg">
+                            <div className="max-w-lg space-y-3 rounded-md border border-gray-200 bg-gray-50 p-3.5 dark:border-gray-700 dark:bg-gray-800/50">
                                 <div>
                                     <label className="text-[10px] text-muted font-bold uppercase block mb-1">Sprint Adı</label>
                                     <input
@@ -261,10 +273,12 @@ export function SprintDetailPage() {
                         ) : (
                             <>
                                 <div className="flex items-center gap-2.5 flex-wrap">
-                                    <h1 className="text-2xl font-bold text-primary">{sprint.name}</h1>
+                                    <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                        {sprint.name}
+                                    </h1>
 
                                     <span
-                                        className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider border ${sprint.status === 'Active'
+                                        className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide border ${sprint.status === 'Active'
                                                 ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                                                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                                             }`}
@@ -273,8 +287,8 @@ export function SprintDetailPage() {
                                     </span>
 
                                     {sprint.status === 'Active' && (
-                                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold border ${sprintHealth.color}`}>
-                                            ● {sprintHealth.label}
+                                        <span className={`rounded px-2 py-0.5 text-[10px] font-semibold border ${sprintHealth.color}`}>
+                                            {sprintHealth.label}
                                         </span>
                                     )}
                                 </div>
@@ -290,7 +304,7 @@ export function SprintDetailPage() {
                             {isPM && (
                                 <button
                                     onClick={startEditing}
-                                    className="text-xs surface-muted border border-gray-200 dark:border-gray-700 text-secondary font-semibold px-3 py-1.5 rounded-lg hover-surface transition cursor-pointer flex items-center gap-1.5"
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 cursor-pointer"
                                 >
                                     <Pencil size={13} />
                                     <span>Düzenle</span>
@@ -300,7 +314,7 @@ export function SprintDetailPage() {
                             {sprint.status === 'Completed' && (
                                 <Link
                                     to={`/retrospective?sprintId=${sprint.id}`}
-                                    className="text-xs surface-muted border border-gray-200 dark:border-gray-700 text-secondary font-semibold px-3 py-1.5 rounded-lg hover-surface transition cursor-pointer"
+                                    className="inline-flex items-center rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 cursor-pointer"
                                 >
                                     Retrospective'i Gör
                                 </Link>
@@ -309,7 +323,7 @@ export function SprintDetailPage() {
                             {sprint.status === 'Active' && isPM && (
                                 <button
                                     onClick={handleComplete}
-                                    className="text-xs border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 font-semibold px-3 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950 transition cursor-pointer flex items-center gap-1.5"
+                                    className="text-xs border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 font-semibold px-3 py-1.5 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950 transition cursor-pointer flex items-center gap-1.5"
                                 >
                                     <CheckCircle2 size={14} />
                                     <span>Sprint'i Tamamla</span>
@@ -319,12 +333,12 @@ export function SprintDetailPage() {
                             <div className="relative">
                                 <button
                                     onClick={() => setIsMenuOpen(!isMenuOpen)}
-                                    className="p-1.5 border border-gray-200 dark:border-gray-700 rounded-lg hover-surface text-muted transition cursor-pointer"
+                                    className="rounded-md border border-gray-300 p-1.5 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200 cursor-pointer"
                                 >
                                     <MoreHorizontal size={18} />
                                 </button>
                                 {isMenuOpen && (
-                                    <div className="absolute right-0 mt-1 w-44 surface border rounded-lg shadow-lg py-1 z-20 text-xs">
+                                    <div className="absolute right-0 z-20 mt-1 w-44 rounded-md border border-gray-200 bg-white py-1 text-xs shadow-lg dark:border-gray-700 dark:bg-gray-900">
                                         <Link
                                             to="/backlog"
                                             className="block px-3 py-2 text-secondary hover-surface"
@@ -339,47 +353,47 @@ export function SprintDetailPage() {
                 </div>
 
                 {/* İstatistikler */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 pt-3 border-t border-gray-100 dark:border-gray-800 text-xs">
-                    <div className="flex items-center gap-2 text-secondary">
-                        <Calendar size={16} className="text-muted shrink-0" />
+                <div className="grid grid-cols-2 border-t border-gray-200 pt-3 text-xs dark:border-gray-800 sm:grid-cols-5">
+                    <div className="flex items-center gap-2 border-r border-gray-100 py-1 pr-3 dark:border-gray-800">
+                        <Calendar size={16} className="shrink-0 text-gray-400 dark:text-gray-500" />
                         <div>
-                            <p className="text-[10px] text-muted font-semibold uppercase">Tarih</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tarih</p>
                             <p className="font-semibold text-primary">
                                 {new Date(sprint.startDate).toLocaleDateString('tr-TR')} — {new Date(sprint.endDate).toLocaleDateString('tr-TR')}
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-secondary">
-                        <Clock size={16} className="text-muted shrink-0" />
+                    <div className="flex items-center gap-2 border-r border-gray-100 py-1 pr-3 dark:border-gray-800">
+                        <Clock size={16} className="shrink-0 text-gray-400 dark:text-gray-500" />
                         <div>
-                            <p className="text-[10px] text-muted font-semibold uppercase">Kalan Süre</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Kalan Süre</p>
                             <p className="font-semibold text-primary">
                                 {sprint.status === 'Completed' ? 'Tamamlandı' : diffDays > 0 ? `${diffDays} gün kaldı` : 'Süre doldu'}
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-secondary">
-                        <Layers size={16} className="text-muted shrink-0" />
+                    <div className="flex items-center gap-2 border-r border-gray-100 py-1 pr-3 dark:border-gray-800">
+                        <Layers size={16} className="shrink-0 text-gray-400 dark:text-gray-500" />
                         <div>
-                            <p className="text-[10px] text-muted font-semibold uppercase">Görev Sayısı</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Görev Sayısı</p>
                             <p className="font-semibold text-primary">{allTasks.length} Issues</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-secondary">
-                        <TrendingUp size={16} className="text-muted shrink-0" />
+                    <div className="flex items-center gap-2 border-r border-gray-100 py-1 pr-3 dark:border-gray-800">
+                        <TrendingUp size={16} className="shrink-0 text-gray-400 dark:text-gray-500" />
                         <div>
-                            <p className="text-[10px] text-muted font-semibold uppercase">Story Points</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Story Points</p>
                             <p className="font-semibold text-primary">{totalStoryPoints} SP</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-secondary col-span-2 sm:col-span-1">
-                        <UserCheck size={16} className="text-muted shrink-0" />
+                    <div className="flex items-center gap-2 py-1 pr-3 col-span-2 sm:col-span-1 border-r-0">
+                        <UserCheck size={16} className="shrink-0 text-gray-400 dark:text-gray-500" />
                         <div>
-                            <p className="text-[10px] text-muted font-semibold uppercase">Ekip</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Ekip</p>
                             <p className="font-semibold text-primary">{uniqueAssigneesCount} Assignee</p>
                         </div>
                     </div>
@@ -391,18 +405,18 @@ export function SprintDetailPage() {
                         <span>Sprint İlerlemesi ({progressPercent}%)</span>
                         <span>{completedTasks.length} / {allTasks.length} Görev Tamamlandı</span>
                     </div>
-                    <div className="w-full h-2.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden flex border border-gray-200 dark:border-gray-700">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
                         <div
                             style={{ width: `${progressPercent}%` }}
-                            className="h-full bg-emerald-500 transition-all duration-300 rounded-full"
+                            className="h-full rounded-full bg-blue-600 transition-all duration-300 dark:bg-blue-500"
                         />
                     </div>
                 </div>
             </div>
 
             {/* Burndown & Velocity Paneli */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                <div className="lg:col-span-2 surface border rounded-xl p-4 shadow-2xs">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+                <div className="lg:col-span-2 rounded-md border border-gray-200 bg-white p-3.5 dark:border-gray-800 dark:bg-gray-900">
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="font-bold text-primary text-sm flex items-center gap-2">
                             <Activity size={16} className="text-blue-600 dark:text-blue-400" />
@@ -418,23 +432,23 @@ export function SprintDetailPage() {
                     )}
                 </div>
 
-                <div className="surface border rounded-xl p-4 shadow-2xs flex flex-col justify-between space-y-4">
-                    <h2 className="font-bold text-primary text-sm border-b border-gray-100 dark:border-gray-800 pb-2">
+                <div className="flex flex-col justify-between space-y-4 rounded-md border border-gray-200 bg-white p-3.5 dark:border-gray-800 dark:bg-gray-900">
+                    <h2 className="border-b border-gray-100 pb-2 text-[13px] font-semibold text-gray-800 dark:border-gray-800 dark:text-gray-100">
                         Sprint Velocity & SP Summary
                     </h2>
 
                     <div className="space-y-3 flex-1 justify-center flex flex-col">
-                        <div className="p-3 surface-muted border border-gray-200/70 dark:border-gray-700/70 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
                             <div>
-                                <p className="text-[11px] text-muted font-bold uppercase">Completed SP</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Completed SP</p>
                                 <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{completedStoryPoints} SP</p>
                             </div>
                             <span className="text-xs bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold px-2 py-0.5 rounded">Done</span>
                         </div>
 
-                        <div className="p-3 surface-muted border border-gray-200/70 dark:border-gray-700/70 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
                             <div>
-                                <p className="text-[11px] text-muted font-bold uppercase">Remaining SP</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Remaining SP</p>
                                 <p className="text-xl font-bold text-secondary">{remainingStoryPoints} SP</p>
                             </div>
                             <span className="text-xs bg-gray-200 dark:bg-gray-700 text-secondary font-bold px-2 py-0.5 rounded">In Scope</span>
@@ -449,16 +463,16 @@ export function SprintDetailPage() {
             </div>
 
             {/* Filtreleme Toolbarı */}
-            <div className="surface border rounded-xl p-3 flex flex-col md:flex-row gap-3 shadow-2xs items-stretch md:items-center justify-between">
+            <div className="flex flex-col items-stretch justify-between gap-2 border-b border-gray-200 bg-white py-3 dark:border-gray-800 dark:bg-gray-900 md:flex-row md:items-center">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
                     <div className="relative flex-1 min-w-[200px]">
-                        <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted" />
+                        <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400 dark:text-gray-500" />
                         <input
                             type="text"
                             placeholder="Arama yap..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full input-base border rounded-lg pl-9 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full input-base rounded-md border border-gray-300 bg-white py-1.5 pl-9 pr-3 text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900"
                         />
                     </div>
 
@@ -471,7 +485,7 @@ export function SprintDetailPage() {
                                     setAssigneeFilter(val);
                                 }
                             }}
-                            className="input-base border rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                            className="input-base cursor-pointer rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                         >
                             <option value="all">Assignee: Tümü</option>
                             <option value="me">Yalnızca Bana Atananlar</option>
@@ -481,7 +495,7 @@ export function SprintDetailPage() {
                         <select
                             value={typeFilter}
                             onChange={(e) => setTypeFilter(e.target.value)}
-                            className="input-base border rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                            className="input-base cursor-pointer rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                         >
                             <option value="all">Type: Tümü</option>
                             <option value="bug">Bug</option>
@@ -493,7 +507,7 @@ export function SprintDetailPage() {
                         <select
                             value={priorityFilter}
                             onChange={(e) => setPriorityFilter(e.target.value)}
-                            className="input-base border rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                            className="input-base cursor-pointer rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                         >
                             <option value="all">Priority: Tümü</option>
                             <option value="high">High</option>
@@ -509,30 +523,34 @@ export function SprintDetailPage() {
                 {tasksLoading ? (
                     <p className="text-secondary text-xs p-4">Görevler yükleniyor...</p>
                 ) : filteredTasks.length === 0 ? (
-                    <div className="surface border rounded-xl p-8 text-center space-y-3">
-                        <div className="w-12 h-12 surface-muted text-muted rounded-full flex items-center justify-center mx-auto">
-                            <Layers size={24} />
+                    <div className="rounded-md border border-gray-200 bg-white px-4 py-10 text-center dark:border-gray-800 dark:bg-gray-900">
+                        <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-md bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                            <Layers size={20} />
                         </div>
-                        <p className="text-xs text-secondary font-medium">Bu sprintte filtrelere uygun görev bulunamadı.</p>
-                        <Link
-                            to="/backlog"
-                            className="inline-flex items-center gap-1.5 text-xs bg-blue-600 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-700 transition"
-                        >
-                            <Plus size={14} />
-                            <span>Backlog'dan Görev Ekle</span>
-                        </Link>
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Bu sprintte filtrelere uygun görev bulunamadı.</p>
+                        <div className="mt-3">
+                            <Link
+                                to="/backlog"
+                                className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
+                            >
+                                <Plus size={14} />
+                                <span>Backlog'dan Görev Ekle</span>
+                            </Link>
+                        </div>
                     </div>
                 ) : (
                     <div className="space-y-5">
                         {tasksByStatus.map((group) => (
                             <div key={group.status} className="space-y-2">
                                 <div className="flex items-center gap-2">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${STATUS_STYLES[group.status] ?? STATUS_STYLES.ToDo}`}>
+                                    <span className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${STATUS_STYLES[group.status] ?? STATUS_STYLES.ToDo}`}>
                                         {group.label}
                                     </span>
-                                    <span className="text-xs text-muted font-semibold">({group.tasks.length})</span>
+                                    <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                                        ({group.tasks.length})
+                                    </span>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                                     {group.tasks.map((task) => (
                                         <TaskCard key={task.id} task={task} projectId={selectedProjectId} />
                                     ))}

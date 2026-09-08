@@ -15,6 +15,9 @@ public class ProjectGitIntegration : BaseEntity
     public Guid? CloseTargetStatusId { get; set; }
     public ProjectWorkflowStatus? CloseTargetStatus { get; set; }
 
+    public string? AzureDevOpsOrgUrl { get; set; }
+    public string? AzureDevOpsProjectName { get; set; }
+    public string? AzureDevOpsPersonalAccessToken { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

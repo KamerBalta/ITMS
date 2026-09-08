@@ -3,6 +3,7 @@ using System;
 using Infera.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -12,9 +13,11 @@ using NpgsqlTypes;
 namespace Infera.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260908070905_AddBurndownSnapshotMetrics")]
+    partial class AddBurndownSnapshotMetrics
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -494,9 +497,6 @@ namespace Infera.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("ChangedFilesJson")
-                        .HasColumnType("jsonb");
-
                     b.Property<string>("CommitHash")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -516,11 +516,6 @@ namespace Infera.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("SourceType")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
 
                     b.Property<Guid>("TaskId")
                         .HasColumnType("uuid");
@@ -755,53 +750,6 @@ namespace Infera.Infrastructure.Migrations
                     b.ToTable("PendingDigestEmails", (string)null);
                 });
 
-            modelBuilder.Entity("Infera.Domain.Entities.PipelineRun", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeployedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Environment")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("PipelineName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("PipelineUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Result")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<DateTime>("RunAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("TaskId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Version")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TaskId");
-
-                    b.ToTable("PipelineRuns", (string)null);
-                });
-
             modelBuilder.Entity("Infera.Domain.Entities.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -888,15 +836,6 @@ namespace Infera.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<string>("AzureDevOpsOrgUrl")
-                        .HasColumnType("text");
-
-                    b.Property<string>("AzureDevOpsPersonalAccessToken")
-                        .HasColumnType("text");
-
-                    b.Property<string>("AzureDevOpsProjectName")
-                        .HasColumnType("text");
 
                     b.Property<Guid?>("CloseTargetStatusId")
                         .HasColumnType("uuid");
@@ -2076,17 +2015,6 @@ namespace Infera.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Infera.Domain.Entities.PipelineRun", b =>
-                {
-                    b.HasOne("Infera.Domain.Entities.Task", "Task")
-                        .WithMany()
-                        .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Task");
-                });
-
             modelBuilder.Entity("Infera.Domain.Entities.Project", b =>
                 {
                     b.HasOne("Infera.Domain.Entities.User", "Owner")
@@ -2384,7 +2312,7 @@ namespace Infera.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("Infera.Domain.Entities.Task", "Task")
-                        .WithMany("TaskComponents")
+                        .WithMany()
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2600,8 +2528,6 @@ namespace Infera.Infrastructure.Migrations
                     b.Navigation("ChecklistItems");
 
                     b.Navigation("Comments");
-
-                    b.Navigation("TaskComponents");
 
                     b.Navigation("TaskLabels");
 
